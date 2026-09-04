@@ -141,4 +141,4 @@ function history(uid, pnr, limit = 30) {
   } catch { return []; }
 }
 
-module.exports = { dispatch, history, sendSMS, sendPush, SMS_READY, PUSH_READY };
+module.exports = { dispatch, history, record, sendSMS, sendPush, SMS_READY, PUSH_READY };

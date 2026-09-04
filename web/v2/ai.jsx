@@ -339,11 +339,65 @@ function SeatsCard({ card, act }) {
   );
 }
 
+
+/* ── Enterprise Autonomy: proactive disruption offer, delivered by the Offer agent ── */
+function DisruptionCard({ card, resolved, onResolve }) {
+  const [busy, setBusy] = useState(null);
+  const go = async (o) => { if (busy || resolved) return; setBusy(o ? o.id : "decline"); try { await onResolve(o, card); } finally { setBusy(null); } };
+  return (
+    <div className="rounded-xl border mt-2 overflow-hidden" style={{ borderColor: "#E2354B" }}>
+      <div className="px-3.5 py-2.5 flex items-center justify-between gap-2" style={{ background: "#FFF2F4" }}>
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#B4192F" }}>Weather risk · proactive</div>
+          <div className="text-[13px] font-bold text-ink">{card.flight} {card.origin}→{card.dest} · {card.date}</div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-[20px] font-black v2-num leading-none" style={{ color: "#B4192F" }}>{card.probability}%</div>
+          <div className="text-[9px] text-ink-faint">disruption risk</div>
+        </div>
+      </div>
+      {card.reasons?.length > 0 && <div className="px-3.5 pt-2 flex flex-wrap gap-1">{card.reasons.slice(0, 3).map((r, i) => <span key={i} className="text-[10px] rounded-full border border-line bg-surface px-2 py-0.5 text-ink-muted">{r}</span>)}</div>}
+      <div className="px-3.5 py-2 space-y-2">
+        {(card.options || []).map((o, i) => (
+          <button key={o.id} disabled={!!busy || resolved} onClick={() => go(o)}
+            className={cx("w-full text-left rounded-lg border p-2.5 flex items-center gap-3 transition-colors", resolved ? "border-line opacity-60" : "border-line hover:border-tap-green bg-surface")}>
+            <span className="w-6 h-6 rounded-full air-bg-accent text-white text-[11px] font-bold inline-flex items-center justify-center shrink-0">{i + 1}</span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[12px] font-bold text-ink">{o.label}</span>
+              {o.detail && <span className="block text-[11px] text-ink-faint">{o.detail}</span>}
+            </span>
+            <span className="text-[10px] font-semibold air-accent-deep shrink-0">{busy === o.id ? "Working…" : o.tag || (o.cost || "no charge")}</span>
+          </button>
+        ))}
+      </div>
+      <div className="px-3.5 pb-3 flex items-center justify-between gap-2">
+        <span className="text-[10px] text-ink-faint">{card.holdUntil ? `Seats held until ${String(card.holdUntil).replace("T", " ").slice(0, 16)} UTC · ` : ""}nothing charged until you choose</span>
+        {!resolved && <button disabled={!!busy} onClick={() => go(null)} className="text-[11px] font-semibold text-ink-muted hover:text-ink">{busy === "decline" ? "…" : "Not now"}</button>}
+        {resolved && <span className="text-[11px] font-semibold air-accent-deep">Handled ✓</span>}
+      </div>
+    </div>
+  );
+}
+function DisruptionConfirmedCard({ card, go }) {
+  const refund = card.status === "refund_pending";
+  return (
+    <div className="rounded-xl border mt-2 overflow-hidden" style={{ borderColor: refund ? "#E8C75A" : "#46A41A" }}>
+      <div className="px-3.5 py-2.5" style={{ background: refund ? "#FFF9EC" : "#F2FCD9" }}>
+        <div className="text-[10px] font-bold uppercase tracking-wide air-accent-deep">{refund ? "Refund packaged for approval" : "Handled · nothing charged"}</div>
+        <div className="text-[13px] font-bold text-ink">{card.option?.label}</div>
+        <div className="text-[11px] text-ink-faint">Booking {card.pnr}{card.flight ? ` · ${card.flight}` : ""}</div>
+      </div>
+      <ul className="px-3.5 py-2 space-y-1">{(card.items || []).map((x, i) => <li key={i} className="flex items-start gap-2 text-[12px] text-ink"><Icon name="check" size={13} className="text-tap-green mt-0.5 shrink-0" />{x}</li>)}</ul>
+      <div className="px-3.5 pb-3"><Btn size="sm" variant="outline" onClick={() => go && go("manage")}>Open My Trips →</Btn></div>
+    </div>
+  );
+}
+
 function Bubble({ m, onPick, onQuick, go, act }) {
   if (m.role === "user") return <div className="flex justify-end"><div className="max-w-[80%] rounded-2xl rounded-br-md bg-surface-dark text-white px-3.5 py-2.5 text-[13px]">{m.content}</div></div>;
   const c = (m.cards || [])[0];
   // Rendered as interactive A2UI cards. Any unrecognised type still shows a minimal line.
-  const richSlice = c && ["flights", "selected", "confirmation", "booking", "seat", "confirm", "upgraded", "cancelled", "checkin", "refund", "extras", "package", "suggestions", "wallet", "seats", "destinations"].includes(c.type);
+  const richSlice = c && ["flights", "selected", "confirmation", "booking", "seat", "confirm", "upgraded", "cancelled", "checkin", "refund", "extras", "package", "suggestions", "wallet", "seats", "destinations", "disruption", "disruption_confirmed", "disruption_declined", "disruption_allclear"].includes(c.type);
   return (
     <div className="space-y-2">
       {m.content && <div className={cx("text-[13px] text-ink leading-relaxed whitespace-pre-line", m.intro && "rounded-2xl bg-surface-mute px-4 py-3")}>{m.content}</div>}
@@ -363,6 +417,8 @@ function Bubble({ m, onPick, onQuick, go, act }) {
       {c?.type === "destinations" && <DestinationsCard card={c} act={act} />}
       {c?.type === "wallet" && <WalletCard card={c} act={act} />}
       {c?.type === "seats" && <SeatsCard card={c} act={act} />}
+      {c?.type === "disruption" && <DisruptionCard card={c} resolved={!!m.resolved} onResolve={m.onResolve || (() => {})} />}
+      {c?.type === "disruption_confirmed" && <DisruptionConfirmedCard card={c} go={go} />}
       {c && !richSlice && <div className="rounded-xl border border-line bg-surface-soft p-3 text-[12px] text-ink-muted">Done.</div>}
       {m.command?.action === "show_search" && <Btn size="sm" variant="outline" className="mt-1" onClick={() => go("results", { origin: m.command.origin, dest: m.command.dest, date: m.command.date })}>View all flights →</Btn>}
       {m.command?.action === "express" && <Btn size="sm" variant="outline" className="mt-1" onClick={() => go("express")}>Open express checkout →</Btn>}
@@ -402,6 +458,44 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
   const [brandSrv, setBrandSrv] = useState(null);
   const brand = brandSrv || brandProp || null;
   const session = useRef("v2-" + Math.random().toString(36).slice(2, 8));
+
+  /* Enterprise Autonomy: the disruption agents can speak first. Every proactive message the
+     Offer / Execution agents wrote for this customer lands here as an assistant bubble with its
+     card, exactly as if the assistant had typed it; a card tap runs the same saga as a typed
+     "take the Orlando option" or a WhatsApp "2". */
+  const inboxCursor = useRef(0);
+  const consumed = useRef(new Set());
+  const resolveOffer = async (opt, card) => {
+    const r = opt ? await api.post("/autonomy/customer/accept", { optionId: opt.id, offerId: card.offerId })
+                  : await api.post("/autonomy/customer/decline", {});
+    if (r?.inboxId) consumed.current.add(r.inboxId);
+    setMsgs(prev => [
+      ...prev.map(m => (m.cards?.[0]?.offerId === card.offerId ? { ...m, resolved: true } : m)),
+      { role: "assistant", content: r?.reply || (r?.ok ? "Done." : `I couldn't complete that: ${r?.error || "please try again"}.`), cards: r?.card ? [r.card] : [] },
+    ]);
+  };
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      try {
+        const r = await api.get(`/autonomy/customer/inbox?since=${inboxCursor.current}`);
+        if (!alive || !r?.messages?.length) return;
+        for (const m of r.messages) inboxCursor.current = Math.max(inboxCursor.current, m.id);
+        const fresh = r.messages.filter(m => !consumed.current.has(m.id));
+        fresh.forEach(m => consumed.current.add(m.id));
+        if (!fresh.length) return;
+        const resolvedOffers = new Set(fresh.filter(m => /^disruption_(confirmed|declined)$/.test(m.kind)).map(m => m.card?.offerId).filter(Boolean));
+        setMsgs(prev => [
+          ...prev.map(m => (resolvedOffers.has(m.cards?.[0]?.offerId) ? { ...m, resolved: true } : m)),
+          ...fresh.map(m => ({ role: "assistant", content: m.text, cards: m.card ? [m.card] : [], proactive: true, inboxId: m.id, onResolve: resolveOffer, resolved: m.kind === "disruption_offer" && resolvedOffers.has(m.card?.offerId) })),
+        ]);
+        api.post("/autonomy/customer/inbox/seen", { ids: fresh.map(m => m.id) }).catch(() => {});
+      } catch {}
+    };
+    tick();
+    const t = setInterval(tick, 4000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
   const endRef = useRef(null);
   const mounted = useRef(false);
   // Follow new messages to the bottom while chatting, but NOT on first mount —

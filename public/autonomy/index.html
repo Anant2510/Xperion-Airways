@@ -66,6 +66,14 @@
 
   <div class="row" style="margin-top:14px">
     <div class="card" style="flex:1">
+      <div class="k">Real customers on this flight (live app · the same rules, the same saga)</div>
+      <div class="mono" style="font-size:12px;color:var(--sageD);margin-bottom:6px">Every app customer holds a real booking on XP201. Their offers go through the app's own channels: WhatsApp, push, SMS, email, and the Xperion AI assistant. Log in as one of them to watch it land.</div>
+      <table id="linked"><thead><tr><th>customer</th><th>tier</th><th>PNR</th><th>channel</th><th>offer</th><th>delivery</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <div class="card" style="flex:1">
       <div class="k">Outbox (honest statuses)</div>
       <div id="outbox" class="log"></div>
     </div>
@@ -97,6 +105,10 @@ async function refresh() {
   const tb = document.querySelector("#preds tbody"); tb.innerHTML = "";
   for (const p of s.predictions || []) tb.insertAdjacentHTML("beforeend",
     `<tr><td class="mono">${p.id.slice(0, 34)}…</td><td><span class="pill ${["ACT","OFFERS_OUT"].includes(p.state) ? "act" : ""}">${p.state}</span></td><td>${p.probability ?? ""}</td><td>${p.impacted || 0}</td><td>${(s.offers_sent || 0)}</td></tr>`);
+  const lb = document.querySelector("#linked tbody"); if (lb) { lb.innerHTML = "";
+    for (const l of s.linked || []) lb.insertAdjacentHTML("beforeend",
+      `<tr><td>${l.name || ("uid " + l.uid)}</td><td>${l.tier || ""}</td><td class="mono">${l.pnr || ""}</td><td>${l.channel || "—"}</td><td><span class="pill ${l.state === "SENT" ? "act" : ""}">${l.state}</span></td><td class="mono" style="font-size:11px">${(l.delivery || "").slice(0, 70)}</td></tr>`);
+    if (!(s.linked || []).length) lb.insertAdjacentHTML("beforeend", `<tr><td colspan="6" style="color:var(--sageD)">No world yet — press Reset world.</td></tr>`); }
   const t2 = await J("/api/autonomy/tier2");
   document.getElementById("tier2").innerHTML = (t2.items || []).slice(0, 8).map(i =>
     `<div style="padding:6px 0;border-bottom:1px dashed #EEF3F1">

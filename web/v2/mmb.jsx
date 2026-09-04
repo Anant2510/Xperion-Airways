@@ -69,6 +69,7 @@ const Empty = ({ go, title = "No upcoming flight", msg = "You don't have an acti
 function BookingBand({ booking, airports, seatOverride }) {
   const f = booking.flight || {};
   return (
+    <>
     <div className="rounded-2xl p-5 flex flex-wrap items-center gap-4" style={{ background: "#f2ffdb" }}>
       <div>
         <div className="text-[26px] font-black v2-num">{f.dep || "—"}</div>
@@ -84,6 +85,27 @@ function BookingBand({ booking, airports, seatOverride }) {
         <div className="text-[26px] font-black v2-num">{f.arr || "—"}</div>
         <div className="text-[11px] text-ink-faint">{f.dest || "—"} · {cityOf(airports, f.dest)}</div>
       </div>
+    </div>
+    {booking.meta?.recovery && <RecoveryBand rec={booking.meta.recovery} status={booking.status} />}
+    </>
+  );
+}
+
+/* Enterprise Autonomy: what the disruption agents did to this booking (from the knowledge graph) */
+function RecoveryBand({ rec, status }) {
+  const refund = status === "refund_pending";
+  return (
+    <div className="rounded-2xl border p-4 mt-3" style={{ borderColor: refund ? "#E8C75A" : "#46A41A", background: refund ? "#FFF9EC" : "#F2FCD9" }}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Pill tone={refund ? "gold" : "green"}>{refund ? "Refund pending approval" : "Recovered before disruption"}</Pill>
+        <span className="text-[13px] font-bold text-ink">{rec.label}</span>
+      </div>
+      {rec.detail && <div className="text-[11px] text-ink-muted mt-1">{rec.detail}</div>}
+      <ul className="mt-2 space-y-1">
+        {(rec.items || []).map((x, i) => <li key={i} className="flex items-start gap-2 text-[12px] text-ink"><Icon name="check" size={13} className="text-tap-green mt-0.5 shrink-0" />{x}</li>)}
+      </ul>
+      {rec.legs && rec.legs.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{rec.legs.map(l => <span key={l.flight_no} className="text-[11px] font-semibold rounded-full border border-line bg-surface px-2.5 py-1 v2-num">{l.flight_no} {l.origin}→{l.dest} {l.dep}</span>)}</div>}
+      <div className="text-[10px] text-ink-faint mt-2">Arranged automatically by Xperion's disruption agents · accepted {String(rec.accepted_at || "").replace("T", " ").slice(0, 16)} UTC · nothing charged</div>
     </div>
   );
 }

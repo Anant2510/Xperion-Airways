@@ -9,6 +9,7 @@ const O = require("./ontology");
 const P = require("./policy");
 const V = require("./vendors");
 const clock = require("./clock");
+const bridge = require("./bridge");   // app customers: real channels + real bookings (no-op for synthetic pax)
 
 const tierW = { Platinum: 3, Gold: 2, Silver: 1, Base: 0 };
 
@@ -116,7 +117,9 @@ function framingFor(pax, pnr) {
 }
 function pickChannel(pax, atHour) {
   const quietable = ["push", "sms", "whatsapp"];
-  for (const ch of ["push", "sms", "whatsapp", "email"]) {
+  /* a stated channel preference on the profile (app customers) wins over the default order */
+  const order = [...new Set([pax.preferred_channel, "push", "sms", "whatsapp", "email"].filter(Boolean))];
+  for (const ch of order) {
     const c = (pax.contact_channels || []).find(x => x.channel === ch && x.consent);
     if (!c) continue;
     if (quietable.includes(ch) && !O.PRED.outside_quiet_hours({ passengerId: pax.id, atHour })) continue;
@@ -159,6 +162,7 @@ function offers(predictionId) {
     const offId = `offer:${predictionId}:${pax.id}`;
     G.upsertNode(offId, "Offer", { passenger_ref: pax.id, pnr: pnr.id, prediction: predictionId, options: ordered, channel, framing_variant: framing, state: "SENT", incentive, sent_at: clock.nowIso() });
     for (const o of ordered) G.upsertEdge(offId, "PRESENTS", o);
+    bridge.onOffer({ offId, pax, pnr, pred, fi, ordered, framing, incentive, channel, text });
     const oe = G.edges({ src: predictionId, rel: "OUTREACH", dst: pax.id })[0];
     G.upsertEdge(predictionId, "OUTREACH", pax.id, { count: (oe?.count || 0) + 1, last: clock.nowIso() });
     sentN++;
@@ -174,6 +178,7 @@ function decline(offerId) {
   G.setProps(offerId, { state: "DECLINED" });
   G.upsertEdge(off.prediction, "DECLINED", off.passenger_ref);
   O.audit({ actor: "offer", action: "DECLINED", predictionId: off.prediction, rationale: `${off.passenger_ref} declined; no further outreach` });
+  bridge.onDeclined({ off, pax: G.getNode(off.passenger_ref) });
   return { ok: true };
 }
 
@@ -265,6 +270,7 @@ function accept(offerId, optionId) {
   G.setProps(offerId, { executed: true, refs, exec_ms: ms });
   G.setProps(predictionId, { state: "RESOLVING" });
   O.audit({ actor: "execution", action: "SAGA_COMPLETE", predictionId, rationale: `${opt.type} executed for ${off.pnr} in ${ms}ms`, inputs: refs });
+  bridge.onAccepted({ offerId, off, pax, pnr, opt, refs });
   return { ok: true, refs, ms };
 }
 

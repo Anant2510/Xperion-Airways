@@ -67,3 +67,44 @@ with the kill switch ON. Phase B Tier-2 only: leave the switch ON and work the
 queue. Phase C (this build's default policy node): Tier 0–1 on DEL→MIA.
 Phase D: full caps. Never skip a gate; the current gate is recorded in
 `policy:autonomy_gate`.
+
+## Live-app demo — the scenario as a real customer sees it
+
+The autonomy layer is joined to the customer app by `bridge.js`. Every world
+reset links the app's real customers into the knowledge graph as Passenger and
+PNR nodes on XP201 Delhi → Miami, each backed by a real row in `bookings`, so
+the trip appears in My Trips like any other booking. The Offer agent's message
+then reaches them through the app's own channels; a tap on the card, a typed
+"take the Orlando option", or a WhatsApp reply of "2" all run the same
+execution saga. The in-process acceptance suite never links, so it stays at
+214 synthetic passengers.
+
+Presenter script (two browser tabs, one phone):
+
+1. App tab: open `/v2`, sign in as Daniel. Note the DEL → MIA trip in the
+   hero and in My Trips (PNR XPW01A).
+2. Ops tab: open `/autonomy/`. Press **Reset world** (the table "Real
+   customers on this flight" fills), then **T-72h**: WATCH at 43%, no message
+   goes out. Point at the audit trail.
+3. Press **T-48h**: ACT at 71%. In the app tab a red alert appears on every
+   screen within five seconds; Xperion AI shows the proactive message with a
+   card: risk, reasons, three one-tap options, the seat-hold expiry. The same
+   text arrives on WhatsApp when Twilio is configured (otherwise it sits in
+   the WhatsApp log with an honest "logged" status); the ops table shows the
+   delivery result per customer.
+4. Accept: tap option 2 in the card, or type "I'll take the Orlando option",
+   or reply "2" on WhatsApp. The saga runs in milliseconds; the confirmation
+   card lists hotel voucher, taxi reference, morning transfer, reissued
+   ticket. My Trips now shows the booking as rebooked with the recovery band.
+   The ops audit shows SAGA_COMPLETE and APPLY_TO_BOOKING.
+5. Variants: reply "no thanks, leave it" (declined, no re-contact); press
+   **Stand down** after T-72 (holds released, all-clear in the inbox); press
+   the kill switch before T-48 (nothing autonomous fires, human queue stays
+   live).
+
+Endpoints used by the app: `GET /api/autonomy/customer/status` (banner),
+`GET /api/autonomy/customer/inbox?since=` and `POST …/inbox/seen` (assistant),
+`POST /api/autonomy/customer/accept {optionId, offerId}` and `…/decline`.
+`POST /api/autonomy/customer/link` re-links without a world reset.
+
+Verification: `BASE=http://127.0.0.1:<port> node _bridge-test.mjs` → 27/27.

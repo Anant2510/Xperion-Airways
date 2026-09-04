@@ -53,7 +53,7 @@ for (const persona of PERSONAS) {
     return `${pat.route} · usual ${topFlight} · back ${pat.usualBackNo}`;
   });
   await check("Express return flight number is CLEAN (usualBackNo)", () => {
-    assert(pat.usualBackNo, "no usualBackNo"); assert(/^TP\d+$/.test(pat.usualBackNo), `not a clean flight no: '${pat.usualBackNo}'`);
+    assert(pat.usualBackNo, "no usualBackNo"); assert(/^XP\d+$/.test(pat.usualBackNo), `not a clean flight no: '${pat.usualBackNo}'`);
     return pat.usualBackNo;
   });
   await check("Suggested destinations (personalized from history)", async () => {

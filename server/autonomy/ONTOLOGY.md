@@ -112,3 +112,30 @@ swapping in Neo4j is a driver change behind graph.js, not an ontology change;
 constraints (uniqueness, append-only audit) are enforced in SQL today and in
 Cypher constraints tomorrow. Revisit at the first pilot when concurrent
 writers and multi-hop analytics appear.
+
+## Live-app linkage (bridge.js)
+
+The app's real customers are not a separate model; they are the same entities
+with a few extra properties, written by `bridge.link()` after each world reset:
+
+- **Passenger** `pax:app:<uid>` — `app_uid`, `app_email`, `app_phone`,
+  `preferred_channel` (whatsapp when a phone is on file, else push),
+  `quiet_hours: null` (urgent travel alerts allowed at any hour, a profile
+  setting), `source: "app-profile"`. Consent per channel is derived from the
+  profile: WhatsApp and SMS need a phone, email needs an address, push is on.
+- **PNR** `pnr:app:<uid>` — `record_locator` XPW<uid>A, `app_booking_id`
+  pointing at the real `bookings` row, `source: "app-booking"`.
+- Edges are the ordinary ones: FlightInstance CARRIES PNR, PNR BELONGS_TO
+  Passenger. Impact, recovery, offer and execution never special-case them.
+- `preferred_channel` is honoured by the Offer agent's channel choice ahead of
+  the default push → sms → whatsapp → email order; consent and quiet hours
+  still gate it.
+- **Offer** gains `app_uid` and `app_delivery` (provider status per channel,
+  e.g. "whatsapp: delivered via Twilio" or "logged (Twilio not configured)").
+
+New AuditEvent actions: `LINK_APP_CUSTOMERS`, `DELIVER_OFFER`,
+`APPLY_TO_BOOKING`. The accepted option is written back onto the real booking
+as `meta.recovery` (type, label, items, legs, vendor refs, accepted_at) and the
+booking status becomes `rebooked` (or `refund_pending` for a Tier-2 refund).
+Customer-facing messages live in `ai_inbox` and are mirrored into
+`chat_turns`, so the assistant remembers what it said proactively.

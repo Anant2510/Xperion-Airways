@@ -751,6 +751,16 @@ async function handleIncoming({ from, text }) {
     cdpForward("wa_inbound", { from: bare, text, channel: "WhatsApp" }, Number(_waEv.lastInsertRowid), uid); }
   db.prepare("UPDATE users SET wa_id=? WHERE id=?").run(bare, uid);   // remember partner for proactive push
 
+  /* Enterprise Autonomy: an open disruption offer is answered here first — "2", "take the
+     Orlando option", "refund" or "leave it" run the same execution saga as the in-app card. */
+  try {
+    const hit = require("./autonomy/bridge").intercept(uid, text);
+    if (hit) {
+      const line = hit.reply || (hit.ok ? "Done." : `I couldn't complete that: ${hit.error || "please try again"}.`);
+      return sendText(from, line);
+    }
+  } catch (e) { console.error("[wa] autonomy intercept:", e.message); }
+
   const t = (text || "").trim().toLowerCase();
 
   // 1) If the reply is a number that maps to the menu we last sent → run it
@@ -1078,4 +1088,4 @@ ${recovery.message}
 Reply:  1 to ${keep}   ·   2 to ${move}`);
 }
 
-module.exports = { handleIncoming, pushDisruption, sendMainMenu, CONFIGURED, parseDate };
+module.exports = { handleIncoming, pushDisruption, sendMainMenu, sendText, sendButtons, CONFIGURED, parseDate };

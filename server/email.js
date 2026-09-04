@@ -160,6 +160,28 @@ const TEMPLATES = {
       cta: { label: "Choose in the app" },
     }),
   }),
+  /* Enterprise Autonomy: proactive weather alert with one-tap options, sent before disruption */
+  weather_alert: ({ fi, card }) => ({
+    subject: `⚠ Weather risk for ${fi.flight_no} on ${fi.date} — your options are ready`,
+    html: wrap({
+      title: `A heads-up before anything goes wrong`,
+      accent: "#E2354B",
+      preheader: `Tornado watch near ${card.destCity}. Seats already held — one tap in the app.`,
+      bodyHtml: `A tornado watch near <b>${card.destCity}</b> overlaps the arrival of your flight <b>${fi.flight_no}</b> on ${fi.date}. Our disruption model puts the risk at <b>${card.probability}%</b>.<br/><br/>
+        We have already held seats and prepared your options. Nothing is charged and your booking ${card.pnr} stays as it is until you choose.
+        <ul style="padding-left:18px;margin:10px 0">${(card.options || []).map((o, i) => `<li style="margin:6px 0"><b>${i + 1}. ${o.label}</b><br/><span style="color:#6b7a73">${o.detail}</span></li>`).join("")}</ul>
+        ${card.holdUntil ? `<div style="font-size:12px;color:#6b7a73">Seats held until ${card.holdUntil.replace("T", " ").slice(0, 16)} UTC.</div>` : ""}`,
+      cta: { label: "Choose in the app" },
+    }),
+  }),
+  recovery_confirmed: ({ pnr, option, items = [] }) => ({
+    subject: `Done ✓ ${option.label} — ${pnr} updated`,
+    html: wrap({
+      title: "Handled. Nothing else to do.",
+      bodyHtml: `Your choice is confirmed: <b>${option.label}</b>.<ul style="padding-left:18px;margin:10px 0">${items.map((x) => `<li style="margin:4px 0">${x}</li>`).join("")}</ul>Booking ${pnr} is updated in My Trips; nothing was charged.`,
+      cta: { label: "Open My Trips" },
+    }),
+  }),
   rebooked: ({ option, pnr }) => ({
     subject: `Done ✓ ${option.label} — ${pnr} updated`,
     html: wrap({
@@ -263,7 +285,7 @@ const TEMPLATES = {
 
 async function sendEmail(type, data) {
   const user = db.prepare("SELECT * FROM users WHERE id=1").get();
-  const to = process.env.DEMO_EMAIL_TO || user.email;
+  const to = process.env.DEMO_EMAIL_TO || (data && data.to) || user.email;
   const { subject, html } = TEMPLATES[type](data);
 
   let status = "logged (no SMTP configured)", providerId = null;

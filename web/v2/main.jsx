@@ -27,6 +27,38 @@ function parseHash() {
   return { route: path || "home", params };
 }
 
+
+/* Enterprise Autonomy: a slim alert on every screen while the disruption agents have something
+   for this customer — an open offer, or a confirmation not yet seen. Tapping opens Xperion AI,
+   where the proactive message and its one-tap options are waiting. */
+function ProactiveBanner({ loggedIn, route, go }) {
+  const [st, setSt] = useState(null);
+  useEffect(() => {
+    if (!loggedIn) { setSt(null); return; }
+    let alive = true;
+    const tick = async () => { try { const r = await api.get("/autonomy/customer/status"); if (alive) setSt(r); } catch {} };
+    tick();
+    const t = setInterval(tick, 5000);
+    return () => { alive = false; clearInterval(t); };
+  }, [loggedIn]);
+  if (!st || !st.linked || route === "ai") return null;
+  let tone = null, text = "";
+  if (st.pending) { tone = "red"; text = `Weather risk on your ${st.booking?.flight_no || "XP201"} flight to Miami · Xperion AI has ${st.pending.options.length} options ready, nothing charged`; }
+  else if (st.unseen > 0 && st.booking?.recovery) { tone = "green"; text = `Handled: ${st.booking.recovery.label} · booking ${st.booking.pnr} updated`; }
+  if (!tone) return null;
+  return (
+    <button onClick={() => go("ai")} className="w-full text-left" aria-label="Open Xperion AI">
+      <div className="mx-auto max-w-page px-4 sm:px-6">
+        <div className="mt-2 rounded-xl px-4 py-2.5 flex items-center gap-3 text-white shadow-card" style={{ background: tone === "red" ? "#B4192F" : "#2E7D33" }}>
+          <span className="w-2 h-2 rounded-full bg-white animate-pulse shrink-0" />
+          <span className="flex-1 text-[13px] font-semibold">{text}</span>
+          <span className="text-[12px] font-bold whitespace-nowrap">{st.pending ? "Choose in Xperion AI →" : "See details →"}</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 function App() {
   const [{ route, params }, setLoc] = useState(parseHash());
   const [shared, setShared] = useState({ profile: null, destinations: [], airports: [], journey: null, suggested: null, loading: true });
@@ -194,6 +226,7 @@ function App() {
     <div className="min-h-screen flex flex-col bg-surface-soft">
       <TopNav route={route} go={go} profile={shared.profile} loggedIn={loggedIn}
         onLogin={() => setShowLogin(true)} onLogout={() => { try { api.post("/auth/logout", {}); } catch {} setSessionId(null); try { localStorage.removeItem("flyxperion_auth"); localStorage.removeItem("flyxperion_persona"); localStorage.removeItem("flyxperion_login"); } catch {} resetTrip(); setLoggedIn(false); go("home"); }} />
+      <ProactiveBanner loggedIn={loggedIn} route={route} go={go} />
       <main className="flex-1 overflow-x-clip">
         {Screen
           ? <Screen shared={shared} params={params} go={go} />

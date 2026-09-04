@@ -2160,6 +2160,21 @@ function deterministicAgent(text, session) {
   const q = (text || "").toLowerCase();
   const uid = (session && session.uid) || SERVER_DEFAULT_UID;   // per-session identity for direct reads (tools get it via session)
   const calls = [];
+  /* Enterprise Autonomy: disruption questions are answered from the knowledge graph, offline too */
+  if (/weather|storm|tornado|disrupt|delay|risk|xp ?201|my (miami|delhi|next|upcoming) flight|what('s| is) (happening|going on)|status of my|my (flight|trip|booking)/.test(q)) {
+    try {
+      const st = autonomy.bridge.status(uid);
+      const weatherish = /weather|storm|tornado|disrupt|delay|risk|xp ?201|miami|delhi|happening|going on/.test(q);
+      if (!st.pending && !st.booking?.recovery && !weatherish) throw new Error("not a disruption question");   // ordinary booking questions keep their normal answer
+      if (st.pending) {
+        const pend = st.pending;
+        const card = (autonomy.bridge.inboxList(uid).filter(m => m.kind === "disruption_offer").pop() || {}).card || null;
+        return { reply: `Your Delhi to Miami flight XP201 is under a tornado watch at Miami; I've already held seats and prepared ${pend.options.length} options — ${pend.options.map((o, i) => `${i + 1}) ${o.label}`).join("; ")}. Say the number or the option name and I'll do the rest; nothing is charged.`, toolCalls: [], cards: card ? [card] : [] };
+      }
+      if (st.booking?.recovery) return { reply: `Already handled: ${st.booking.recovery.label}. Booking ${st.booking.pnr} is ${st.booking.status} — ${(st.booking.recovery.items || []).join(", ")}. It's all in My Trips.`, toolCalls: [], cards: [] };
+      if (st.linked && st.prediction) return { reply: `I'm watching the weather for your XP201 Delhi to Miami booking (${st.booking?.pnr || ""}); current state is ${st.prediction.state}. If the risk rises I'll send you one-tap options before anything is disrupted.`, toolCalls: [], cards: [] };
+    } catch {}
+  }
   const run = (name, input = {}) => {
     let result; try { result = agentRunTool(name, input, session); } catch (e) { result = { ok: false, message: "That didn't go through — " + e.message, error: e.message }; }
     // Remember anything awaiting a yes/no so a bare "yes" resumes it on the next turn.
@@ -2559,6 +2574,7 @@ app.post("/api/ai/agent", async (req, res) => {
     situ += ` Active search: ${cityName(ls.origin)}→${cityName(ls.dest)} on ${ls.date}, flights ${ls.flights.map(f => f.flight_no).join(", ")}.`;
   }
   if (session.selected) situ += ` Currently selected flight: ${session.selected.flight_no}.`;
+  try { situ += autonomy.bridge.contextLine(req.uid); } catch {}   // Enterprise Autonomy: live disruption facts from the knowledge graph
   situ += ")";
   // Stored history first, so the agent has context even on a fresh tab / after a reload,
   // and picks up whatever the customer said on WhatsApp.
@@ -2566,6 +2582,17 @@ app.post("/api/ai/agent", async (req, res) => {
   const remembered = chatHistory(req.uid, 12);
   const lastUserMsg = [...messages].reverse().find(m => m.role === "user" && typeof m.content === "string");
   if (lastUserMsg) chatSave(req.uid, channel, "user", lastUserMsg.content);
+  if (lastUserMsg) {
+    /* Enterprise Autonomy: an open disruption offer can be accepted or declined in plain language
+       right here; the reply comes from the same execution saga as a card tap or a WhatsApp reply. */
+    let hit = null; try { hit = autonomy.bridge.intercept(req.uid, lastUserMsg.content); } catch (e) { log("autonomy_intercept_error", { error: e.message }); }
+    if (hit) {
+      const reply = hit.reply || (hit.ok ? "Done." : `I couldn't complete that: ${hit.error || "please try again"}.`);
+      chatSave(req.uid, channel, "assistant", reply);
+      return res.json({ reply, cards: hit.card ? [hit.card] : [], command: null, ai: "autonomy",
+        brand: { id: tenant.id, name: tenant.config.name, assistant: `${tenant.config.name} AI`, source: tenant.config.cdp ? "Adobe Real-Time CDP" : null, currency: tenant.config.currency, theme: tenant.config.theme || null } });
+    }
+  }
   const priorOnly = remembered.filter(m => !(m.role === "user" && lastUserMsg && m.content === lastUserMsg.content));
   messages = [...priorOnly, ...messages].slice(-16);
   const withContext = messages.length
@@ -2599,8 +2626,10 @@ app.post("/api/ai/agent", async (req, res) => {
     // runs real tools and returns real cards/commands, so it never goes dead.
     try {
       const lastUser = [...messages].reverse().find(m => m.role === "user" && typeof m.content === "string");
-      const { reply, toolCalls } = deterministicAgent(lastUser ? lastUser.content : "", session);
-      const { cards, command } = buildUI(toolCalls);
+      const det = deterministicAgent(lastUser ? lastUser.content : "", session);
+      const { reply, toolCalls } = det;
+      const { cards: uiCards, command } = buildUI(toolCalls);
+      const cards = det.cards && det.cards.length ? det.cards : uiCards;   // graph-sourced cards (disruption) bypass buildUI
       chatSave(req.uid, channel, "assistant", reply);   // memory is kept in offline mode too
       res.json({ reply, cards, command, ai: "offline", brand, tools: toolCalls.map(t => t.name) });
     } catch (e2) {
@@ -3493,13 +3522,14 @@ setInterval(() => { pss.flushOutbox().catch(() => {}); }, Number(process.env.PSS
 // It can also be hosted independently; it targets the backend via a configurable API base.
 app.use("/pss", express.static(path.join(__dirname, "..", "pss-app")));
 
+/* Enterprise Autonomy router — mounted BEFORE the SPA catch-all so its GET routes are reachable */
+const autonomy = require("./autonomy");
+app.use("/api/autonomy", autonomy.router);
 app.get("/{*splat}", (req, res) => res.sendFile(path.join(__dirname, "..", "public", "index.html")));
 
 const PORT = process.env.PORT || 3000;   // set PORT in .env (e.g. 7801 on the Azure VM)
 const HOST = process.env.HOST || "0.0.0.0";   // 0.0.0.0 = reachable from the network, not just localhost
 /* Enterprise Autonomy: ontology + knowledge graph + tiered agent mesh */
-const autonomy = require("./autonomy");
-app.use("/api/autonomy", autonomy.router);
 
 app.listen(PORT, HOST, () => {
   const suffix = BASE_PATH ? BASE_PATH + "/" : "/";

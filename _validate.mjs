@@ -1,5 +1,7 @@
 // Modern-Retailing validation harness — exercises the live server.
-const B = 'http://127.0.0.1:3000';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const B = process.env.BASE || 'http://127.0.0.1:3000';
 const out = [];
 const log = (...a) => { const s = a.join(' '); out.push(s); console.log(s); };
 

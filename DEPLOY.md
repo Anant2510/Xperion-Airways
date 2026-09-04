@@ -191,3 +191,16 @@ curl -X POST http://<host>:7810/api/autonomy/kill \
 
 See `server/autonomy/RUNBOOK.md` for the operator procedures and
 `server/autonomy/ASSUMPTIONS.md` for the open Phase-0 questions.
+
+## Live disruption demo (autonomy ↔ app bridge)
+
+After deploying, open `/autonomy/` and press **Reset world** once: the app's
+real customers are linked into the knowledge graph with live bookings on XP201.
+Then sign in to `/v2` as Daniel and follow the presenter script in
+`server/autonomy/RUNBOOK.md` ("Live-app demo"). Verify with:
+
+    BASE=http://127.0.0.1:<port> node _bridge-test.mjs      → 27/27
+
+No database reset is needed: the bridge creates its `ai_inbox` table on first
+load and writes bookings through the normal tables. Real WhatsApp delivery needs
+the `TWILIO_*` keys; without them the message is logged with an honest status.

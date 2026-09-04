@@ -46,6 +46,7 @@ function standDown(predictionId) {
     const fi = G.getNode(G.getNode(predictionId).flight_instance_ref);
     const gate = P.execute("SEND_ALL_CLEAR", { predictionId, passengerId: pax.id, channel: "email", perform: () => true }, { actor: "orchestrator", predictionId, rationale: `all clear to ${pax.id}` });
     if (gate.ok) { V.send("email", pax.id, V.render("all_clear", pax.locale, { name: pax.name.split(" ")[0], flight: fi.flight_no, date: fi.date }), { predictionId }); cleared++; }
+    if (gate.ok) require("./bridge").onAllClear({ pax, fi });
   }
   G.setProps(predictionId, { stood_down_at: clock.nowIso(), holds_released: released, all_clear_sent: cleared });
   O.audit({ actor: "orchestrator", action: "STOOD_DOWN", predictionId, rationale: `${released} holds released, ${cleared} all-clear messages` });
