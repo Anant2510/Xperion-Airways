@@ -284,7 +284,7 @@ function Login({ profile, onLogin }) {
     <div className="min-h-screen flex dxp-dark">
       {/* Left — Miami hero */}
       <div className="hidden lg:block w-[42%] relative overflow-hidden">
-        <img src={PORTO_IMG} alt="Miami, Portugal" className="absolute inset-0 w-full h-full object-cover"/>
+        <img src={PORTO_IMG} alt="Miami, Florida" className="absolute inset-0 w-full h-full object-cover"/>
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(10,11,10,.15) 0%, rgba(10,11,10,.75) 100%)" }}/>
         <div className="relative h-full flex flex-col justify-between p-12">
           <span className="self-start text-[11px] font-bold tracking-[0.22em] uppercase px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,.14)", color: "#fff", backdropFilter: "blur(6px)" }}>FlyTAP DXP · Persona prototype</span>
@@ -592,7 +592,7 @@ function Home({ profile, destinations, go, openAssistant, toast, bookDestination
           </nav>
           <div className="flex items-center gap-3 ml-auto shrink-0">
             <button onClick={() => go("search")} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100" aria-label="Search"><Search size={17} className="text-gray-600"/></button>
-            <span className="hidden md:flex items-center gap-1 text-xs font-semibold text-gray-600"><Globe size={14}/> PT · EUR</span>
+            <span className="hidden md:flex items-center gap-1 text-xs font-semibold text-gray-600"><Globe size={14}/> US · USD</span>
             <button onClick={() => toast("Wishlist", "Saved destinations live here.")} className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900"><Ticket size={15}/> Wishlist</button>
             <button onClick={() => go("manage")} className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900"><ShoppingBag size={15}/> My Trip Cart</button>
             <button onClick={() => go("console")} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border" style={{ color: "var(--tap-deep)", borderColor: "var(--tap-line)" }} title="Demo-only: live database view"><Database size={12}/> Demo</button>
@@ -1431,7 +1431,7 @@ function ExpressCheckout({ profile, flight, ancillaries, items, seat, onPaid, to
             ))}
           </Section>
 
-          <Section title="Payment method" action="+ Change" onAction={() => toast("Payment", "Use your saved card, miles, MB WAY, Apple Pay or PayPal at payment.")}>
+          <Section title="Payment method" action="+ Change" onAction={() => toast("Payment", "Use your saved card, miles, Apple Pay or PayPal at payment.")}>
             <div className="flex items-center justify-between">
               <div className="text-sm font-bold" style={{ color: "var(--tap-ink)" }}>Saved card · {MASKED_PAN}</div>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#E2F4EA", color: "#066B3C" }}>🔒 Encrypted</span>
@@ -1497,7 +1497,7 @@ function ExpressCheckout({ profile, flight, ancillaries, items, seat, onPaid, to
               {paying ? <><Loader2 className="animate-spin" size={16}/> Confirming…</> : <><Zap size={16}/> {cardVal > 0 ? `Pay ${EUR(cardVal)} securely` : "Confirm — covered by voucher & miles"}</>}
             </button>
             <div className="text-[11px] text-center mt-2 font-semibold" style={{ color: "var(--tap-green)" }}>Earn {milesEarned.toLocaleString()} miles on this trip</div>
-            <div className="text-[10px] text-gray-400 mt-2 text-center">Visa · Mastercard · Amex · MB WAY · Apple Pay · PayPal<br/>Free 24h cancel · 24/7 support</div>
+            <div className="text-[10px] text-gray-400 mt-2 text-center">Visa · Mastercard · Amex · Apple Pay · PayPal<br/>Free 24h cancel · 24/7 support</div>
           </Card>
         </div>
       </div>
@@ -1521,7 +1521,7 @@ function Confirmed({ profile, flight, receipt, go }) {
   const base = Math.round(total * 0.79), taxes = total - base;
   const useful = [
     { tag: "EXPERIENCE", title: `${f.dest ? cityName(f.dest) : "Your destination"} food & wine tour`, sub: "3h · 5 stops · tastings included", price: 65 },
-    { tag: "DAY TRIP", title: `Key West full-day from ${f.origin ? cityName(f.origin) : "the city"}`, sub: "Pena Palace, Regaleira & Cabo da Roca", price: 89 },
+    { tag: "DAY TRIP", title: `Key West full-day from ${f.origin ? cityName(f.origin) : "the city"}`, sub: "Overseas Highway, Duval Street & Southernmost Point", price: 89 },
     { tag: "TRANSFER", title: `Return transfer hotel → ${f.origin || ""}`, sub: "Private sedan · save 10% when paired", price: 25 },
   ];
   return (
@@ -1708,6 +1708,13 @@ function Manage({ profile, flight, openAssistant, toast, go }) {
             </div>
             <RouteRibbon from={`${f.origin || "MIA"} ${delayed ? (f.new_dep || f.dep) : f.dep}`} to={`${f.dest || "JFK"} ${delayed ? (f.new_arr || f.arr) : f.arr}`}/>
             <div className="text-xs text-gray-500 mt-2">Seat {b.seat} · {(b.items || []).join(" · ") || "no extras"} · {b.checked_in ? "Checked in ✓" : "Auto check-in 24h before"}</div>
+            {b.meta?.recovery && (
+              <div className="mt-3 rounded-xl p-3" style={{ background: b.status === "refund_pending" ? "#FFF9EC" : "#E2F4EA", border: `1px solid ${b.status === "refund_pending" ? "var(--tap-gold)" : "var(--tap-green)"}` }}>
+                <div className="text-[11px] font-bold flex items-center gap-1.5" style={{ color: "#066B3C" }}><ShieldCheck size={13}/> {b.status === "refund_pending" ? "Refund pending approval" : "Recovered before disruption"} · {b.meta.recovery.label}</div>
+                <div className="text-[11px] text-gray-600 mt-1">{(b.meta.recovery.items || []).join(" · ")}</div>
+                <div className="text-[10px] text-gray-400 mt-1">Arranged automatically by Xperion's disruption agents · nothing charged</div>
+              </div>
+            )}
             <div className="h-px my-4" style={{background:"var(--tap-line)"}}/>
             <div className="grid sm:grid-cols-3 gap-2">
               <GhostBtn onClick={()=>{ setPassBooking(b); setShowPass(true); }} className="w-full"><QrCode size={15}/> Boarding pass</GhostBtn>
@@ -2332,6 +2339,50 @@ function ChatCards({ cards, onSelectFlight, cardBrand = "card" }) {
             <div className="text-xs text-gray-500 mt-0.5">Refunded: {c.refund.miles?.toLocaleString?.()||c.refund.miles} miles · voucher reactivated · {EUR(c.refund.card||0)} to {cardBrand}</div>
           </div>
         );
+        if (c.type === "disruption") return (
+          <div key={i} className="bg-white border rounded-2xl overflow-hidden" style={{ borderColor: "var(--tap-red)" }}>
+            <div className="px-3.5 py-2.5 flex items-center justify-between gap-2" style={{ background: "#FFF2F4" }}>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--tap-red)" }}><AlertTriangle size={11} className="inline mr-1 -mt-0.5"/>Weather risk · proactive</div>
+                <div className="font-bold text-sm" style={{ color: "var(--tap-ink)" }}>{c.flight} {c.origin}→{c.dest} · {c.date}</div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="font-display font-black text-xl leading-none" style={{ color: "var(--tap-red)" }}>{c.probability}%</div>
+                <div className="text-[9px] text-gray-400">disruption risk</div>
+              </div>
+            </div>
+            {c.reasons?.length > 0 && <div className="px-3.5 pt-2 flex flex-wrap gap-1">{c.reasons.slice(0, 3).map((r, k) => <span key={k} className="text-[10px] rounded-full border px-2 py-0.5 text-gray-500" style={{ borderColor: "var(--tap-line)" }}>{r}</span>)}</div>}
+            <div className="px-3.5 py-2 space-y-2">
+              {(c.options || []).map((o, k) => (
+                <button key={o.id} disabled={!!c._resolved} onClick={() => c._onResolve?.(o, c)}
+                  className={`w-full text-left rounded-xl border p-2.5 flex items-center gap-3 ${c._resolved ? "opacity-60" : "hover:shadow-sm"}`} style={{ borderColor: "var(--tap-line)" }}>
+                  <span className="w-6 h-6 rounded-full text-white text-[11px] font-bold inline-flex items-center justify-center shrink-0" style={{ background: "var(--tap-green)" }}>{k + 1}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-bold" style={{ color: "var(--tap-ink)" }}>{o.label}</span>
+                    {o.detail && <span className="block text-xs text-gray-500">{o.detail}</span>}
+                  </span>
+                  <span className="text-[10px] font-bold shrink-0" style={{ color: "var(--tap-green)" }}>{o.tag || o.cost || "no charge"}</span>
+                </button>
+              ))}
+            </div>
+            <div className="px-3.5 pb-3 flex items-center justify-between gap-2">
+              <span className="text-[10px] text-gray-400">{c.holdUntil ? `Seats held until ${String(c.holdUntil).replace("T", " ").slice(0, 16)} UTC · ` : ""}nothing charged until you choose</span>
+              {c._resolved ? <span className="text-[11px] font-bold" style={{ color: "var(--tap-green)" }}>Handled ✓</span>
+                : <button onClick={() => c._onResolve?.(null, c)} className="text-[11px] font-semibold text-gray-500 hover:text-gray-800">Not now</button>}
+            </div>
+          </div>
+        );
+        if (c.type === "disruption_confirmed") return (
+          <div key={i} className="bg-white border rounded-2xl overflow-hidden" style={{ borderColor: c.status === "refund_pending" ? "var(--tap-gold)" : "var(--tap-green)" }}>
+            <div className="px-3.5 py-2.5" style={{ background: c.status === "refund_pending" ? "#FFF9EC" : "#E2F4EA" }}>
+              <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#066B3C" }}><CheckCircle2 size={11} className="inline mr-1 -mt-0.5"/>{c.status === "refund_pending" ? "Refund packaged for approval" : "Handled · nothing charged"}</div>
+              <div className="font-bold text-sm" style={{ color: "var(--tap-ink)" }}>{c.option?.label}</div>
+              <div className="text-[11px] text-gray-500">Booking {c.pnr}{c.flight ? ` · ${c.flight}` : ""}</div>
+            </div>
+            <ul className="px-3.5 py-2 space-y-1">{(c.items || []).map((x, k) => <li key={k} className="flex items-start gap-2 text-xs" style={{ color: "var(--tap-ink)" }}><CheckCircle2 size={13} className="shrink-0 mt-0.5" style={{ color: "var(--tap-green)" }}/>{x}</li>)}</ul>
+            <div className="px-3.5 pb-3 text-[10px] text-gray-400">Updated in My flights · arranged by Xperion's disruption agents</div>
+          </div>
+        );
         if (c.type === "wallet") return (
           <div key={i} className="bg-white border rounded-2xl p-3" style={{borderColor:"var(--tap-line)"}}>
             <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide" style={{color:"var(--tap-green)"}}><Wallet size={13}/> Your wallet</div>
@@ -2393,6 +2444,44 @@ function Assistant({ open, onClose, screen, profile, onCommand, onSelectFlight }
       setMsgs(m => (m.length <= 1 ? [{ role: "assistant", content: buildGreeting(normJourney(live) || profile?.syncedSearch) }] : m));
     }).catch(() => {});
   }, [open]);
+
+  /* Enterprise Autonomy: the disruption agents can speak first. Proactive messages for this
+     customer arrive here as assistant bubbles with their cards; a card tap runs the same
+     execution saga as a typed "take the Orlando option" or a WhatsApp "2". */
+  const inboxCursor = useRef(0);
+  const consumed = useRef(new Set());
+  const resolveOffer = async (opt, card) => {
+    const r = opt ? await api.post("/autonomy/customer/accept", { optionId: opt.id, offerId: card.offerId })
+                  : await api.post("/autonomy/customer/decline", {});
+    if (r?.inboxId) consumed.current.add(r.inboxId);
+    setMsgs(prev => [
+      ...prev.map(m => (m.cards?.[0]?.offerId === card.offerId ? { ...m, cards: m.cards.map(cc => ({ ...cc, _resolved: true })) } : m)),
+      { role: "assistant", content: r?.reply || (r?.ok ? "Done." : `I couldn't complete that: ${r?.error || "please try again"}.`), cards: r?.card ? [r.card] : undefined },
+    ]);
+  };
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      try {
+        const r = await api.get(`/autonomy/customer/inbox?since=${inboxCursor.current}`);
+        if (!alive || !r?.messages?.length) return;
+        for (const m of r.messages) inboxCursor.current = Math.max(inboxCursor.current, m.id);
+        const fresh = r.messages.filter(m => !consumed.current.has(m.id));
+        fresh.forEach(m => consumed.current.add(m.id));
+        if (!fresh.length) return;
+        const resolved = new Set(fresh.filter(m => /^disruption_(confirmed|declined)$/.test(m.kind)).map(m => m.card?.offerId).filter(Boolean));
+        setMsgs(prev => [
+          ...prev.map(m => (resolved.has(m.cards?.[0]?.offerId) ? { ...m, cards: m.cards.map(cc => ({ ...cc, _resolved: true })) } : m)),
+          ...fresh.map(m => ({ role: "assistant", content: m.text, cards: m.card ? [{ ...m.card, _onResolve: resolveOffer, _resolved: m.kind === "disruption_offer" && resolved.has(m.card.offerId) }] : undefined })),
+        ]);
+        if (open) api.post("/autonomy/customer/inbox/seen", { ids: fresh.map(m => m.id) }).catch(() => {});
+      } catch {}
+    };
+    tick();
+    const t = setInterval(tick, 4000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+  useEffect(() => { if (open) api.post("/autonomy/customer/inbox/seen", {}).catch(() => {}); }, [open]);
 
   const send = async (preset) => {
     const q = (preset || input).trim(); if (!q || busy) return;
@@ -2782,7 +2871,7 @@ function CheckIn({ go, toast, profile }) {
   const u = profile?.user || {};
   // Real check-in form fields, pre-filled from the profile (as the live site does)
   const [docId, setDocId] = useState(u.doc_id || "");
-  const [nationality, setNationality] = useState(u.nationality || "Portugal");
+  const [nationality, setNationality] = useState(u.nationality || "United States");
   const [ackBags, setAckBags] = useState(false);
   useEffect(() => { (async () => {
     const rows = await api.get("/bookings");
@@ -2908,7 +2997,7 @@ function MilesGo({ profile, go }) {
     Platinum: [
       "Top-priority check-in, boarding (Group A) and baggage",
       "Three free checked bags plus extra weight allowance",
-      "Unlimited lounge access, including Star Alliance lounges",
+      "Unlimited lounge access, including partner-airline lounges",
       "Complimentary upgrades when available",
       "Triple miles plus Executive bonus awards",
     ],
@@ -2998,6 +3087,34 @@ function Help({ openAssistant }) {
         ))}
       </div>
     </div>
+  );
+}
+
+/* Enterprise Autonomy: a slim alert while the disruption agents have something for this
+   customer — an open offer or an unseen confirmation. Tapping opens the assistant. */
+function ProactiveBanner({ active, onOpen }) {
+  const [st, setSt] = useState(null);
+  useEffect(() => {
+    if (!active) { setSt(null); return; }
+    let alive = true;
+    const tick = async () => { try { const r = await api.get("/autonomy/customer/status"); if (alive) setSt(r); } catch {} };
+    tick();
+    const t = setInterval(tick, 5000);
+    return () => { alive = false; clearInterval(t); };
+  }, [active]);
+  if (!st || !st.linked) return null;
+  let tone = null, text = "";
+  if (st.pending) { tone = "var(--tap-red)"; text = `Weather risk on your ${st.booking?.flight_no || "XP201"} flight to Miami · Xperion AI has ${st.pending.options.length} options ready, nothing charged`; }
+  else if (st.unseen > 0 && st.booking?.recovery) { tone = "var(--tap-deep)"; text = `Handled: ${st.booking.recovery.label} · booking ${st.booking.pnr} updated`; }
+  if (!tone) return null;
+  return (
+    <button onClick={onOpen} className="fixed top-[68px] left-1/2 -translate-x-1/2 z-40 w-[min(1140px,94vw)] text-left slide-up" aria-label="Open Xperion AI">
+      <div className="rounded-xl px-4 py-2.5 flex items-center gap-3 text-white shadow-xl" style={{ background: tone }}>
+        <AlertTriangle size={16} className="shrink-0"/>
+        <span className="flex-1 text-[13px] font-semibold">{text}</span>
+        <span className="text-[12px] font-bold whitespace-nowrap">{st.pending ? "Choose in Xperion AI →" : "See details →"}</span>
+      </div>
+    </button>
   );
 }
 
@@ -3319,6 +3436,7 @@ function App() {
       </div>
       </>)}
 
+      <ProactiveBanner active={!assistantOpen} onOpen={()=>setAssistantOpen(true)}/>
       <Assistant open={assistantOpen} onClose={()=>setAssistantOpen(false)} screen={screen} profile={profile} onCommand={handleAgentCommand} onSelectFlight={(no)=>handleAgentCommand({action:"select_flight",flight_no:no})}/>
       <Toasts list={toasts} dismiss={(id)=>setToasts(t=>t.filter(x=>x.id!==id))}/>
 

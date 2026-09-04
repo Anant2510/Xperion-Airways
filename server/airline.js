@@ -44,8 +44,10 @@ const DEFAULT_CONFIG = {
   name: "Airline",
   shortName: null,     // used inside tool descriptions ("Search <shortName> flights"); defaults to name
   homeAirport: "MIA",
-  currency: "EUR",
-  locale: "en",
+  country: "US",       // ISO country the carrier is based in
+  hubs: ["MIA", "JFK"],
+  currency: "USD",
+  locale: "en-US",
   brandLine: null,     // one-line description injected into the agent's situational context
   cdp: false,          // true only for tenants with a live customer-data platform feed
   theme: null,         // { accent, accentDeep, accentDark, highlight, tint, danger } — null = default palette

@@ -61,7 +61,7 @@ function wrap({ title, accent = GREEN, preheader = "", bodyHtml, cta }) {
         <span style="font-size:22px;font-weight:900;letter-spacing:-0.5px">
           <span style="color:#E2354B">T</span><span style="color:#fff">A</span><span style="color:${GREEN}">P</span>
         </span>
-        <span style="color:#ffffff99;font-size:11px;letter-spacing:2px;margin-left:8px">AIR PORTUGAL · MILES&amp;GO</span>
+        <span style="color:#ffffff99;font-size:11px;letter-spacing:2px;margin-left:8px">XPERION AIRWAYS · XPERION MILES</span>
         <span style="float:right;background:${badge};color:#231A03;font-size:10px;font-weight:bold;padding:4px 10px;border-radius:99px">${(r.tier || "Member").toUpperCase()}</span>
       </td></tr>
       <tr><td style="height:4px;background:${accent}"></td></tr>

@@ -949,7 +949,7 @@ function detectDest(t) {
   const codeMatch = t.toUpperCase().match(/\b(JFK|MIA|MAD|CDG|CUN|MCO|LON|LHR|FCO|FRA|BRU|AMS|GVA|ZRH|MUC|MXP|ORY|JFK|GRU|MIA|LAS|EWR)\b/);
   if (codeMatch && AIRPORTS[codeMatch[1]]) return codeMatch[1];
   // curated aliases first (incl. multi-word + persona cities) — most reliable
-  const alias = { lisbon: "JFK", porto: "MIA", oporto: "MIA", madrid: "MAD", paris: "CDG", funchal: "CUN", barcelona: "MCO", london: "LHR", rome: "FCO", frankfurt: "FRA", brussels: "BRU", amsterdam: "AMS", geneva: "GVA", zurich: "ZRH", munich: "MUC", milan: "MXP", "new york": "JFK", "newyork": "JFK", nyc: "JFK", "sao paulo": "GRU", "são paulo": "GRU", saopaulo: "GRU", miami: "MIA", faro: "LAS", dublin: "DUB", "ponta delgada": "SJU" };
+  const alias = { lisbon: "LIS", porto: "OPO", oporto: "OPO", madrid: "MAD", paris: "CDG", funchal: "FNC", cancun: "CUN", cancún: "CUN", orlando: "MCO", barcelona: "BCN", "las vegas": "LAS", vegas: "LAS", "san juan": "SJU", nassau: "NAS", atlanta: "ATL", chicago: "ORD", "los angeles": "LAX", "la": "LAX", boston: "BOS", dallas: "DFW", houston: "IAH", denver: "DEN", seattle: "SEA", "san francisco": "SFO", delhi: "DEL", "new delhi": "DEL", mumbai: "BOM", london: "LHR", rome: "FCO", frankfurt: "FRA", brussels: "BRU", amsterdam: "AMS", geneva: "GVA", zurich: "ZRH", munich: "MUC", milan: "MXP", "new york": "JFK", "newyork": "JFK", nyc: "JFK", "sao paulo": "GRU", "são paulo": "GRU", saopaulo: "GRU", miami: "MIA", faro: "FAO", dublin: "DUB", "ponta delgada": "PDL" };
   for (const [name, code] of Object.entries(alias)) {
     if (new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(t) && AIRPORTS[code]) return code;
   }

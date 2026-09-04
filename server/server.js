@@ -229,7 +229,7 @@ app.get("/api/routes/suggested", (req, res) => {
   const personalized = scored.filter(r => r.score > 9).sort((a, b) => b.score - a.score);
   // Fill out with popular Portugal/Europe routes if the user has little history yet
   const filler = scored.filter(r => r.score <= 9)
-    .sort((a, b) => (a.destCountry === "Portugal" ? -1 : 0) - (b.destCountry === "Portugal" ? -1 : 0) || a.base_fare - b.base_fare);
+    .sort((a, b) => (a.destCountry === "United States" ? -1 : 0) - (b.destCountry === "United States" ? -1 : 0) || a.base_fare - b.base_fare);
 
   log("routes_suggested", { personalized: personalized.length });
   res.json({ personalized, filler, hasHistory: personalized.length > 0 });
@@ -1974,6 +1974,8 @@ const XperionAdapter = createAirlineAdapter("xperion", {
   name: "Xperion Airways",
   shortName: "Xperion",          // keeps tool descriptions byte-identical to pre-de-brand wording
   homeAirport: "MIA",
+  country: "US",                 // US-based carrier; hubs Miami + New York JFK (see server/routes-data.js)
+  hubs: ["MIA", "JFK"],
   currency: "USD",
   locale: "en-US",
   brandLine: "Personalised from the customer's Adobe Real-Time CDP profile.",
@@ -2462,7 +2464,7 @@ function deterministicAgent(text, session) {
       return done(`${shown} ${cityName(r.origin)}→${r.city} on ${r.date}, from $${lo}. Pick one below, or say a flight number to add it.`);
     }
     if (r.available_destinations) return done(`${r.message} From ${cityName(origin)} you can fly to ${r.available_destinations.slice(0, 6).map(d => d.city).join(", ")} and more.`);
-    return done(r.message || "Tell me the route (e.g. 'Lisbon to Madrid') and I'll search.");
+    return done(r.message || "Tell me the route (e.g. 'Miami to New York') and I'll search.");
   }
   // default — genuinely helpful menu (only when nothing matched)
   return done(`Hi ${me.first_name || "there"} — I can search flights ("flights to Madrid"), show your miles & voucher, change your seat, pull up your booking, check you in, or recommend a trip tailored to you. What would you like to do?`);
@@ -3028,9 +3030,24 @@ function toCdpTrack(type, payload, at, uid = SERVER_DEFAULT_UID) {
   };
 }
 
+/* Network facts, computed once from the generated route file: the carrier's base and reach are
+   part of the health contract so any environment can be checked in one call. */
+const NETWORK_FACTS = (() => {
+  const codes = Object.keys(AIRPORTS);
+  const cc = (c) => (AIRPORTS[c] && AIRPORTS[c].country) || "";
+  const us = codes.filter(c => cc(c) === "US");
+  const countries = new Set(codes.map(cc).filter(Boolean));
+  const hubs = XperionAdapter.config.hubs || [];
+  const legs = new Set(); try { for (const r of require("./routes-data").ROUTES) legs.add((r.origin || r[0]) + "-" + (r.dest || r[1])); } catch {}
+  const hubReach = codes.filter(c => !hubs.includes(c) && hubs.every(h => legs.has(h + "-" + c) && legs.has(c + "-" + h))).length;
+  return { airports: codes.length, countries: countries.size, us_airports: us.length, international_airports: codes.length - us.length,
+    route_legs: legs.size, hubs, every_city_reachable_from_both_hubs: hubReach === codes.length - hubs.length };
+})();
 app.get("/api/health", (req, res) => {
   const waOn = typeof whatsapp.CONFIGURED === "function" ? whatsapp.CONFIGURED() : !!whatsapp.CONFIGURED;
-  res.json({ ok: true, version: "v10", db: DB_PATH, smtp: SMTP_READY ? "configured" : "not configured (emails logged to DB)", ai: hasKey() ? "live" : "fallback mode", whatsapp: waOn ? "configured — messages really send" : "not configured (messages logged to DB)" });
+  res.json({ ok: true, version: "v10", db: DB_PATH,
+    airline: { name: XperionAdapter.config.name, code: "XP", country: XperionAdapter.config.country, home: XperionAdapter.config.homeAirport, hubs: XperionAdapter.config.hubs, currency: XperionAdapter.config.currency, locale: XperionAdapter.config.locale },
+    network: NETWORK_FACTS, smtp: SMTP_READY ? "configured" : "not configured (emails logged to DB)", ai: hasKey() ? "live" : "fallback mode", whatsapp: waOn ? "configured — messages really send" : "not configured (messages logged to DB)" });
 });
 
 /* ── Self-test: live system-health checks for the demo console ──

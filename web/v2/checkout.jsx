@@ -193,7 +193,7 @@ function BasketSummary({ step, cta, onCta, disabled, secondary, onSecondary, not
 
         {grouped ? <div style={{ height: "16px" }} /> : <Divider className="my-3.5" />}
         <div className={bigTotal ? "mt-5" : ""} style={bigTotal ? { borderRadius: "16px", border: "1px solid #E8E8E5", padding: "18px" } : undefined}>
-        <div className="flex items-end justify-between gap-3 flex-wrap"><div className="shrink-0"><div className="text-[13px] text-ink font-bold whitespace-nowrap">{step === 2 ? "Subtotal" : "Total"} <span className="text-ink-muted font-medium">(in {getCurrency().label})</span></div><div className="text-[10px] text-ink-muted mt-0.5 whitespace-nowrap">{getCurrency().code !== "USD" ? "Charged in EUR · rate applied at checkout (MCP)" : (step === 2 ? "No charge yet" : "One-time charge · taxes included")}</div></div><div className="text-right shrink-0 ml-auto"><div className={cx("v2-num text-ink whitespace-nowrap", bigTotal ? "text-[32px] sm:text-[40px] font-bold leading-none" : "text-[28px] sm:text-[34px] font-bold")}>{eurC(t.total)}</div><div className="text-[11px] v2-num" style={{ color: "#9A9A9A" }}>{BRL(t.total)}</div></div></div>
+        <div className="flex items-end justify-between gap-3 flex-wrap"><div className="shrink-0"><div className="text-[13px] text-ink font-bold whitespace-nowrap">{step === 2 ? "Subtotal" : "Total"} <span className="text-ink-muted font-medium">(in {getCurrency().label})</span></div><div className="text-[10px] text-ink-muted mt-0.5 whitespace-nowrap">{getCurrency().code !== "USD" ? "Charged in USD · rate applied at checkout (MCP)" : (step === 2 ? "No charge yet" : "One-time charge · taxes included")}</div></div><div className="text-right shrink-0 ml-auto"><div className={cx("v2-num text-ink whitespace-nowrap", bigTotal ? "text-[32px] sm:text-[40px] font-bold leading-none" : "text-[28px] sm:text-[34px] font-bold")}>{eurC(t.total)}</div><div className="text-[11px] v2-num" style={{ color: "#9A9A9A" }}>{BRL(t.total)}</div></div></div>
         <div className="mt-3 bg-lime-tint text-tap-greenDark flex items-center justify-between" style={{ borderRadius: "10px", padding: "10px 12px" }}><span className="flex items-center gap-1.5 text-[12px] font-medium"><Icon name="plane" size={12} /> You'll earn</span><span className="v2-num text-[14px] font-bold">{miles(EARN(t.total))} miles</span></div>
         </div>
         {breakdown && <div className="mt-3 flex items-center justify-between gap-2" style={{ background: "#F2FCD9", borderRadius: "12px", padding: "10px 12px", border: "1px solid #E8E8E5" }}><div><div className="text-[12px] font-semibold">Save this mix as default?</div><div className="text-[10px] text-ink-faint">Auto-apply for future bookings · editable any time</div></div><button className="shrink-0 text-[11px] font-bold text-tap-greenDeep hover:brightness-95" style={{ borderRadius: "14px", border: "1px solid #2E7D33", padding: "7px 32px" }}>Save mix</button></div>}
@@ -853,7 +853,7 @@ function CartView({ go, mode = "cart", shared }) {
               </div>
               <div className="text-right shrink-0">
                 {carbonOn && <><button onClick={() => { trip.carbonOptOut = true; setCarbonOn(false); if (hasExtra("carbon")) toggleExtra({ code: "carbon", name: "Carbon offset", price: 10, cat: "Carbon offset", source: "auto" }); save(); r(); }} className="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-[#fff4d6] text-[#9a6b00] hover:brightness-95">Opt-out</button>
-                <div className="text-[10px] text-tap-greenDeep font-semibold mt-1">Default ON in EU (climate)</div></>}
+                <div className="text-[10px] text-tap-greenDeep font-semibold mt-1">Default ON · climate</div></>}
               </div>
             </div>
 
@@ -1374,8 +1374,8 @@ export function Basket({ shared, go }) {
 }
 
 /* ═══════════ PASSENGER DETAILS ═══════════ */
-const FLAG_CTRY = { Portugal: "🇵🇹", Brazil: "🇧🇷", Spain: "🇪🇸", France: "🇫🇷", Germany: "🇩🇪", "United Kingdom": "🇬🇧", Italy: "🇮🇹", "United States": "🇺🇸" };
-const FLAG_NAT = { Portuguese: "🇵🇹", Brazilian: "🇧🇷", Spanish: "🇪🇸", French: "🇫🇷", German: "🇩🇪", British: "🇬🇧", Italian: "🇮🇹", American: "🇺🇸" };
+const FLAG_CTRY = { "United States": "🇺🇸", Portugal: "🇵🇹", Brazil: "🇧🇷", Spain: "🇪🇸", France: "🇫🇷", Germany: "🇩🇪", "United Kingdom": "🇬🇧", Italy: "🇮🇹", "United States": "🇺🇸" };
+const FLAG_NAT = { American: "🇺🇸", Portuguese: "🇵🇹", Brazilian: "🇧🇷", Spanish: "🇪🇸", French: "🇫🇷", German: "🇩🇪", British: "🇬🇧", Italian: "🇮🇹", American: "🇺🇸" };
 const PHONE_CODES = [["+1", "🇺🇸"], ["+55", "🇧🇷"], ["+34", "🇪🇸"], ["+33", "🇫🇷"], ["+49", "🇩🇪"], ["+44", "🇬🇧"]];
 function FlagSelect({ value, onChange, options, err }) {
   return <div className={cx("relative w-full bg-surface border rounded-[10px]", err ? "border-tap-red" : "border-line")}>
@@ -1411,7 +1411,7 @@ const Select = ({ value, onChange, options, placeholder = "Select…", err }) =>
 const TITLES = ["Mr", "Ms", "Mrs", "Mx", "Dr"];
 const GENDERS = ["Female", "Male", "Non-binary", "Prefer not to say"];
 const DOCTYPES = ["Passport", "National ID card", "Residence permit", "Driving licence"];
-const LANGS = ["Português (PT)", "Português (BR)", "English", "Español", "Français", "Deutsch", "Italiano"];
+const LANGS = ["English", "Español", "Português (BR)", "Français", "Deutsch", "Italiano"];
 
 // Passenger-page section heading — bold dark title + muted descriptor + lime accent (#4),
 // giving the IDENTITY / TRAVEL DOCUMENT / LOYALTY sections real typographic hierarchy.
@@ -1583,8 +1583,8 @@ export function Passenger({ shared, go }) {
   seedExtras();
   const u = shared.profile?.user || {};
   const last = (u.full_name || "").replace(u.first_name || "", "").trim() || "Silva";
-  const natName = u.nationality === "Brazilian" ? "Brazilian" : "Portuguese";
-  const ctryName = natName === "Brazilian" ? "Brazil" : "Portugal";
+  const natName = u.nationality === "Brazilian" ? "Brazilian" : (u.nationality || "American");
+  const ctryName = natName === "Brazilian" ? "Brazil" : natName === "American" ? "United States" : (u.nationality || "United States");
   const p1 = { title: u.gender === "Female" ? "Ms" : "Mr", first: u.first_name || "Daniel", last, dob: /^\d{4}-\d{2}-\d{2}/.test(u.dob || "") ? u.dob : "1985-03-14", gender: u.gender || "Male", nat: natName, doctype: "Passport", doc: u.doc_id || "PT 4821190", docctry: ctryName, docexp: "2028-11-22", member: u.member_no, tier: u.tier, earn: 2416 };
   const [paxCount, setPaxCount] = useState(trip.pax || 1);
   const [contact, setContact] = useState({ email: u.email || "daniel.silva@email.com", phoneCode: "+1", phone: u.phone ? String(u.phone).replace(/^\s*\+?\d{1,3}\s*/, "") : "91 442 7781", country: ctryName, city: "Miami", lang: "English", fare: false });
@@ -1861,7 +1861,7 @@ export function Payment({ shared, go }) {
       else alert("Payment could not be completed: " + (r.error || "unknown"));
     } catch (e) { alert("Payment error: " + e.message); } finally { setBusy(false); }
   }
-  const [billCtry, setBillCtry] = useState(trip.contact?.country || "Portugal");
+  const [billCtry, setBillCtry] = useState(trip.contact?.country || "United States");
   const VOK = (p) => <ValidatedInput {...p} />;
   const billing = (
     <Card className="p-6" style={{ borderRadius: "12px", boxShadow: "none" }}>
@@ -2084,7 +2084,7 @@ export function Payment({ shared, go }) {
 }
 
 /* ═══════════ CONFIRMATION ═══════════ */
-// D1 · Portugal Stopover builder — a personalized New York stopover (boutique vs budget
+// D1 · Miami Stopover builder — a personalized New York stopover (boutique vs budget
 // hotels + curated experiences) with fully transparent per-component pricing, added to
 // the itinerary as individual line items. Hotel tier is personalized to the member.
 // B3 · Xperion Miles redemption shopping — a dedicated space to spend miles: cash+miles
@@ -2202,19 +2202,19 @@ export function StopoverBuilder({ shared, go }) {
   const premium = /gold|platin|business|executive/i.test(`${u.tier || ""} ${trip.outbound?.fare || ""}`);
   const [nights, setNights] = useState(2);
   const [hotel, setHotel] = useState(premium ? "boutique" : "smart");
-  const [exps, setExps] = useState(() => new Set(["sintra"]));
+  const [exps, setExps] = useState(() => new Set(["everglades"]));
   const [transfer, setTransfer] = useState(true);
   const [added, setAdded] = useState(false);
   const HOTELS = [
-    { k: "boutique", name: "Boutique · Chiado heritage", area: "Chiado", rate: 145, tag: premium ? "Recommended for you" : "Premium", note: "Design hotel in the historic centre" },
-    { k: "smart", name: "Smart · Baixa central", area: "Baixa", rate: 95, tag: premium ? "Great value" : "Recommended for you", note: "Modern rooms steps from the river" },
+    { k: "boutique", name: "Boutique · South Beach art deco", area: "South Beach", rate: 145, tag: premium ? "Recommended for you" : "Premium", note: "Design hotel in the historic centre" },
+    { k: "smart", name: "Smart · Brickell central", area: "Brickell", rate: 95, tag: premium ? "Great value" : "Recommended for you", note: "Modern rooms steps from the river" },
     { k: "budget", name: "Budget · Wynwood guesthouse", area: "Wynwood", rate: 62, tag: "Lowest price", note: "Simple, characterful, central" },
   ];
   const EXPS = [
-    { k: "sintra", name: "Key West & Pena Palace", dur: "Full day", price: 89 },
-    { k: "tram", name: "Tram 28 & Wynwood walk", dur: "3 hours", price: 35 },
-    { k: "fado", name: "Fado dinner in Bairro Alto", dur: "Evening", price: 68 },
-    { k: "food", name: "Time Out Market food tour", dur: "3 hours", price: 55 },
+    { k: "everglades", name: "Everglades airboat & Key Biscayne", dur: "Full day", price: 89 },
+    { k: "wynwood", name: "Wynwood murals & Design District walk", dur: "3 hours", price: 35 },
+    { k: "havana", name: "Little Havana dinner & live salsa", dur: "Evening", price: 68 },
+    { k: "food", name: "Miami street-food & Cuban coffee tour", dur: "3 hours", price: 55 },
   ];
   const hotelObj = HOTELS.find(h => h.k === hotel) || HOTELS[1];
   const hotelCost = hotelObj.rate * nights;
@@ -2252,7 +2252,7 @@ export function StopoverBuilder({ shared, go }) {
   );
   return (
     <div className="mx-auto max-w-page px-4 sm:px-6 py-8">
-      <Eyebrow>Portugal Stopover · free on Xperion long-haul via New York</Eyebrow>
+      <Eyebrow>Miami Stopover · free on Xperion long-haul via Miami</Eyebrow>
       <h1 className="text-[30px] font-black mt-1">Break your trip in New York</h1>
       <p className="text-[13px] text-ink-muted mt-1 max-w-2xl">Stop over for up to a few nights at no extra airfare. We've tailored the picks to your profile{premium ? " — boutique stays first, as a " + (u.tier || "premium") + " member." : "."} Every component is priced separately — add only what you want.</p>
       <div className="grid lg:grid-cols-[minmax(0,1fr)_330px] gap-6 mt-6 items-start">
@@ -2386,7 +2386,7 @@ export function Confirmation({ shared, go }) {
   // #13 — quick actions now produce real downloads (e-ticket / boarding pass text, .ics calendar).
   const ticketText = () => {
     const seg = (c, d, seat) => c ? `${c.flight.origin} -> ${c.flight.dest}  ${c.flight.flight_no}\n  ${fmtDate(d)} · dep ${c.flight.dep} · arr ${c.flight.arr} · seat ${seat}` : "";
-    return [`Xperion AIR PORTUGAL — E-TICKET`, `PNR: ${trip.pnr}`, `Passenger(s): ${pax.map(p => `${p.first} ${p.last || ""}`.trim()).join(", ")}`, ``, seg(o, trip.date, leadSeat), i ? seg(i, trip.ret, inSeat || "22B") : "", ``, `Total paid: ${EUR(t.total)}`].filter(Boolean).join("\n");
+    return [`XPERION AIRWAYS — E-TICKET`, `PNR: ${trip.pnr}`, `Passenger(s): ${pax.map(p => `${p.first} ${p.last || ""}`.trim()).join(", ")}`, ``, seg(o, trip.date, leadSeat), i ? seg(i, trip.ret, inSeat || "22B") : "", ``, `Total paid: ${EUR(t.total)}`].filter(Boolean).join("\n");
   };
   const addCalendar = () => { const events = [o, i].filter(Boolean).map((c, n) => (buildICS({ title: `Xperion ${c.flight.flight_no} ${c.flight.origin}→${c.flight.dest}`, start: `${c === o ? trip.date : trip.ret}T${c.flight.dep || "08:00"}:00`, location: `${c.flight.origin} Airport`, description: `PNR ${trip.pnr} · seat ${c === o ? leadSeat : (inSeat || "22B")}` }).match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/) || [""])[0].replace(/^UID:.*$/m, `UID:${trip.pnr}-${n}@flyxperion`)).filter(Boolean); const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Xperion Airways//FlyTAP//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...events, "END:VCALENDAR", ""].join("\r\n"); downloadFile(`Xperion-${trip.pnr}.ics`, ics, "text/calendar"); };
   const downloadTicket = () => downloadFile(`eticket-${trip.pnr}.txt`, ticketText(), "text/plain");
@@ -2411,7 +2411,7 @@ export function Confirmation({ shared, go }) {
   const downloadInvoice = () => {
     const t2 = tripTotals();
     const rows = [
-      "Xperion AIR PORTUGAL — INVOICE", "",
+      "XPERION AIRWAYS — INVOICE", "",
       `Invoice no: INV-${trip.pnr}`, `PNR: ${trip.pnr}`, `Date: ${new Date().toLocaleDateString("en-GB")}`,
       `Passenger: ${pax.map(px2 => `${px2.first} ${px2.last || ""}`.trim()).join(", ")}`, "",
       `Flights subtotal: ${eur2((o?.price || 0) + (i?.price || 0))}`,

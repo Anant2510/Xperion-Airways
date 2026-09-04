@@ -265,7 +265,7 @@ function SearchWidget({ airports = [], onSearch, defaults = {} }) {
       </div>
       <datalist id="ap">{airports.map(a => <option key={a.code} value={a.code}>{a.city} ({a.code})</option>)}</datalist>
       <div className="mt-4">
-        <label className="flex items-center gap-2 text-[12px] font-medium text-ink-muted"><input type="checkbox" checked={stopover} onChange={e => setStopover(e.target.checked)} className="accent-[#46a41a]" /> Add Portugal Stopover <span className="text-ink-faint">· free, up to 10 days</span></label>
+        <label className="flex items-center gap-2 text-[12px] font-medium text-ink-muted"><input type="checkbox" checked={stopover} onChange={e => setStopover(e.target.checked)} className="accent-[#46a41a]" /> Add Miami Stopover <span className="text-ink-faint">· free, up to 10 days</span></label>
       </div>
       </div>
       {type === "multi" && (
@@ -351,7 +351,7 @@ function QuickActions({ go }) {
   );
 }
 
-// 2 · Portugal Stopover
+// 2 · Miami Stopover
 function StopoverSection({ go }) {
   const bullets = [
     "Free stopover in New York or Miami for up to 10 days",
@@ -366,7 +366,7 @@ function StopoverSection({ go }) {
   return (
     <section className="mt-16 grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
       <div>
-        <Eyebrow>Portugal Stopover · Included</Eyebrow>
+        <Eyebrow>Miami Stopover · Included</Eyebrow>
         <h2 className="text-[30px] sm:text-[34px] font-black tracking-tight leading-[1.06] mt-2">Turn your layover into a mini vacation.</h2>
         <p className="text-[14px] text-ink-muted mt-3 max-w-md">Stop in New York or Miami for up to 10 days at no extra airfare. Explore the country, then continue to your final destination.</p>
         <ul className="mt-5 space-y-2.5">
@@ -403,7 +403,7 @@ function StopoverSection({ go }) {
 // 3 · Trip Extras
 function TripExtrasSection({ go }) {
   const cards = [
-    { icon: "home", title: "Hotels with miles built-in", body: "Book partner hotels worldwide. Earn voa.miles every night and redeem them on future stays.", cta: "Find hotels" },
+    { icon: "home", title: "Hotels with miles built-in", body: "Book partner hotels worldwide. Earn Xperion Miles every night and redeem them on future stays.", cta: "Find hotels" },
     { icon: "swap", title: "Cars, transfers & parking", body: "Airport pickups, daily rentals and parking, with loyalty perks on every Hertz, Sixt and Europcar booking.", cta: "Book a ride" },
     { icon: "star", title: "Experiences & insurance", body: "Skip-the-line tours, food trails and wine country, plus travel insurance from $4/day.", cta: "Browse experiences" },
   ];
@@ -437,7 +437,7 @@ function TripExtrasSection({ go }) {
 // 4 · Xperion Miles loyalty
 function LoyaltySection({ go }) {
   const bullets = [
-    "Earn and redeem across voa and 26 Star Alliance partners worldwide",
+    "Earn and redeem across Xperion and 20 partner airlines worldwide",
     "Silver, Gold and Navigator tiers with lounge access, priority everything and bonus miles",
     "Club Xperion Miles — monthly miles and benefits, even if you don't fly often",
   ];
@@ -464,7 +464,7 @@ function LoyaltySection({ go }) {
         </div>
         <div className="relative mt-6">
           <div className="text-[10px] uppercase tracking-wide text-white/60">Miles balance</div>
-          <div className="text-[34px] font-black leading-none mt-1 v2-num">52,840 <span className="text-[13px] font-medium text-white/60">voa.miles</span></div>
+          <div className="text-[34px] font-black leading-none mt-1 v2-num">52,840 <span className="text-[13px] font-medium text-white/60">Xperion Miles</span></div>
           <div className="text-[11px] text-white/70 mt-1">+2,140 since last trip · expires Dec 2027</div>
           <div className="h-2 rounded-full bg-white/20 mt-3 overflow-hidden"><div className="h-full rounded-full bg-lime" style={{ width: "68%" }} /></div>
           <div className="flex justify-between text-[10px] text-white/60 mt-1.5"><span>Gold</span><span>12,160 mi to Navigator</span></div>
@@ -482,8 +482,8 @@ function LoyaltySection({ go }) {
 function LocalizationSection() {
   const markets = [
     { key: "BR", label: "Brasil", cur: "BRL", sym: "R$", rate: 5.6 },
-    { key: "PT", label: "Portugal", cur: "USD", sym: "$", rate: 1 },
-    { key: "US", label: "United States", cur: "USD", sym: "$", rate: 1.08 },
+    { key: "US", label: "United States", cur: "USD", sym: "$", rate: 1 },
+    { key: "MX", label: "Mexico", cur: "MXN", sym: "MX$", rate: 18.4 },
   ];
   const [m, setM] = useState(markets[0]);
   const base = [3890, 4100, 4310, 4520];
@@ -528,10 +528,10 @@ function TestimonialsSection() {
   return (
     <section className="mt-16">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-        <div><Eyebrow>Loved for the Portugal experience</Eyebrow><h2 className="text-[30px] sm:text-[34px] font-black tracking-tight mt-2">Trusted by travelers,<br className="hidden sm:block" /> across three continents.</h2></div>
+        <div><Eyebrow>Loved coast to coast</Eyebrow><h2 className="text-[30px] sm:text-[34px] font-black tracking-tight mt-2">Trusted by travelers,<br className="hidden sm:block" /> across three continents.</h2></div>
         <div className="flex items-center gap-5 shrink-0">
           <div><div className="flex items-center gap-1.5 text-[18px] font-black v2-num">4.5 <span className="text-tap-green text-[15px]">★</span></div><div className="text-[11px] text-ink-muted">12,400 reviews</div></div>
-          <div className="border-l border-line pl-5"><div className="text-[12px] font-bold">Star Alliance</div><div className="text-[11px] text-ink-muted">Member airline</div></div>
+          <div className="border-l border-line pl-5"><div className="text-[12px] font-bold">Partner airlines</div><div className="text-[11px] text-ink-muted">Member airline</div></div>
         </div>
       </div>
       <div className="grid sm:grid-cols-3 gap-4">
@@ -600,9 +600,9 @@ export function Homepage({ shared, go }) {
         <img src={ASSET + "hero-anon.jpg"} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover object-center" onError={(e) => { e.currentTarget.style.display = "none"; }} />
         <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(10,14,20,0.82) 0%, rgba(10,14,20,0.55) 46%, rgba(10,14,20,0.14) 100%)" }} />
         <div className="relative max-w-2xl">
-          <Pill tone="lime" className="mb-3">NEW · Summer in Portugal</Pill>
-          <h1 className="text-[40px] sm:text-[52px] leading-[1.02] font-black tracking-tight">Fly more. Stay longer.<br />See Portugal on the way.</h1>
-          <p className="mt-3 text-white/80 text-[15px]">Free Portugal Stopover up to 10 days · earn Miles on every booking · best-price guarantee.</p>
+          <Pill tone="lime" className="mb-3">NEW · Summer in Florida</Pill>
+          <h1 className="text-[40px] sm:text-[52px] leading-[1.02] font-black tracking-tight">Fly more. Stay longer.<br />See Miami on the way.</h1>
+          <p className="mt-3 text-white/80 text-[15px]">Free Miami Stopover up to 10 days · earn Miles on every booking · best-price guarantee.</p>
         </div>
       </section>
       <div className="-mt-16 relative z-10 max-w-content mx-auto"><SearchWidget airports={airports} onSearch={(q) => go("results", q)} /></div>
@@ -906,7 +906,7 @@ export function Home({ shared, go }) {
               ))}
             </div>
           </div>
-          <div className="mt-6 flex items-center justify-center gap-2 pt-2"><span className="text-[14px]" style={{ color: "rgba(158,253,56,1)" }}>✦</span><span className="text-[14px] font-medium leading-none text-white" style={{ opacity: 0.8 }}>Earn up to {miles(Math.round((rec?.package?.total || pat.usualPrice || 250) * 12))} voa.miles on your New York stopover hotel and experiences this trip.</span></div>
+          <div className="mt-6 flex items-center justify-center gap-2 pt-2"><span className="text-[14px]" style={{ color: "rgba(158,253,56,1)" }}>✦</span><span className="text-[14px] font-medium leading-none text-white" style={{ opacity: 0.8 }}>Earn up to {miles(Math.round((rec?.package?.total || pat.usualPrice || 250) * 12))} Xperion Miles on your Miami stopover hotel and experiences this trip.</span></div>
         </div>
       </section>
 
@@ -1127,7 +1127,7 @@ export const ROUTES = {
   express: { title: "Express checkout", comp: ExpressCheckout },
   hold: { title: "Hold My Fare", phase: 2, plan: "Free 48h fare hold for tier members (A8).", reuses: "/api/fare-lock, /api/hold" },
   disruption: { title: "Disruption / IROPS", comp: DisruptionCenter },
-  stopover: { title: "Portugal Stopover", comp: StopoverBuilder },
+  stopover: { title: "Miami Stopover", comp: StopoverBuilder },
   extras: { title: "Trip Extras", comp: AddExtras },
   miles: { title: "Xperion Miles", comp: MilesShop },
   wishlist: { title: "Wishlist", phase: 3, plan: "Saved routes & destinations.", reuses: "(new)" },

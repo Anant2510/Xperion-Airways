@@ -56,7 +56,7 @@ for (const a of medium) if (!have().has(a.cc)) add(a);         // one airport mi
 for (const a of medium) { if (picked.size >= 1500) break; add(a); }   // fill toward ~1000 intl cities
 
 // make sure every code the app references is present
-const MUST = ["MIA","JFK","LIS","OPO","CUN","LAS","SJU","NAS","DEL","MCO","FLL","ATL","JAI","AMD","OSL","CPH","ARN","HEL","FRA","LHR","GRU","MAD","CDG","FAO","FNC"];
+const MUST = ["MIA","JFK","PBI","LIS","OPO","CUN","LAS","SJU","NAS","DEL","MCO","FLL","ATL","JAI","AMD","OSL","CPH","ARN","HEL","FRA","LHR","GRU","MAD","CDG","FAO","FNC"];
 for (const m of MUST) if (!picked.has(m)) { const a = all.find(x => x.iata === m); if (a) add(a); }
 
 const airports = [...picked.values()].sort((x, y) => x.iata.localeCompare(y.iata));

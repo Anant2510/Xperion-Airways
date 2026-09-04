@@ -10,18 +10,18 @@ export const TapLogo = ({ onDark = false }) => (
 
 const NAV = [
   { key: "home", label: "Book", tk: "book" },
-  { key: "stopover", label: "Portugal Stopover" },
+  { key: "stopover", label: "Miami Stopover" },
   { key: "extras", label: "Trip Extras", tk: "extras" },
   { key: "miles", label: "Xperion Miles" },
   { key: "ai", label: "Xperion AI" },
 ];
 
 const SEARCH_DESTS = [
-  { code: "MCO", city: "Orlando", country: "Spain" }, { code: "MAD", city: "Madrid", country: "Spain" },
+  { code: "MCO", city: "Orlando", country: "United States" }, { code: "MAD", city: "Madrid", country: "Spain" },
   { code: "LHR", city: "London", country: "United Kingdom" }, { code: "CDG", city: "Paris", country: "France" },
   { code: "FCO", city: "Rome", country: "Italy" }, { code: "AMS", city: "Amsterdam", country: "Netherlands" },
-  { code: "BRU", city: "Brussels", country: "Belgium" }, { code: "CUN", city: "Cancún", country: "Cancún" },
-  { code: "JFK", city: "New York", country: "Portugal" }, { code: "MIA", city: "Miami", country: "Portugal" },
+  { code: "BRU", city: "Brussels", country: "Belgium" }, { code: "CUN", city: "Cancún", country: "Mexico" },
+  { code: "JFK", city: "New York", country: "United States" }, { code: "MIA", city: "Miami", country: "United States" },
   { code: "GRU", city: "São Paulo", country: "Brazil" }, { code: "GIG", city: "Rio de Janeiro", country: "Brazil" },
   { code: "JFK", city: "New York", country: "United States" }, { code: "MXP", city: "Milan", country: "Italy" },
   { code: "MUC", city: "Munich", country: "Germany" }, { code: "BER", city: "Berlin", country: "Germany" },
@@ -110,7 +110,7 @@ export function TopNav({ route, go, profile, loggedIn, onLogin, onLogout }) {
     : `${upcomingTrips.length} upcoming${nextRoute ? " · " + nextRoute : ""}`;
   const [mobileMenu, setMobileMenu] = useState(false);
   const [curMenu, setCurMenu] = useState(false);
-  const [cur, setCur] = useState(() => { try { return localStorage.getItem("flyxperion_curlabel") || "PT · EUR"; } catch { return "PT · EUR"; } });
+  const [cur, setCur] = useState(() => { try { return localStorage.getItem("flyxperion_curlabel") || "US · USD"; } catch { return "US · USD"; } });
   const pickCur = (label, code, lang) => { setCur(label); try { localStorage.setItem("flyxperion_curlabel", label); } catch { } setCurrency(code); setLang(lang); setCurMenu(false); };
   const [, _basketTick] = useState(0);
   useEffect(() => onTripChange(() => _basketTick(n => n + 1)), []); // re-render the badge the moment the basket changes
@@ -145,7 +145,7 @@ export function TopNav({ route, go, profile, loggedIn, onLogin, onLogout }) {
           <div className="relative hidden lg:block">
             <button onClick={() => setCurMenu(m => !m)} className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[12px] font-semibold text-ink hover:bg-surface-mute"><Icon name="globe" size={15} /> {cur} <Icon name="chevron" size={13} /></button>
             {curMenu && <div className="absolute right-0 mt-2 w-44 bg-surface rounded-xl border border-line shadow-pop py-1 text-[13px] z-50">
-              {[["US · USD", "USD", "en"], ["EU · EUR", "EUR", "en"], ["EN · GBP", "GBP", "en"], ["BR · BRL", "BRL", "pt-BR"], ["PT · EUR", "EUR", "pt-PT"]].map(([c, code, lang]) => <button key={c} onClick={() => pickCur(c, code, lang)} className={cx("w-full text-left px-3 py-2 hover:bg-surface-mute flex items-center justify-between", c === cur && "font-semibold text-tap-greenDeep")}>{c}{c === cur && <Icon name="check" size={13} />}</button>)}
+              {[["US · USD", "USD", "en"], ["EU · EUR", "EUR", "en"], ["UK · GBP", "GBP", "en"], ["BR · BRL", "BRL", "pt-BR"]].map(([c, code, lang]) => <button key={c} onClick={() => pickCur(c, code, lang)} className={cx("w-full text-left px-3 py-2 hover:bg-surface-mute flex items-center justify-between", c === cur && "font-semibold text-tap-greenDeep")}>{c}{c === cur && <Icon name="check" size={13} />}</button>)}
             </div>}
           </div>
           <button onClick={() => go("wishlist")} className="hidden lg:inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[13px] font-medium text-ink-muted hover:text-ink hover:bg-surface-mute" title="Wishlist"><Icon name="heart" size={16} /> Wishlist</button>
@@ -172,7 +172,7 @@ export function TopNav({ route, go, profile, loggedIn, onLogin, onLogout }) {
                     <div className="max-h-[60vh] overflow-y-auto py-1">
                       {[["Account", [["user", "My profile", "Personal info, passport, contacts", "manage"], ["star", "Xperion Miles", `${miles(user.miles || 42180)} mi · ${user.tier || "Gold"} tier`, "miles"], ["doc", "Payment methods", "2 cards saved", "manage"]]],
                         ["Travel", [["plane", "My trips", tripsSummary, "manage"], ["check", "Check-in & boarding passes", "Opens 24h before departure", "manage"], ["seat", "Travel preferences", "Seat, meal, assistance", "manage"], ["globe", "Saved travelers", "3 companions", "manage"]]],
-                        ["Settings", [["info", "Notifications", "Push, SMS, email", "manage"], ["globe", "Language & region", "EN · Portugal (EUR)", "manage"], ["info", "Help & support", "24/7 contact", "ai"]]]
+                        ["Settings", [["info", "Notifications", "Push, SMS, email", "manage"], ["globe", "Language & region", "EN · United States (USD)", "manage"], ["info", "Help & support", "24/7 contact", "ai"]]]
                       ].map(([sec, items]) => (
                         <div key={sec}>
                           <div className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-ink-faint">{sec}</div>
@@ -206,7 +206,7 @@ export function TopNav({ route, go, profile, loggedIn, onLogin, onLogout }) {
             <button onClick={() => { setMobileMenu(false); go("wishlist"); }} className="w-full text-left px-3 py-2.5 rounded-lg text-[14px] text-ink-muted hover:bg-surface-mute flex items-center gap-2"><Icon name="heart" size={15} /> Wishlist</button>
             <button onClick={() => { setMobileMenu(false); go("basket"); }} className="w-full text-left px-3 py-2.5 rounded-lg text-[14px] text-ink-muted hover:bg-surface-mute flex items-center gap-2"><Icon name="cart" size={15} /> My Trip Basket{basketCount > 0 && <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-tap-red text-white text-[10px] font-bold inline-flex items-center justify-center">{basketCount}</span>}</button>
             <button onClick={() => { setMobileMenu(false); go("console"); }} className="w-full text-left px-3 py-2.5 rounded-lg text-[14px] text-ink-muted hover:bg-surface-mute flex items-center gap-2"><Icon name="db" size={15} /> Demo console</button>
-            <div className="px-3 py-2 text-[12px] text-ink-faint">PT · EUR</div>
+            <div className="px-3 py-2 text-[12px] text-ink-faint">US · USD</div>
           </div>
         </div>
       )}
@@ -216,9 +216,9 @@ export function TopNav({ route, go, profile, loggedIn, onLogin, onLogout }) {
 
 export function Footer() {
   const cols = [
-    ["Flights & Stopover", ["Book a flight", "Portugal Stopover", "Multi-city", "Flight status", "Manage booking", "Online check-in"]],
+    ["Flights & Stopover", ["Book a flight", "Miami Stopover", "Multi-city", "Flight status", "Manage booking", "Online check-in"]],
     ["Trip Extras", ["Hotels", "Cars & Transfers", "Experiences", "Travel insurance", "Airport parking", "Pet travel"]],
-    ["voa.miles", ["Join the program", "Use my miles", "Status & tiers", "Star Alliance partners", "Club voa.miles", "Credit cards"]],
+    ["Xperion Miles", ["Join the program", "Use my miles", "Status & tiers", "Partner airlines", "Xperion Miles Club", "Credit cards"]],
     ["Help", ["Customer support", "Delays & cancellations", "Refunds", "Special assistance", "Baggage", "Travel documents"]],
   ];
   return (
@@ -226,7 +226,7 @@ export function Footer() {
       <div className="mx-auto max-w-page px-4 sm:px-6 py-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] gap-8">
         <div className="col-span-2 md:col-span-3 lg:col-span-1">
           <TapLogo onDark />
-          <p className="text-[12px] text-white/55 mt-3 max-w-[230px]">An original premium airline concept connecting the Americas to Europe through Portugal.</p>
+          <p className="text-[12px] text-white/55 mt-3 max-w-[230px]">An original premium US airline concept connecting the Americas to the world through Miami and New York.</p>
           <div className="flex gap-2 mt-4">{["IG", "f", "in", "X"].map(s => <span key={s} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-[11px] font-bold">{s}</span>)}</div>
           <div className="mt-6"><div className="text-[10px] font-bold uppercase tracking-wide text-lime">Newsletter</div><div className="text-[12px] text-white/90 mt-1 mb-2">Get fare alerts and Stopover offers.</div>
             <div className="flex gap-2"><input placeholder="you@email.com" className="flex-1 bg-white/10 border border-white/15 rounded-lg px-3 py-2 text-[12px] placeholder:text-white/40 outline-none" /><Btn size="sm" variant="lime">Join</Btn></div></div>
@@ -237,7 +237,7 @@ export function Footer() {
       </div>
       <div className="border-t border-white/10"><div className="mx-auto max-w-page px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 text-[11px] text-white/40">
         <span>© 2026 FlyTap · Privacy · Terms · Cookies · Accessibility</span>
-        <span>Portugal · Brasil · United States</span>
+        <span>United States · Mexico · United Kingdom</span>
       </div></div>
     </footer>
   );

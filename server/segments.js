@@ -74,9 +74,9 @@ const SEGMENTS = [
       body_html: `Activate <b>3× miles</b> on the hotel, car or lounge in your recent trips${p.affinityLabel ? `, plus a ${p.affinityLabel.toLowerCase()} offer picked for you` : ""}.`, cta: "Activate 3× miles" }),
   },
   { id: "affinity_football", name: "Football Affinity", test: p => p.affinity === "football", why: () => "card-spend affinity: football",
-    offer: p => ({ subject: "Matchday in Lisbon?", title: "A football fan offer.", preheader: "Picked from your interests.", body_html: `Flights plus a matchday experience, bundled for you.`, cta: "See football trips" }) },
+    offer: p => ({ subject: "Matchday in Miami?", title: "A football fan offer.", preheader: "Picked from your interests.", body_html: `Flights plus a matchday experience, bundled for you.`, cta: "See football trips" }) },
   { id: "affinity_golf", name: "Golf Affinity", test: p => p.affinity === "golf", why: () => "card-spend affinity: golf",
-    offer: p => ({ subject: "Tee times in the Algarve", title: "A golf escape.", preheader: "Picked from your interests.", body_html: `Flights plus green fees in Faro, bundled for you.`, cta: "See golf trips" }) },
+    offer: p => ({ subject: "Tee times in Palm Beach", title: "A golf escape.", preheader: "Picked from your interests.", body_html: `Flights plus green fees in Palm Beach, bundled for you.`, cta: "See golf trips" }) },
   { id: "affinity_music", name: "Live-music Affinity", test: p => p.affinity === "music", why: () => "card-spend affinity: live music",
     offer: p => ({ subject: "Live music, away.", title: "Concerts + flights.", preheader: "Picked from your interests.", body_html: `A live-music weekend bundle picked for you.`, cta: "See music trips" }) },
 ];

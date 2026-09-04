@@ -815,7 +815,7 @@ export function SeatChange({ shared, go, params }) {
             <div className="flex items-center justify-between mb-3" style={{ height: "76px", borderRadius: "14px", border: "1px solid #E0E3E8", padding: "0 18px" }}><div><div className="text-[13px] font-semibold">Extra-legroom fee</div><div className="text-[11px] text-ink-faint">{selFee > 0 ? "One-time · added to this booking" : "Applies to exit & extra-legroom rows"}</div></div><span className="v2-num font-bold" style={{ fontSize: "22px", color: "#1A1F29" }}>{eur2(selFee)}</span></div>
             <div className="mb-1" style={{ background: "#FFF5E0", border: "1px solid #FAA824", padding: "16px 22px", borderRadius: "12px" }}>
                 <div className="text-[12px] font-bold flex items-center gap-1.5"><Icon name="info" size={13} className="shrink-0" /> Exit-row eligibility</div>
-                <div className="text-[11px] text-ink-muted mt-1">You must be 16+, able-bodied, speak Portuguese or English, and willing to assist in an emergency.</div>
+                <div className="text-[11px] text-ink-muted mt-1">You must be 16+, able-bodied, speak English, and willing to assist in an emergency.</div>
                 <button onClick={() => setEligOk(v => !v)} className="flex items-center gap-2 text-[12px] font-semibold mt-2.5 text-left w-full"><span className="inline-flex items-center justify-center shrink-0" style={{ width: "20px", height: "20px", borderRadius: "6px", background: eligOk ? "#1A1F29" : "#fff", border: eligOk ? "none" : "1px solid #C9CDD3" }}>{eligOk && <Icon name="check" size={12} className="stroke-[3]" style={{ color: "#D4F25E" }} />}</span> I confirm I meet the exit-row requirements</button>
               </div>
             <button onClick={confirm} disabled={busy} style={{ height: "42px", borderRadius: "9999px", background: "#46A41A", color: "#fff" }} className="w-full mt-4 font-semibold text-[14px] inline-flex items-center justify-center disabled:opacity-60 transition-opacity">{busy ? "Reissuing…" : canConfirm ? `Confirm seat ${sel}${selFee ? " · " + eur2(selFee) : ""} →` : (sel && sel === safeSeat ? "This is your current seat" : "Select a seat to confirm")}</button>
@@ -1237,7 +1237,7 @@ export function CheckInIndirect({ shared, go, params }) {
   if (res && res.ok) {
     const already = res.state === "already_checked_in";
     const passes = bookedPax.filter(isOn).length ? bookedPax.filter(isOn) : bookedPax;
-    const bpText = `Xperion AIR PORTUGAL — BOARDING PASS\nPNR: ${res.pnr}\nPassenger: ${u.first_name || ""}\nRoute: ${res.route}\nSeat: ${res.seat} · Group ${res.group}\nDate: ${fmtDate(res.date)}\n\nGate closes 20 minutes before departure.`;
+    const bpText = `XPERION AIRWAYS — BOARDING PASS\nPNR: ${res.pnr}\nPassenger: ${u.first_name || ""}\nRoute: ${res.route}\nSeat: ${res.seat} · Group ${res.group}\nDate: ${fmtDate(res.date)}\n\nGate closes 20 minutes before departure.`;
     return (
       <div className="mx-auto max-w-content px-6 py-8">
         <SuccessHead title={already ? "Already checked in" : "Checked in"} sub={`PNR ${res.pnr} · boarding pass ready`} />

@@ -592,7 +592,7 @@ function LocalizationPanel() {
       <div className="text-[12px] text-ink-muted mb-3">Active: <span className="font-semibold text-ink">{LANGS[lang]}</span>. {rows.length} of the terms below differ between European and Brazilian Portuguese — the engine picks the right variant per member.</div>
       <div className="overflow-hidden rounded-xl border border-line">
         <div className="grid grid-cols-3 bg-surface-soft text-[10px] font-bold uppercase tracking-wide text-ink-faint">
-          <div className="p-2.5">English</div><div className="p-2.5">Portugal (pt-PT)</div><div className="p-2.5">Brasil (pt-BR)</div>
+          <div className="p-2.5">English</div><div className="p-2.5">Español (es-US)</div><div className="p-2.5">Português (pt-BR)</div>
         </div>
         {rows.map(([k, v]) => (
           <div key={k} className="grid grid-cols-3 border-t border-line text-[12px]">

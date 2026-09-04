@@ -225,13 +225,13 @@ const PERSONAS = {
   daniel: {
     id: "daniel", label: "Daniel Ferreira", blurb: "Gold · Miami business commuter", archetype: "Digital Commuter",
     user: { member_no: "PT-990001", first_name: "Daniel", full_name: "Daniel Ferreira", email: "anant.direct2links+daniel@gmail.com", phone: "+1 305 442 7781", tier: "Gold", miles: 48230, nationality: "American", dob: "12 Mar 1984", gender: "Male", passport_exp: "14 Sep 2031", doc_id: "US •••• 3391", home_airport: "MIA", card_brand: "Visa", card_last4: "4417", card_exp: "08/28", card_product: "Xperion Miles Visa Gold", card_categories: JSON.stringify([{ name: "Sports & Stadiums", share: 34 }, { name: "Sports Streaming", share: 18 }, { name: "Dining & Bars", share: 16 }, { name: "Rideshare", share: 12 }]), affinity: "football", affinity_label: "Football fan" },
-    prefs: { seat: "4C — front aisle", seat_note: "Chosen on 11 of your last 12 flights", bag: "Cabin bag only", meal: "Espresso + pastel de nata", auto_checkin: 1 },
+    prefs: { seat: "4C — front aisle", seat_note: "Chosen on 11 of your last 12 flights", bag: "Cabin bag only", meal: "Cold brew + breakfast burrito", auto_checkin: 1 },
     voucher: { code: "2291", amount: 35, reason: "Service recovery", expiry: "30 Sep 2026" },
     synced: { origin: "MIA", dest: "JFK", date: "2026-06-15", device: "MacBook Pro", stage: "seat", flight_no: "XP1927", seat: null, items: ["bag"], cabin: "Economy" },
     ancillaries: [
       ["seat","Seat 4C — front aisle","Your usual seat. Free for Gold.",0,9,1,"seat"],
       ["bag","Cabin bag 10kg","Included in your fare.",0,null,1,"bag"],
-      ["meal","Espresso + pastel de nata","Pre-ordered to seat. Your usual.",4.5,null,1,"meal"],
+      ["meal","Cold brew + breakfast burrito","Pre-ordered to seat. Your usual.",4.5,null,1,"meal"],
       ["wifi","Wi-Fi messaging pass","Stay reachable in the air.",3,null,0,"wifi"],
       ["transfer","New York airport transfer","Driver to Brickell Avenue, 09:30.",18,null,0,"car"],
       ["lounge","Xperion Premium Lounge MIA","Complimentary — Gold benefit.",0,null,0,"lounge"],
@@ -334,7 +334,7 @@ const PERSONAS = {
       ["meal","Business — no pork","Pre-set dietary preference.",0,null,1,"meal"],
       ["wifi","Full-flight Wi-Fi","You buy this every long-haul.",18,null,1,"wifi"],
       ["transfer","Manhattan chauffeur","Black car to Midtown.",95,null,0,"car"],
-      ["lounge","Xperion/Star Alliance Lounge","Complimentary — Platinum.",0,null,1,"lounge"],
+      ["lounge","Xperion Club Lounge","Complimentary — Platinum.",0,null,1,"lounge"],
     ],
     destinations: [
       ["New York","JFK","Your most-flown route",612,null,"🗽"],

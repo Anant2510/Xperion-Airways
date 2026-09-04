@@ -204,3 +204,17 @@ Then sign in to `/v2` as Daniel and follow the presenter script in
 No database reset is needed: the bridge creates its `ai_inbox` table on first
 load and writes bookings through the normal tables. Real WhatsApp delivery needs
 the `TWILIO_*` keys; without them the message is logged with an honest status.
+
+## Carrier base and network (what the code asserts)
+
+Xperion Airways is declared in code as a US carrier: `country: "US"`, home
+Miami, hubs Miami + New York JFK, USD, en-US (tenant config in
+`server/server.js`; platform defaults in `server/airline.js`). The route
+network in `server/routes-data.js` is generated from the OurAirports
+public-domain dataset: 1,572 airports in 233 countries and territories (190
+sovereign states), 503 US airports, 1,069 international cities, every city
+connected non-stop to both hubs, plus a 16-city US point-to-point mesh.
+`GET /api/health` reports these facts. Re-prove any environment with:
+
+    node _network-validate.mjs                                  (static)
+    BASE=http://127.0.0.1:<port> node _network-validate.mjs     (static + live)
