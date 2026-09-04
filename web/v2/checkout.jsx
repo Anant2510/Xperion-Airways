@@ -35,7 +35,7 @@ function seedExtras() {
   const px = trip.pax || 1;
   // [code, name, per-unit price, category, source]. Per-traveller categories (Insurance,
   // Lounge, Experiences) are multiplied by pax so the stored total matches the cart's
-  // "× pax" hint — at 1 pax these are unchanged; at 3 pax lounge €90 → €270 (#2).
+  // "× pax" hint — at 1 pax these are unchanged; at 3 pax lounge $90 → $270 (#2).
   // Seed a representative recommended basket (stay + lounge + experience) alongside the mandatory
   // insurance so the cart/payment summaries match the reference design — a stay + lounge together
   // also earns the cross-sell bundle discount. Names are destination-neutral (never hardcoded).
@@ -193,8 +193,8 @@ function BasketSummary({ step, cta, onCta, disabled, secondary, onSecondary, not
 
         {grouped ? <div style={{ height: "16px" }} /> : <Divider className="my-3.5" />}
         <div className={bigTotal ? "mt-5" : ""} style={bigTotal ? { borderRadius: "16px", border: "1px solid #E8E8E5", padding: "18px" } : undefined}>
-        <div className="flex items-end justify-between gap-3 flex-wrap"><div className="shrink-0"><div className="text-[13px] text-ink font-bold whitespace-nowrap">{step === 2 ? "Subtotal" : "Total"} <span className="text-ink-muted font-medium">(in {getCurrency().label})</span></div><div className="text-[10px] text-ink-muted mt-0.5 whitespace-nowrap">{getCurrency().code !== "EUR" ? "Charged in EUR · rate applied at checkout (MCP)" : (step === 2 ? "No charge yet" : "One-time charge · taxes included")}</div></div><div className="text-right shrink-0 ml-auto"><div className={cx("v2-num text-ink whitespace-nowrap", bigTotal ? "text-[32px] sm:text-[40px] font-bold leading-none" : "text-[28px] sm:text-[34px] font-bold")}>{eurC(t.total)}</div><div className="text-[11px] v2-num" style={{ color: "#9A9A9A" }}>{BRL(t.total)}</div></div></div>
-        <div className="mt-3 bg-lime-tint text-tap-greenDark flex items-center justify-between" style={{ borderRadius: "10px", padding: "10px 12px" }}><span className="flex items-center gap-1.5 text-[12px] font-medium"><Icon name="plane" size={12} /> You'll earn</span><span className="v2-num text-[14px] font-bold">{miles(EARN(t.total))} tap.miles</span></div>
+        <div className="flex items-end justify-between gap-3 flex-wrap"><div className="shrink-0"><div className="text-[13px] text-ink font-bold whitespace-nowrap">{step === 2 ? "Subtotal" : "Total"} <span className="text-ink-muted font-medium">(in {getCurrency().label})</span></div><div className="text-[10px] text-ink-muted mt-0.5 whitespace-nowrap">{getCurrency().code !== "USD" ? "Charged in EUR · rate applied at checkout (MCP)" : (step === 2 ? "No charge yet" : "One-time charge · taxes included")}</div></div><div className="text-right shrink-0 ml-auto"><div className={cx("v2-num text-ink whitespace-nowrap", bigTotal ? "text-[32px] sm:text-[40px] font-bold leading-none" : "text-[28px] sm:text-[34px] font-bold")}>{eurC(t.total)}</div><div className="text-[11px] v2-num" style={{ color: "#9A9A9A" }}>{BRL(t.total)}</div></div></div>
+        <div className="mt-3 bg-lime-tint text-tap-greenDark flex items-center justify-between" style={{ borderRadius: "10px", padding: "10px 12px" }}><span className="flex items-center gap-1.5 text-[12px] font-medium"><Icon name="plane" size={12} /> You'll earn</span><span className="v2-num text-[14px] font-bold">{miles(EARN(t.total))} miles</span></div>
         </div>
         {breakdown && <div className="mt-3 flex items-center justify-between gap-2" style={{ background: "#F2FCD9", borderRadius: "12px", padding: "10px 12px", border: "1px solid #E8E8E5" }}><div><div className="text-[12px] font-semibold">Save this mix as default?</div><div className="text-[10px] text-ink-faint">Auto-apply for future bookings · editable any time</div></div><button className="shrink-0 text-[11px] font-bold text-tap-greenDeep hover:brightness-95" style={{ borderRadius: "14px", border: "1px solid #2E7D33", padding: "7px 32px" }}>Save mix</button></div>}
 
@@ -210,7 +210,7 @@ function BasketSummary({ step, cta, onCta, disabled, secondary, onSecondary, not
           <span className="inline-flex items-center justify-center shrink-0 rounded-lg bg-white/15" style={{ width: "38px", height: "38px" }}><Icon name="spark" size={18} /></span>
           <div className="flex-1 min-w-0">
             <div className="text-[13px] font-bold leading-tight">Pay with miles</div>
-            <div className="text-[11px] text-white/80 truncate">Cover this trip with <span className="font-semibold v2-num">{miles(milesNeeded)}</span> tap.miles + <span className="v2-num">{EUR(milesTax)}</span> taxes</div>
+            <div className="text-[11px] text-white/80 truncate">Cover this trip with <span className="font-semibold v2-num">{miles(milesNeeded)}</span> miles + <span className="v2-num">{EUR(milesTax)}</span> taxes</div>
           </div>
           <button onClick={onMilesSwitch || (() => { })} className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/25 text-[12px] font-semibold hover:bg-white/25" style={{ padding: "8px 14px" }}><span>Use miles</span><Icon name="arrow" size={13} /></button>
         </div>
@@ -245,7 +245,7 @@ function FlightSummary({ go }) {
       <div className="flex flex-wrap items-center gap-4"><div><div className="text-[20px] font-bold v2-num">{c.flight.dep}</div><div className="text-[11px] text-ink-faint text-left">{c.flight.origin} · {cityOf(c.flight.origin)}</div></div><div className="flex-1 min-w-[120px] text-center text-[11px] text-ink-muted">{c.flight.duration} · Nonstop · Direct<div className="h-px bg-line-strong my-1" /></div><div className="text-right"><div className="text-[20px] font-bold v2-num">{c.flight.arr}</div><div className="text-[11px] text-ink-faint text-left">{c.flight.dest} · {cityOf(c.flight.dest)}</div></div></div>
     </div>
   );
-  // Important #4 — when a Lisbon stopover is added, show the outbound as two segments (origin → LIS → dest)
+  // Important #4 — when a New York stopover is added, show the outbound as two segments (origin → JFK → dest)
   const StopoverLegs = ({ c, date }) => {
     const f = c.flight;
     const sh = (hm, m) => { const [h, mm] = String(hm || "00:00").split(":").map(Number); const t = ((h * 60 + mm + m) % 1440 + 1440) % 1440; return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"); };
@@ -256,15 +256,15 @@ function FlightSummary({ go }) {
       </div>
     );
     return (<>
-      <Row dep={f.dep} from={f.origin} arr={lisArr} to="LIS" num="Outbound · Segment 1" />
-      <div className="flex items-center gap-2 py-1.5 my-1 text-[12px] font-semibold text-tap-greenDeep" style={{ borderTop: "1px dashed #DCDCD8", borderBottom: "1px dashed #DCDCD8" }}><Icon name="clock" size={13} /> Stopover · {trip.stopover.nights} night{trip.stopover.nights > 1 ? "s" : ""} in Lisbon</div>
-      <Row dep={lisDep} from="LIS" arr={f.arr} to={f.dest} num="Outbound · Segment 2" />
+      <Row dep={f.dep} from={f.origin} arr={lisArr} to="JFK" num="Outbound · Segment 1" />
+      <div className="flex items-center gap-2 py-1.5 my-1 text-[12px] font-semibold text-tap-greenDeep" style={{ borderTop: "1px dashed #DCDCD8", borderBottom: "1px dashed #DCDCD8" }}><Icon name="clock" size={13} /> Stopover · {trip.stopover.nights} night{trip.stopover.nights > 1 ? "s" : ""} in New York</div>
+      <Row dep={lisDep} from="JFK" arr={f.arr} to={f.dest} num="Outbound · Segment 2" />
     </>);
   };
   return (
     <Card className="p-5">
-      <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2 flex-wrap"><img src="/v2/assets/homepage/tap-logo.png" alt="Xperion Airways" className="shrink-0 object-contain" style={{ height: "15px", width: "auto" }} /><Pill tone="slate">{o.fare} · Economy</Pill>{trip.stopover?.viaLisbon && <Pill tone="lime">Via Lisbon · {trip.stopover.nights}n stopover</Pill>}</div><button className="text-[12px] font-semibold text-tap-greenDeep" onClick={() => go("results", { origin: trip.origin, dest: trip.dest, date: trip.date, ret: trip.ret, type: trip.type })}>Change flight</button></div>
-      {trip.stopover?.viaLisbon ? <StopoverLegs c={o} date={trip.date} /> : <Leg label={trip.type === "multi" ? "Flight 1" : "Outbound"} c={o} date={trip.date} />}<Divider /><Leg label={trip.type === "multi" ? "Flight 2" : "Inbound"} c={i} date={trip.ret} />
+      <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2 flex-wrap"><img src="/v2/assets/homepage/tap-logo.png" alt="Xperion Airways" className="shrink-0 object-contain" style={{ height: "15px", width: "auto" }} /><Pill tone="slate">{o.fare} · Economy</Pill>{trip.stopover?.viaHub && <Pill tone="lime">Via New York · {trip.stopover.nights}n stopover</Pill>}</div><button className="text-[12px] font-semibold text-tap-greenDeep" onClick={() => go("results", { origin: trip.origin, dest: trip.dest, date: trip.date, ret: trip.ret, type: trip.type })}>Change flight</button></div>
+      {trip.stopover?.viaHub ? <StopoverLegs c={o} date={trip.date} /> : <Leg label={trip.type === "multi" ? "Flight 1" : "Outbound"} c={o} date={trip.date} />}<Divider /><Leg label={trip.type === "multi" ? "Flight 2" : "Inbound"} c={i} date={trip.ret} />
       <div className="mt-3 pt-3 border-t border-line flex flex-wrap items-center gap-3 text-[11px] text-ink-muted"><span className="flex items-center gap-1"><Icon name="check" size={12} className="text-tap-green" /> 1× carry-on (8kg)</span><span className="flex items-center gap-1"><Icon name="check" size={12} className="text-tap-green" /> 1× checked bag (23kg)</span><span className="flex items-center gap-1"><Icon name="check" size={12} className="text-tap-green" /> Seat selection</span><span className="flex items-center gap-1"><Icon name="check" size={12} className="text-tap-green" /> Changes for fee</span><span className="ml-auto text-ink-faint">BOOKING REF · PENDING</span></div>
     </Card>
   );
@@ -499,7 +499,7 @@ function SeatMapModal({ pax = 1, cabin = "Economy", aircraft, initialType, onClo
                   <span className="inline-flex items-center text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-surface-dark text-lime">New · Non-status flyer</span>
                   <div className="text-[16px] font-bold mt-2">Buy premium without status</div>
                   <p className="text-[11px] text-ink-muted mt-1">Get every status-only perk for one flight — front cabin, priority boarding, lounge, hot meal, +2× miles.</p>
-                  <div className="mt-2"><span className="text-[22px] font-black v2-num">€89</span> <span className="text-[11px] text-ink-faint">per passenger · vs €189 cabin</span></div>
+                  <div className="mt-2"><span className="text-[22px] font-black v2-num">$89</span> <span className="text-[11px] text-ink-faint">per passenger · vs $189 cabin</span></div>
                   <button className="mt-3 w-full rounded-full bg-tap-greenDeep text-white py-2.5 text-[13px] font-semibold">Unlock NSF · {eur2(89 * pax)} for {pax}</button>
                 </div>
               : <div className="rounded-2xl border border-tap-green/40 bg-lime-tint/40 p-4">
@@ -543,9 +543,9 @@ const EDIT_CONFIG = {
     { name: "Airport transfer · Minivan", sub: "Up to 7 pax · 7 bags", delta: 38 },
   ] },
   "Change plan": { title: "Change insurance plan", kind: "select", opts: [
-    { name: "Travel Insurance · Standard", sub: "Medical €25K · baggage", delta: -12 },
-    { name: "Travel Insurance · Plus", sub: "Medical €50K · cancellation · 24/7", delta: 0 },
-    { name: "Travel Insurance · Premium", sub: "Medical €150K · cancel for any reason", delta: 24 },
+    { name: "Travel Insurance · Standard", sub: "Medical $25K · baggage", delta: -12 },
+    { name: "Travel Insurance · Plus", sub: "Medical $50K · cancellation · 24/7", delta: 0 },
+    { name: "Travel Insurance · Premium", sub: "Medical $150K · cancel for any reason", delta: 24 },
   ] },
   "Change lounge": { title: "Change lounge", kind: "select", opts: [
     { name: "Standard lounge", sub: "Hot meals · showers · Wi-Fi", delta: 0 },
@@ -559,7 +559,7 @@ const EDIT_CONFIG = {
     "Walking distance to the historic centre, gardens and the best restaurants in town.",
   ] },
   "Compare plans": { title: "Compare insurance plans", kind: "compare", cols: ["Standard", "Plus", "Premium"], rows: [
-    ["Medical cover", "€25K", "€50K", "€150K"],
+    ["Medical cover", "$25K", "$50K", "$150K"],
     ["Trip cancellation", "—", "✓", "✓ any reason"],
     ["Baggage protection", "✓", "✓", "✓"],
     ["24/7 assistance", "—", "✓", "✓"],
@@ -602,7 +602,7 @@ function ItemEditModal({ item, link, onClose, onApply }) {
 }
 
 // F8/F9 — destination-aware inventory. Hotels, experiences, transfers and the lounge follow the
-// booked destination (trip.dest) / origin instead of always showing Lisbon. City-name generators
+// booked destination (trip.dest) / origin instead of always showing New York. City-name generators
 // give any route sensible, destination-specific content; the hotel/exp codes embed the city so
 // imageFor() also resolves a city-relevant photo.
 const slugCity = (c) => String(c || "city").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -660,7 +660,7 @@ function CartView({ go, mode = "cart", shared }) {
   const pax = trip.pax || 1;
   const cityOf = (c) => shared?.airports?.find(a => a.code === c)?.city || c;   // F8/F9 — resolve booked-destination city
   const destCity = cityOf(trip.dest) || "your destination";
-  const origCode = trip.origin || "OPO";
+  const origCode = trip.origin || "MIA";
   const HOTELS = destHotels(destCity);
   const cab = fareCabin(trip.outbound?.fare);                 // Economy / Premium / Business
   const fareLabel = trip.outbound?.fare || "Classic";
@@ -833,7 +833,7 @@ function CartView({ go, mode = "cart", shared }) {
               <div className="flex items-center justify-between mb-2"><Eyebrow>Choose your seat type · per passenger · both flights</Eyebrow><button onClick={() => setSeatMapOpen(true)} className="text-[12px] font-semibold text-tap-greenDeep shrink-0 hover:underline">Full Cabin View</button></div>
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x scroll-smooth"><SeatType code="std" name={seatIncluded.name} sub={seatIncluded.sub} />{SEAT_TYPE_OPTS.map(o => <SeatType key={o.code} code={o.code} name={o.name} sub={o.sub} price={o.price} />)}</div>
               <Eyebrow className="mt-4 mb-2">Baggage · what's included with {fareLabel} fare</Eyebrow>
-              <div className="space-y-2"><Bag name="Carry-on bag · 8kg" sub="1 piece per traveller · 55×40×20 cm" locked />{fareBags >= 1 ? <Bag name={fareBags === 2 ? "2× Checked bags · 23kg" : "Checked bag · 23kg"} sub={`${fareBags} piece${fareBags > 1 ? "s" : ""} per traveller · included with ${fareLabel} fare`} locked /> : <Bag code="bag-checked" name="Checked bag · 23kg" sub={`Not included in ${fareLabel} · add one`} price={30} />}<Bag code="bag-extra" name={fareBags >= 1 ? "Extra checked bag · 23kg" : "Second checked bag · 23kg"} sub="Add another bag · saves €15 vs airport" price={55} /></div>
+              <div className="space-y-2"><Bag name="Carry-on bag · 8kg" sub="1 piece per traveller · 55×40×20 cm" locked />{fareBags >= 1 ? <Bag name={fareBags === 2 ? "2× Checked bags · 23kg" : "Checked bag · 23kg"} sub={`${fareBags} piece${fareBags > 1 ? "s" : ""} per traveller · included with ${fareLabel} fare`} locked /> : <Bag code="bag-checked" name="Checked bag · 23kg" sub={`Not included in ${fareLabel} · add one`} price={30} />}<Bag code="bag-extra" name={fareBags >= 1 ? "Extra checked bag · 23kg" : "Second checked bag · 23kg"} sub="Add another bag · saves $15 vs airport" price={55} /></div>
             </Module>
 
             {/* Carbon offset — ONE unified card (no internal divider): icon, title, price, note,
@@ -874,8 +874,8 @@ function CartView({ go, mode = "cart", shared }) {
             <Module n="05" icon="shield" kicker="Insurance" title="Protect your trip" badge={`${ins === "none" ? "No plan" : ins === "plus" ? "Plus" : "Standard"} · ${pax} pax`} sub="Choose a plan that covers cancellation, medical, and baggage." right={<div className="text-right"><span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-md" style={{ background: "rgba(255,240,240,1)", color: "rgba(224,10,10,1)" }}>Mandatory</span><div className="text-[10px] text-ink-faint font-semibold mt-1">EU package travel rules</div></div>}>
               <div className="grid sm:grid-cols-3 gap-3">
                 <Plan v="none" name="I already have coverage" kicker="My travel insurance is sorted" points={[[true, "Health coverage"], [true, "Trip cancellation protection"], [true, "Baggage loss"], [false, "COVID-19 protection"], [false, "24/7 support service"]]} />
-                <Plan v="standard" name="Standard" kicker="Essential cover" price={19} total={19 * pax} points={[[true, "Medical · €25K"], [true, "Trip cancellation"], [true, "Lost baggage"], [false, "COVID-19 cover"], [false, "24/7 concierge"]]} />
-                <Plan v="plus" name="Plus" kicker="Comprehensive cover" badge="Recommended" price={38} total={38 * pax} points={[[true, "Medical · €50K"], [true, "Trip cancellation"], [true, "Lost baggage"], [true, "COVID-19 cover"], [true, "24/7 concierge"]]} />
+                <Plan v="standard" name="Standard" kicker="Essential cover" price={19} total={19 * pax} points={[[true, "Medical · $25K"], [true, "Trip cancellation"], [true, "Lost baggage"], [false, "COVID-19 cover"], [false, "24/7 concierge"]]} />
+                <Plan v="plus" name="Plus" kicker="Comprehensive cover" badge="Recommended" price={38} total={38 * pax} points={[[true, "Medical · $50K"], [true, "Trip cancellation"], [true, "Lost baggage"], [true, "COVID-19 cover"], [true, "24/7 concierge"]]} />
               </div>
               {ins !== "none"
                 ? <button onClick={() => { setIns("none"); const cur = trip.extras.find(x => x.code === "ins-plus" || x.code === "ins-std"); if (cur) { toggleExtra(cur); save(); } r(); }} className="mt-3 w-full rounded-full border border-line-strong py-2.5 text-[13px] font-semibold text-ink-muted hover:border-tap-green hover:text-tap-greenDeep inline-flex items-center justify-center gap-1.5">Proceed without insurance</button>
@@ -1030,7 +1030,7 @@ export function Basket({ shared, go }) {
       case "Cars & transfers":
         return { sub: "Private sedan · Meet & greet · Up to 3 bags · English-speaking driver", chips: [`${dateOne} · ${e.time || "14:15"}`, "One-way", `${px} pax`], links: ["Change vehicle"], perUnit: `${eur2(e.price)} per car`, qty: true };
       case "Insurance":
-        return { sub: "Medical up to €50K · Baggage protection · Trip cancellation · 24/7 assistance", chips: [dateRange, `${px} traveler${plural}`, "Recommended"], links: ["Change plan", "Compare plans"], perUnit: `${eur2(Math.round(e.price / px))} × ${px} traveler${plural}`, qty: true };
+        return { sub: "Medical up to $50K · Baggage protection · Trip cancellation · 24/7 assistance", chips: [dateRange, `${px} traveler${plural}`, "Recommended"], links: ["Change plan", "Compare plans"], perUnit: `${eur2(Math.round(e.price / px))} × ${px} traveler${plural}`, qty: true };
       case "Lounge & services":
         return { sub: "Pre-flight access · Hot meals · Showers · Wi-Fi · 3-hour stay", chips: [dateOne, `${px} adult${plural}`], links: ["Change lounge"], perUnit: `${eur2(Math.round(e.price / px))} × ${px} traveler${plural}`, qty: true };
       case "Experiences":
@@ -1177,17 +1177,17 @@ export function Basket({ shared, go }) {
                   <div className="flex items-center gap-3 flex-wrap min-w-0">
                     <img src="/v2/assets/homepage/tap-logo.png" alt="Xperion Airways" className="shrink-0 object-contain" style={{ height: "18px", width: "auto" }} />
                     <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted"><Icon name="lock" size={11} />{ob?.fare || "Classic"} · {trip.cabin || "Economy"}</span>
-                    {trip.stopover?.viaLisbon && <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-tap-greenDeep"><Icon name="clock" size={11} />Stopover included</span>}
+                    {trip.stopover?.viaHub && <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-tap-greenDeep"><Icon name="clock" size={11} />Stopover included</span>}
                   </div>
                   <button onClick={() => go("results", { origin: trip.origin, dest: trip.dest, date: trip.date, ret: trip.ret, type: trip.type, pax: trip.pax, cabin: trip.cabin })} className="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-ink-muted hover:text-tap-greenDeep"><Icon name="search" size={12} />Change flight</button>
                 </div>
                 <div className="px-5 pt-1 pb-2">
-                  {trip.stopover?.viaLisbon ? (() => {
+                  {trip.stopover?.viaHub ? (() => {
                     const sh = (hm, m) => { const [h, mm] = String(hm || "00:00").split(":").map(Number); const t = ((h * 60 + mm + m) % 1440 + 1440) % 1440; return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"); };
                     return (<>
-                      <Leg label="Outbound · Segment 1" f={{ ...obf, dest: "LIS", arr: sh(obf.arr, -125), duration: "7h 15m" }} date={trip.date} />
-                      <div className="flex items-center gap-2 px-1 py-2 my-1 text-[12px] font-semibold text-tap-greenDeep" style={{ borderTop: "1px dashed #DCDCD8", borderBottom: "1px dashed #DCDCD8" }}><Icon name="clock" size={13} /> Stopover · {trip.stopover.nights} night{trip.stopover.nights > 1 ? "s" : ""} in Lisbon</div>
-                      <Leg label="Outbound · Segment 2" f={{ ...obf, origin: "LIS", dep: sh(obf.arr, -70), duration: "1h 05m" }} date={trip.date} />
+                      <Leg label="Outbound · Segment 1" f={{ ...obf, dest: "JFK", arr: sh(obf.arr, -125), duration: "7h 15m" }} date={trip.date} />
+                      <div className="flex items-center gap-2 px-1 py-2 my-1 text-[12px] font-semibold text-tap-greenDeep" style={{ borderTop: "1px dashed #DCDCD8", borderBottom: "1px dashed #DCDCD8" }}><Icon name="clock" size={13} /> Stopover · {trip.stopover.nights} night{trip.stopover.nights > 1 ? "s" : ""} in New York</div>
+                      <Leg label="Outbound · Segment 2" f={{ ...obf, origin: "JFK", dep: sh(obf.arr, -70), duration: "1h 05m" }} date={trip.date} />
                     </>);
                   })() : <Leg label={trip.type === "multi" ? "Flight 1" : "Outbound"} f={obf} date={trip.date} />}
                   {ib && <><Divider className="my-1" /><Leg label={trip.type === "multi" ? "Flight 2" : "Inbound"} f={ibf} date={trip.ret} /></>}
@@ -1256,13 +1256,13 @@ export function Basket({ shared, go }) {
               <div className="grid sm:grid-cols-2 gap-4">
                 {!hasTransferItem && (
                   <div className="flex items-center justify-between gap-3 p-4" style={{ borderRadius: "18px", border: "1.5px dashed #DCDCD8" }}>
-                    <div className="flex items-center gap-2.5 min-w-0"><span className="w-9 h-9 rounded-lg bg-surface-mute inline-flex items-center justify-center shrink-0"><Icon name="swap" size={15} className="text-ink-faint" /></span><div className="min-w-0"><div className="text-[13px] font-bold">No return transfer added yet</div><div className="text-[11px] text-ink-faint">Private door-to-airport ride from €25</div></div></div>
+                    <div className="flex items-center gap-2.5 min-w-0"><span className="w-9 h-9 rounded-lg bg-surface-mute inline-flex items-center justify-center shrink-0"><Icon name="swap" size={15} className="text-ink-faint" /></span><div className="min-w-0"><div className="text-[13px] font-bold">No return transfer added yet</div><div className="text-[11px] text-ink-faint">Private door-to-airport ride from $25</div></div></div>
                     <span className="text-[12px] font-semibold text-tap-greenDeep shrink-0">Add →</span>
                   </div>
                 )}
                 {!hasDayTrip && (
                   <div className="flex items-center justify-between gap-3 p-4" style={{ borderRadius: "18px", border: "1.5px dashed #DCDCD8" }}>
-                    <div className="flex items-center gap-2.5 min-w-0"><span className="w-9 h-9 rounded-lg bg-surface-mute inline-flex items-center justify-center shrink-0"><Icon name="globe" size={15} className="text-ink-faint" /></span><div className="min-w-0"><div className="text-[13px] font-bold">No {xCity} day-trip added yet</div><div className="text-[11px] text-ink-faint">Guided highlights tour from €89</div></div></div>
+                    <div className="flex items-center gap-2.5 min-w-0"><span className="w-9 h-9 rounded-lg bg-surface-mute inline-flex items-center justify-center shrink-0"><Icon name="globe" size={15} className="text-ink-faint" /></span><div className="min-w-0"><div className="text-[13px] font-bold">No {xCity} day-trip added yet</div><div className="text-[11px] text-ink-faint">Guided highlights tour from $89</div></div></div>
                     <span className="text-[12px] font-semibold text-tap-greenDeep shrink-0">Add →</span>
                   </div>
                 )}
@@ -1350,7 +1350,7 @@ export function Basket({ shared, go }) {
                 <div><div className="text-[14px] font-bold">Total <span className="text-ink-muted font-medium">(in {getCurrency().label})</span></div><div className="text-[11px] text-ink-muted">No charge yet</div></div>
                 <div className="text-right"><div className="text-[28px] font-bold v2-num" style={{ letterSpacing: "-0.03em" }}>{eurC(t.total)}</div><div className="text-[10px] text-ink-faint v2-num">{BRL(t.total)}</div></div>
               </div>
-              <div className="mt-3 rounded-lg bg-lime-tint text-tap-greenDark text-[12px] font-semibold px-3 py-2 flex items-center justify-between"><span className="flex items-center gap-1.5"><Icon name="plane" size={12} /> You'll earn</span><span className="v2-num">{miles(EARN(t.total))} tap.miles</span></div>
+              <div className="mt-3 rounded-lg bg-lime-tint text-tap-greenDark text-[12px] font-semibold px-3 py-2 flex items-center justify-between"><span className="flex items-center gap-1.5"><Icon name="plane" size={12} /> You'll earn</span><span className="v2-num">{miles(EARN(t.total))} miles</span></div>
               <div className="text-[11px] text-ink-faint mt-3 flex items-center gap-1.5"><Icon name="lock" size={12} /> Secure checkout · Payments by Stripe · Encrypted card data</div>
               <Btn size="lg" className="w-full mt-3" style={{ height: "56px", borderRadius: "9999px", fontSize: "15px" }} onClick={() => go("passenger")}>Continue to passenger details →</Btn>
               <div className="text-[11px] text-ink-faint text-center mt-2">We won't charge you anything yet · <SessionTimer prefix="price locked" /></div>
@@ -1376,7 +1376,7 @@ export function Basket({ shared, go }) {
 /* ═══════════ PASSENGER DETAILS ═══════════ */
 const FLAG_CTRY = { Portugal: "🇵🇹", Brazil: "🇧🇷", Spain: "🇪🇸", France: "🇫🇷", Germany: "🇩🇪", "United Kingdom": "🇬🇧", Italy: "🇮🇹", "United States": "🇺🇸" };
 const FLAG_NAT = { Portuguese: "🇵🇹", Brazilian: "🇧🇷", Spanish: "🇪🇸", French: "🇫🇷", German: "🇩🇪", British: "🇬🇧", Italian: "🇮🇹", American: "🇺🇸" };
-const PHONE_CODES = [["+351", "🇵🇹"], ["+55", "🇧🇷"], ["+34", "🇪🇸"], ["+33", "🇫🇷"], ["+49", "🇩🇪"], ["+44", "🇬🇧"]];
+const PHONE_CODES = [["+1", "🇺🇸"], ["+55", "🇧🇷"], ["+34", "🇪🇸"], ["+33", "🇫🇷"], ["+49", "🇩🇪"], ["+44", "🇬🇧"]];
 function FlagSelect({ value, onChange, options, err }) {
   return <div className={cx("relative w-full bg-surface border rounded-[10px]", err ? "border-tap-red" : "border-line")}>
     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[15px] pointer-events-none">{options[value] || "🌐"}</span>
@@ -1468,7 +1468,7 @@ function SplitSummary({ payers, amtFor, total, allocated, leadAmt, paid, onPaySh
         {/* #66/#67 — total charged */}
         <div className="flex items-end justify-between gap-2"><div><div className="text-[13px] font-bold">Total charged</div><div className="text-[11px]" style={{ color: "#9A9A9A" }}>One-time charge · taxes included</div></div><span className="v2-num font-bold shrink-0" style={{ fontSize: "34px", letterSpacing: "-0.03em", lineHeight: 1 }}>{eurC(total)}</span></div>
         {/* #68 — reward miles banner */}
-        <div className="flex items-center justify-between" style={{ marginTop: "18px", background: "#F2FFDB", borderRadius: "10px", padding: "10px 12px" }}><span className="flex items-center gap-1.5 text-[12px] font-medium text-tap-greenDark"><Icon name="plane" size={12} /> You'll earn</span><span className="v2-num text-[14px] font-bold text-tap-greenDark">{miles(EARN(total))} tap.miles</span></div>
+        <div className="flex items-center justify-between" style={{ marginTop: "18px", background: "#F2FFDB", borderRadius: "10px", padding: "10px 12px" }}><span className="flex items-center gap-1.5 text-[12px] font-medium text-tap-greenDark"><Icon name="plane" size={12} /> You'll earn</span><span className="v2-num text-[14px] font-bold text-tap-greenDark">{miles(EARN(total))} miles</span></div>
         {/* #69/#70/#71 — payment progress card */}
         <div style={{ marginTop: "18px", background: "#F2FCD9", border: "1px solid #2E7D33", borderRadius: "12px", padding: "14px" }}>
           <div className="flex items-center justify-between text-[12px] font-semibold" style={{ color: "#1A1F29" }}><span>{paidCount} of {payers.length} paid</span><span className="v2-num">{eurC(outstanding)} outstanding</span></div>
@@ -1562,7 +1562,7 @@ function PaxCard({ idx, lead, prefill, profile, onRemove, showErr, onChange, pax
       </div>
       <PaxSectionTitle title="Loyalty" sub="Optional — earn miles on this trip" className="mt-4" />
       {lead
-        ? <div className="rounded-[10px] border text-tap-greenDark flex items-center gap-3" style={{ background: "#F2FFDB", borderColor: "#9EFD38", padding: "14px" }}><span className="w-9 h-9 rounded-lg bg-white inline-flex items-center justify-center shrink-0 text-tap-greenDeep"><Icon name="plane" size={16} /></span><div className="flex-1"><div className="text-[13px] font-bold">Xperion.miles applied</div><div className="text-[11px]">{src.member} · {src.tier} tier — you'll earn {miles(src.earn || 2416)} tap.miles on this trip.</div></div><button className="text-[12px] font-semibold shrink-0">Edit</button></div>
+        ? <div className="rounded-[10px] border text-tap-greenDark flex items-center gap-3" style={{ background: "#F2FFDB", borderColor: "#9EFD38", padding: "14px" }}><span className="w-9 h-9 rounded-lg bg-white inline-flex items-center justify-center shrink-0 text-tap-greenDeep"><Icon name="plane" size={16} /></span><div className="flex-1"><div className="text-[13px] font-bold">Xperion.miles applied</div><div className="text-[11px]">{src.member} · {src.tier} tier — you'll earn {miles(src.earn || 2416)} miles on this trip.</div></div><button className="text-[12px] font-semibold shrink-0">Edit</button></div>
         : <div className="grid sm:grid-cols-[160px_1fr_auto] gap-3 items-end"><Field label="Program"><Input defaultValue="Xperion.miles" /></Field><Field label="Membership number"><Input placeholder="Add Xperion Miles number (optional)" /></Field><Btn variant="outline" size="sm">Apply membership</Btn></div>}
       <div className="mt-4 rounded-[10px]" style={{ background: "#FAFAF7", padding: "14px" }}>
         <div className="flex items-center justify-between gap-2"><div><div className="text-[13px] font-semibold">Special requests <span className="text-ink-faint font-normal">· optional</span></div><div className="text-[11px] text-ink-faint">Wheelchair, special meals, dietary preferences, traveling with a pet…</div></div><button onClick={() => setReqOpen(o => !o)} className="text-[12px] font-semibold text-tap-greenDeep shrink-0">{reqOpen ? "Close ▴" : "Add request ▾"}</button></div>
@@ -1587,7 +1587,7 @@ export function Passenger({ shared, go }) {
   const ctryName = natName === "Brazilian" ? "Brazil" : "Portugal";
   const p1 = { title: u.gender === "Female" ? "Ms" : "Mr", first: u.first_name || "Daniel", last, dob: /^\d{4}-\d{2}-\d{2}/.test(u.dob || "") ? u.dob : "1985-03-14", gender: u.gender || "Male", nat: natName, doctype: "Passport", doc: u.doc_id || "PT 4821190", docctry: ctryName, docexp: "2028-11-22", member: u.member_no, tier: u.tier, earn: 2416 };
   const [paxCount, setPaxCount] = useState(trip.pax || 1);
-  const [contact, setContact] = useState({ email: u.email || "daniel.silva@email.com", phoneCode: "+351", phone: u.phone ? String(u.phone).replace(/^\s*\+?\d{1,3}\s*/, "") : "91 442 7781", country: ctryName, city: "Porto", lang: "Português (BR)", fare: false });
+  const [contact, setContact] = useState({ email: u.email || "daniel.silva@email.com", phoneCode: "+1", phone: u.phone ? String(u.phone).replace(/^\s*\+?\d{1,3}\s*/, "") : "91 442 7781", country: ctryName, city: "Miami", lang: "English", fare: false });
   const [tab, setTab] = useState("all");
   const [cons, setCons] = useState({ fare: true, hotel: true, stopover: false, analytics: true, ads: false });
   const [, force] = useState(0); const bump = () => force(x => x + 1);
@@ -1682,7 +1682,7 @@ const METHODS = ["Card", "Instalments", "Pay by Segment", "Digital Wallet", "Xpe
 let _h2ArmedFor = null;
 function computeRevalidation(t) {
   const o = trip.outbound;
-  const delta = Math.max(12, Math.round((o?.price || 130) * 0.08));   // ~8% of the outbound fare, min €12
+  const delta = Math.max(12, Math.round((o?.price || 130) * 0.08));   // ~8% of the outbound fare, min $12
   const fno = String(o?.flight?.flight_no || "your flight").replace(/([A-Za-z]+)\s*(\d+)/, "$1 $2");
   const oldTotal = t.total, newTotal = t.total + delta;
   const pct = oldTotal > 0 ? Math.round((delta / oldTotal) * 1000) / 10 : 0;   // one decimal
@@ -1774,11 +1774,11 @@ export function Payment({ shared, go }) {
   const [optIn, setOptIn] = useState(false);               // Split #59 — custom optional-consent checkbox
   const [seat, setSeat] = useState(null);                 // recommended seat from history (DB)
   const [splitTab, setSplitTab] = useState("Split Equally");
-  const [splitAmts, setSplitAmts] = useState({});   // #16 — per-payer custom amounts (index → €)
+  const [splitAmts, setSplitAmts] = useState({});   // #16 — per-payer custom amounts (index → $)
   const [splitPaid, setSplitPaid] = useState(() => new Set());   // #19 — indices of payers who've settled
   const payMyShare = () => setSplitPaid(s => new Set(s).add(0));                 // lead pays their own share
   const markPaid = (i) => setSplitPaid(s => { const n = new Set(s); n.add(i); return n; });   // demo: invitee settles via their link
-  const [mix, setMix] = useState({ card: null, miles: 0, voucher: 0, cashback: 0 }); // Payment Composer amounts (€ per source)
+  const [mix, setMix] = useState({ card: null, miles: 0, voucher: 0, cashback: 0 }); // Payment Composer amounts ($ per source)
   const [editMiles, setEditMiles] = useState(false); // #7: Edit reveals an exact-amount field
   const [editVoucher, setEditVoucher] = useState(false), [editCash, setEditCash] = useState(false); // #21: Edit reveals partial-amount fields
   useEffect(() => { api.get("/seat-recommendation").then(setSeat).catch(() => {}); }, []);
@@ -1875,7 +1875,7 @@ export function Payment({ shared, go }) {
       <div className="grid sm:grid-cols-2 lg:grid-cols-4" style={{ gap: "18px" }}>
         <Field className="lg:col-span-2" label={<>Country <Req /></>}><FlagSelect value={billCtry} onChange={setBillCtry} options={FLAG_CTRY} /></Field>
         <Field className="lg:col-span-2" label={<>Street address <Req /></>}><VOK defaultValue="Av. Paulista, 1842 · Apt 71" /></Field>
-        <Field label={<>City <Req /></>}><VOK defaultValue={trip.contact?.city || "Porto"} /></Field>
+        <Field label={<>City <Req /></>}><VOK defaultValue={trip.contact?.city || "Miami"} /></Field>
         <Field label="State / province"><Input defaultValue="SP" /></Field>
         <Field label={<>Postal code <Req /></>}><VOK defaultValue="01310-100" /></Field>
         <Field label="CPF / Tax ID (optional)"><Input placeholder="000.000.000-00" /></Field>
@@ -1972,10 +1972,10 @@ export function Payment({ shared, go }) {
                     {editMiles && <div className="px-1 mt-2.5 flex items-center gap-2 text-[12px]"><span className="text-ink-muted">Use exactly</span><input type="number" min="0" max={milesMax} step="100" value={mix.miles} onChange={e => setMix(m => ({ ...m, miles: clampMiles(e.target.value) }))} className="w-28 rounded-lg border border-line-strong px-2 py-1 text-[13px] font-bold v2-num" /><span className="text-ink-faint">miles = {EUR(miles_amt)}</span><button onClick={() => setMix(m => ({ ...m, miles: milesMax }))} className="ml-auto text-[11px] font-bold text-tap-greenDeep hover:underline">Max</button></div>}
                   </MixComp>
                   <MixComp on={(mix.voucher || 0) > 0 && voucher > 0} title={`Voucher${voucher ? " Xperion-" + (shared.profile?.vouchers?.[0]?.code || "XYZ") : ""}`} sub={voucher ? `Eligible: ${EUR(voucher)}` : "No active voucher"} onToggle={() => voucher && setMix(m => ({ ...m, voucher: (m.voucher || 0) > 0 ? 0 : voucher }))} onEdit={() => voucher && setEditVoucher(v => !v)} right={<span className="text-[13px] font-bold v2-num">{EUR(voucher_amt)}</span>}>
-                    {editVoucher && voucher > 0 && <div className="px-1 mt-2.5 flex items-center gap-2 text-[12px]"><span className="text-ink-muted">Apply €</span><input type="number" min="0" max={voucher} step="1" value={mix.voucher || 0} onChange={e => setMix(m => ({ ...m, voucher: Math.max(0, Math.min(voucher, +(+e.target.value).toFixed(2))) }))} className="w-24 rounded-lg border border-line-strong px-2 py-1 text-[13px] font-bold v2-num" /><span className="text-ink-faint">of {EUR(voucher)}</span><button onClick={() => setMix(m => ({ ...m, voucher }))} className="ml-auto text-[11px] font-bold text-tap-greenDeep hover:underline">Max</button></div>}
+                    {editVoucher && voucher > 0 && <div className="px-1 mt-2.5 flex items-center gap-2 text-[12px]"><span className="text-ink-muted">Apply $</span><input type="number" min="0" max={voucher} step="1" value={mix.voucher || 0} onChange={e => setMix(m => ({ ...m, voucher: Math.max(0, Math.min(voucher, +(+e.target.value).toFixed(2))) }))} className="w-24 rounded-lg border border-line-strong px-2 py-1 text-[13px] font-bold v2-num" /><span className="text-ink-faint">of {EUR(voucher)}</span><button onClick={() => setMix(m => ({ ...m, voucher }))} className="ml-auto text-[11px] font-bold text-tap-greenDeep hover:underline">Max</button></div>}
                   </MixComp>
                   <MixComp on={cashback_amt > 0} title="Cashback wallet" sub={`Balance: ${EUR(cashbackBal)}`} onToggle={() => setMix(m => ({ ...m, cashback: m.cashback > 0 ? 0 : cashbackBal }))} onEdit={() => setEditCash(v => !v)} right={<span className="text-[13px] font-bold v2-num">{EUR(cashback_amt)}</span>}>
-                    {editCash && <div className="px-1 mt-2.5 flex items-center gap-2 text-[12px]"><span className="text-ink-muted">Apply €</span><input type="number" min="0" max={cashbackBal} step="1" value={mix.cashback || 0} onChange={e => setMix(m => ({ ...m, cashback: Math.max(0, Math.min(cashbackBal, +(+e.target.value).toFixed(2))) }))} className="w-24 rounded-lg border border-line-strong px-2 py-1 text-[13px] font-bold v2-num" /><span className="text-ink-faint">of {EUR(cashbackBal)}</span><button onClick={() => setMix(m => ({ ...m, cashback: cashbackBal }))} className="ml-auto text-[11px] font-bold text-tap-greenDeep hover:underline">Max</button></div>}
+                    {editCash && <div className="px-1 mt-2.5 flex items-center gap-2 text-[12px]"><span className="text-ink-muted">Apply $</span><input type="number" min="0" max={cashbackBal} step="1" value={mix.cashback || 0} onChange={e => setMix(m => ({ ...m, cashback: Math.max(0, Math.min(cashbackBal, +(+e.target.value).toFixed(2))) }))} className="w-24 rounded-lg border border-line-strong px-2 py-1 text-[13px] font-bold v2-num" /><span className="text-ink-faint">of {EUR(cashbackBal)}</span><button onClick={() => setMix(m => ({ ...m, cashback: cashbackBal }))} className="ml-auto text-[11px] font-bold text-tap-greenDeep hover:underline">Max</button></div>}
                   </MixComp>
                   <p className="text-[11px] text-ink-faint">Your live payment breakdown is shown in My trip basket on the right.</p>
                 </div>;
@@ -2084,7 +2084,7 @@ export function Payment({ shared, go }) {
 }
 
 /* ═══════════ CONFIRMATION ═══════════ */
-// D1 · Portugal Stopover builder — a personalized Lisbon stopover (boutique vs budget
+// D1 · Portugal Stopover builder — a personalized New York stopover (boutique vs budget
 // hotels + curated experiences) with fully transparent per-component pricing, added to
 // the itinerary as individual line items. Hotel tier is personalized to the member.
 // B3 · Xperion Miles redemption shopping — a dedicated space to spend miles: cash+miles
@@ -2093,7 +2093,7 @@ export function Payment({ shared, go }) {
 export function MilesShop({ shared, go }) {
   const u = shared.profile?.user || {};
   const balance = u.miles || 42000;
-  const route = { o: u.home_airport || "LIS", d: "GRU", cash: 489, label: `${u.home_airport || "LIS"} → São Paulo` };
+  const route = { o: u.home_airport || "JFK", d: "GRU", cash: 489, label: `${u.home_airport || "JFK"} → São Paulo` };
   const [pct, setPct] = useState(40);
   const [dayIdx, setDayIdx] = useState(2);
   const [ancRedeemed, setAncRedeemed] = useState(() => new Set());
@@ -2116,7 +2116,7 @@ export function MilesShop({ shared, go }) {
   const ANC = [
     { k: "bag", name: "Extra checked bag", miles: 6000 },
     { k: "seat", name: "Extra-legroom seat", miles: 4500 },
-    { k: "lounge", name: "Lisbon lounge access", miles: 7500 },
+    { k: "lounge", name: "New York lounge access", miles: 7500 },
     { k: "wifi", name: "Full-flight Wi-Fi", miles: 3000 },
   ];
   const toggleAnc = (k) => setAncRedeemed(s => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; });
@@ -2208,11 +2208,11 @@ export function StopoverBuilder({ shared, go }) {
   const HOTELS = [
     { k: "boutique", name: "Boutique · Chiado heritage", area: "Chiado", rate: 145, tag: premium ? "Recommended for you" : "Premium", note: "Design hotel in the historic centre" },
     { k: "smart", name: "Smart · Baixa central", area: "Baixa", rate: 95, tag: premium ? "Great value" : "Recommended for you", note: "Modern rooms steps from the river" },
-    { k: "budget", name: "Budget · Alfama guesthouse", area: "Alfama", rate: 62, tag: "Lowest price", note: "Simple, characterful, central" },
+    { k: "budget", name: "Budget · Wynwood guesthouse", area: "Wynwood", rate: 62, tag: "Lowest price", note: "Simple, characterful, central" },
   ];
   const EXPS = [
-    { k: "sintra", name: "Sintra & Pena Palace", dur: "Full day", price: 89 },
-    { k: "tram", name: "Tram 28 & Alfama walk", dur: "3 hours", price: 35 },
+    { k: "sintra", name: "Key West & Pena Palace", dur: "Full day", price: 89 },
+    { k: "tram", name: "Tram 28 & Wynwood walk", dur: "3 hours", price: 35 },
     { k: "fado", name: "Fado dinner in Bairro Alto", dur: "Evening", price: 68 },
     { k: "food", name: "Time Out Market food tour", dur: "3 hours", price: 55 },
   ];
@@ -2226,19 +2226,19 @@ export function StopoverBuilder({ shared, go }) {
   const addToTrip = () => {
     if (trip.outbound) {
       trip.extras = (trip.extras || []).filter(x => !/^stopover-/.test(x.code));
-      toggleExtra({ code: "stopover-hotel", name: `Lisbon stopover · ${hotelObj.name} × ${nights}n`, price: hotelCost, cat: "Stopover" });
+      toggleExtra({ code: "stopover-hotel", name: `New York stopover · ${hotelObj.name} × ${nights}n`, price: hotelCost, cat: "Stopover" });
       expList.forEach(e => toggleExtra({ code: "stopover-exp-" + e.k, name: `Stopover · ${e.name}`, price: e.price, cat: "Stopover" }));
       if (transfer) toggleExtra({ code: "stopover-transfer", name: "Stopover · airport transfer", price: transferCost, cat: "Stopover" });
-      trip.stopover = { nights, hotel: hotelObj.name, experiences: expList.map(e => e.name), total, viaLisbon: true, segments: [{ from: trip.outbound?.flight?.origin, to: "LIS" }, { from: "LIS", to: trip.outbound?.flight?.dest }] };
+      trip.stopover = { nights, hotel: hotelObj.name, experiences: expList.map(e => e.name), total, viaHub: true, segments: [{ from: trip.outbound?.flight?.origin, to: "JFK" }, { from: "JFK", to: trip.outbound?.flight?.dest }] };
       pingBasket();
     }
     setAdded(true); window.scrollTo({ top: 0 });
   };
   if (added) return (
     <div className="mx-auto max-w-content px-6 py-10">
-      <div className="flex items-center gap-3"><span className="w-11 h-11 rounded-full bg-tap-green text-white inline-flex items-center justify-center"><Icon name="check" size={22} /></span><div><h1 className="text-[26px] font-black">Stopover added</h1><div className="text-[13px] text-ink-muted">{nights} nights in Lisbon · {hotelObj.name}</div></div></div>
+      <div className="flex items-center gap-3"><span className="w-11 h-11 rounded-full bg-tap-green text-white inline-flex items-center justify-center"><Icon name="check" size={22} /></span><div><h1 className="text-[26px] font-black">Stopover added</h1><div className="text-[13px] text-ink-muted">{nights} nights in New York · {hotelObj.name}</div></div></div>
       <Card className="p-5 mt-6">
-        <div className="text-[13px] font-bold mb-2">Your Lisbon stopover</div>
+        <div className="text-[13px] font-bold mb-2">Your New York stopover</div>
         <div className="space-y-1.5 text-[13px]">
           <Row label={`${hotelObj.name} × ${nights} nights`} v={eurC(hotelCost)} />
           {expList.map(e => <Row key={e.k} label={e.name} v={eurC(e.price)} />)}
@@ -2247,17 +2247,17 @@ export function StopoverBuilder({ shared, go }) {
         <Divider className="my-3" />
         <div className="flex justify-between text-[15px] font-black"><span>Stopover total</span><span className="v2-num">{eurC(total)}</span></div>
       </Card>
-      <div className="flex gap-3 mt-5">{trip.outbound ? <Btn onClick={() => go("cart")}>Review in cart →</Btn> : <Btn onClick={() => go("home")}>Book a flight via Lisbon →</Btn>}<Btn variant="outline" onClick={() => setAdded(false)}>Edit stopover</Btn></div>
+      <div className="flex gap-3 mt-5">{trip.outbound ? <Btn onClick={() => go("cart")}>Review in cart →</Btn> : <Btn onClick={() => go("home")}>Book a flight via New York →</Btn>}<Btn variant="outline" onClick={() => setAdded(false)}>Edit stopover</Btn></div>
     </div>
   );
   return (
     <div className="mx-auto max-w-page px-4 sm:px-6 py-8">
-      <Eyebrow>Portugal Stopover · free on Xperion long-haul via Lisbon</Eyebrow>
-      <h1 className="text-[30px] font-black mt-1">Break your trip in Lisbon</h1>
+      <Eyebrow>Portugal Stopover · free on Xperion long-haul via New York</Eyebrow>
+      <h1 className="text-[30px] font-black mt-1">Break your trip in New York</h1>
       <p className="text-[13px] text-ink-muted mt-1 max-w-2xl">Stop over for up to a few nights at no extra airfare. We've tailored the picks to your profile{premium ? " — boutique stays first, as a " + (u.tier || "premium") + " member." : "."} Every component is priced separately — add only what you want.</p>
       <div className="grid lg:grid-cols-[minmax(0,1fr)_330px] gap-6 mt-6 items-start">
         <div className="space-y-5">
-          {trip.outbound && trip.outbound.flight.origin !== "LIS" && trip.outbound.flight.dest !== "LIS" && (() => {
+          {trip.outbound && trip.outbound.flight.origin !== "JFK" && trip.outbound.flight.dest !== "JFK" && (() => {
             const of = trip.outbound.flight;
             const cityOf = (c) => (shared?.airports || []).find(a => a.code === c)?.city || c;
             const shiftHM = (hm, mins) => { const [h, m] = String(hm || "00:00").split(":").map(Number); const t = ((h * 60 + m + mins) % 1440 + 1440) % 1440; return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"); };
@@ -2271,11 +2271,11 @@ export function StopoverBuilder({ shared, go }) {
             );
             return (
               <Card className="p-5" style={{ border: "1px solid #E0E2E8", borderRadius: "12px", boxShadow: "none" }}>
-                <div className="flex items-center justify-between mb-3"><div className="text-[13px] font-bold">Your journey via Lisbon</div><span className="text-[10px] font-bold uppercase tracking-wide rounded-full" style={{ background: "#F2FFDB", color: "#2E7D33", padding: "4px 10px" }}>Stopover</span></div>
-                <Seg dep={of.dep} from={of.origin} fromCity={cityOf(of.origin)} arr={lisArr} to="LIS" toCity="Lisbon" label={`Segment 1 · ${String(of.flight_no).replace(/([A-Za-z]+)\s*(\d+)/, "$1 $2")}`} />
-                <div className="my-2.5 flex items-center gap-2 text-[12px] font-semibold" style={{ color: "#2E7D33" }}><Icon name="clock" size={13} /> Stopover · {nights} night{nights > 1 ? "s" : ""} in Lisbon</div>
-                <Seg dep={lisDep} from="LIS" fromCity="Lisbon" arr={of.arr} to={of.dest} toCity={cityOf(of.dest)} label="Segment 2 · TP short-haul" />
-                <div className="mt-3 text-[11px] text-ink-faint">Your long-haul routes through Xperion's Lisbon hub — the stopover simply extends your connection at no extra airfare.</div>
+                <div className="flex items-center justify-between mb-3"><div className="text-[13px] font-bold">Your journey via New York</div><span className="text-[10px] font-bold uppercase tracking-wide rounded-full" style={{ background: "#F2FFDB", color: "#2E7D33", padding: "4px 10px" }}>Stopover</span></div>
+                <Seg dep={of.dep} from={of.origin} fromCity={cityOf(of.origin)} arr={lisArr} to="JFK" toCity="New York" label={`Segment 1 · ${String(of.flight_no).replace(/([A-Za-z]+)\s*(\d+)/, "$1 $2")}`} />
+                <div className="my-2.5 flex items-center gap-2 text-[12px] font-semibold" style={{ color: "#2E7D33" }}><Icon name="clock" size={13} /> Stopover · {nights} night{nights > 1 ? "s" : ""} in New York</div>
+                <Seg dep={lisDep} from="JFK" fromCity="New York" arr={of.arr} to={of.dest} toCity={cityOf(of.dest)} label="Segment 2 · TP short-haul" />
+                <div className="mt-3 text-[11px] text-ink-faint">Your long-haul routes through Xperion's New York hub — the stopover simply extends your connection at no extra airfare.</div>
               </Card>
             );
           })()}
@@ -2328,7 +2328,7 @@ export function StopoverBuilder({ shared, go }) {
             <div className="flex justify-between text-[16px] font-black"><span>Total</span><span className="v2-num">{eurC(total)}</span></div>
             <div className="text-[10px] text-ink-faint mt-1">Airfare unchanged · stopover billed as add-ons</div>
             <Btn className="w-full mt-3" onClick={addToTrip}>{trip.outbound ? "Add to my trip" : "Build stopover"}</Btn>
-            {!trip.outbound && <div className="text-[11px] text-ink-faint mt-2 text-center">Tip: search a long-haul via Lisbon to attach this to a booking.</div>}
+            {!trip.outbound && <div className="text-[11px] text-ink-faint mt-2 text-center">Tip: search a long-haul via New York to attach this to a booking.</div>}
           </Card>
         </aside>
       </div>
@@ -2354,7 +2354,7 @@ export function Confirmation({ shared, go }) {
     const hasBag = (trip.extras || []).some(e => /bag/i.test(e.code || "") || /bag|luggage/i.test(e.name || ""));
     const days = (trip.date && trip.ret) ? Math.max(1, Math.round((new Date(trip.ret) - new Date(trip.date)) / 864e5)) : null;
     const px = trip.pax || 1;
-    const CITY = { JFK: "New York", EWR: "New York", BOS: "Boston", GRU: "São Paulo", GIG: "Rio de Janeiro", FCO: "Rome", CDG: "Paris", BCN: "Barcelona", FNC: "Funchal", LIS: "Lisbon", OPO: "Porto", MAD: "Madrid", LHR: "London" };
+    const CITY = { JFK: "New York", EWR: "New York", BOS: "Boston", GRU: "São Paulo", GIG: "Rio de Janeiro", FCO: "Rome", CDG: "Paris", MCO: "Orlando", CUN: "Cancún", JFK: "New York", MIA: "Miami", MAD: "Madrid", LHR: "London" };
     const city = CITY[dst] || dst || "your destination";
     const out = [];
     if (!hasBag) out.push({ code: "bag", name: "Add a checked bag", sub: `You booked with cabin bag only${days && days >= 7 ? ` — handy for a ${days}-day trip` : ""}.`, price: 30, tag: "Most added after booking" });
@@ -2392,7 +2392,7 @@ export function Confirmation({ shared, go }) {
   const downloadTicket = () => downloadFile(`eticket-${trip.pnr}.txt`, ticketText(), "text/plain");
   // v33 Booking Confirmed #2 — the invoice link DOWNLOADS a real PDF (was wrongly routed to the basket).
   const buildInvoicePdf = (lines) => {
-    const esc = (t) => String(t).replace(/€/g, "EUR ").replace(/—/g, "-").replace(/[^\x20-\x7E]/g, "").replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+    const esc = (t) => String(t).replace(/$/g, "EUR ").replace(/—/g, "-").replace(/[^\x20-\x7E]/g, "").replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
     const content = "BT /F1 11 Tf 50 792 Td 16 TL " + lines.map((l, n) => `(${esc(l)}) Tj T*`).join(" ") + " ET";
     const objs = [
       "<< /Type /Catalog /Pages 2 0 R >>",
@@ -2445,14 +2445,14 @@ export function Confirmation({ shared, go }) {
                 </div>
               )}              {(() => {
                 const sh = (hm, m) => { const [h, mm] = String(hm || "00:00").split(":").map(Number); const t = ((h * 60 + mm + m) % 1440 + 1440) % 1440; return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"); };
-                const rows = (trip.stopover?.viaLisbon && o) ? [
-                  { flight: { ...o.flight, dest: "LIS", arr: sh(o.flight.arr, -125), duration: "7h 15m" }, _lbl: "Outbound · Segment 1", _d: trip.date, _seat: leadSeat },
+                const rows = (trip.stopover?.viaHub && o) ? [
+                  { flight: { ...o.flight, dest: "JFK", arr: sh(o.flight.arr, -125), duration: "7h 15m" }, _lbl: "Outbound · Segment 1", _d: trip.date, _seat: leadSeat },
                   { _stop: trip.stopover.nights },
-                  { flight: { ...o.flight, origin: "LIS", dep: sh(o.flight.arr, -70), duration: "1h 05m" }, _lbl: "Outbound · Segment 2", _d: trip.date, _seat: leadSeat },
+                  { flight: { ...o.flight, origin: "JFK", dep: sh(o.flight.arr, -70), duration: "1h 05m" }, _lbl: "Outbound · Segment 2", _d: trip.date, _seat: leadSeat },
                   ...(i ? [{ flight: i.flight, _lbl: "Return", _d: trip.ret, _seat: inSeat || "22B" }] : []),
                 ] : [o, i].filter(Boolean).map((c, idx) => ({ flight: c.flight, _lbl: trip.type === "multi" ? `Flight ${idx + 1}` : null, _d: idx === 0 ? trip.date : trip.ret, _seat: idx === 0 ? leadSeat : (inSeat || "22B") }));
                 return rows.map((c, idx) => c._stop ? (
-                  <div key={idx} className="flex items-center gap-2 px-5 py-2 mb-2 text-[12px] font-semibold text-tap-greenDeep" style={{ borderTop: "1px dashed #DCDCD8", borderBottom: "1px dashed #DCDCD8" }}><Icon name="clock" size={13} /> Stopover · {c._stop} night{c._stop > 1 ? "s" : ""} in Lisbon</div>
+                  <div key={idx} className="flex items-center gap-2 px-5 py-2 mb-2 text-[12px] font-semibold text-tap-greenDeep" style={{ borderTop: "1px dashed #DCDCD8", borderBottom: "1px dashed #DCDCD8" }}><Icon name="clock" size={13} /> Stopover · {c._stop} night{c._stop > 1 ? "s" : ""} in New York</div>
                 ) : (
                 <div key={idx} className="rounded-[12px] px-5 mb-2 flex flex-wrap items-center gap-4" style={{ background: "#f2ffdb", minHeight: "108px" }}>
                   <div><div className="text-[14px] font-bold" style={{ color: "#1A1F29" }}>{c.flight.origin}</div><div className="text-[26px] font-bold v2-num leading-none mt-0.5">{c.flight.dep}</div><div className="text-[11px] mt-1" style={{ color: "#667080" }}>Terminal 1</div></div>
@@ -2542,7 +2542,7 @@ export function ExpressCheckout({ shared, go, params }) {
   const cityOf = (c) => airports.find(a => a.code === c)?.city || c;
   // Use the route the user actually searched (passed from the results page) when present;
   // otherwise fall back to the member's usual trip pattern.
-  const origin = params?.origin || pat.origin || u.home_airport || "OPO", dest = params?.dest || pat.dest || "LIS";
+  const origin = params?.origin || pat.origin || u.home_airport || "MIA", dest = params?.dest || pat.dest || "JFK";
   const date = params?.date || pat.recommendedDate || trip.date || "";
   const retDate = params?.ret || (() => { if (!date) return ""; const d = new Date(date); d.setDate(d.getDate() + 2); return d.toISOString().slice(0, 10); })();
   const [, force] = useState(0);
@@ -2572,7 +2572,7 @@ export function ExpressCheckout({ shared, go, params }) {
   }, []);
 
   // J1 — never render a stale in-progress trip whose route differs from the searched route, or the
-  // header (searched route, e.g. Lisbon ⇄ Porto) and the flight segments (a stale route, e.g. DEL/DXB)
+  // header (searched route, e.g. New York ⇄ Miami) and the flight segments (a stale route, e.g. DEL/DXB)
   // disagree. Treat a route-mismatched leg as "not ready" so the loader holds until the effect above
   // resets and rebuilds the real route.
   const legOnRoute = (leg, from, to) => !!(leg && leg.flight && leg.flight.origin === from && leg.flight.dest === to);
@@ -2658,7 +2658,7 @@ export function ExpressCheckout({ shared, go, params }) {
                 <div className="flex items-center justify-between text-[13px] py-1 mt-1"><div><div className="font-semibold">Return · {seatForFare(i?.fare)} ({seatZone(i?.fare)})</div><div className="text-[11px] text-ink-faint">{i?.flight?.flight_no || ""}{i ? ` · ${i.flight.aircraft} · Seat ${seatForFare(i?.fare)}` : ""}</div></div><span className="text-[10px] font-bold uppercase tracking-wide bg-surface-mute text-ink rounded px-2 py-0.5">Free · {u.tier}</span></div>
               </Sec>
               <Sec title="Contact details" action="Edit" onAction={() => go("passenger")}>
-                <div className="text-[14px] font-semibold">{(u.email || "d•••@gmail.com").replace(/(.).+(@.+)/, "$1•••••$2")} · {u.phone || "+351 ••• 482"}</div>
+                <div className="text-[14px] font-semibold">{(u.email || "d•••@gmail.com").replace(/(.).+(@.+)/, "$1•••••$2")} · {u.phone || "+1 ••• 482"}</div>
                 <div className="text-[11px] text-ink-faint mt-0.5">Boarding pass, receipt and IROPS alerts go here.</div>
               </Sec>
               <Card className="p-4" style={{ background: "#FAFAF7", border: "1px solid #E8E8E5", borderRadius: "10px", boxShadow: "none", padding: "14px" }}><label className="flex items-start gap-2.5 text-[13px]"><span className="mt-0.5 inline-flex items-center justify-center shrink-0 cursor-pointer" style={{ width: "20px", height: "20px", borderRadius: "5px", background: agree ? "#0A0A0A" : "#FFFFFF", border: "1px solid #0A0A0A" }} onClick={() => setAgree(!agree)}>{agree && <Icon name="check" size={12} className="stroke-[3]" style={{ color: "#9EFD38" }} />}</span><span className="flex-1"><span className="flex items-center gap-2 font-semibold">I accept the fare conditions</span><span className="block text-[11px] text-ink-muted mt-0.5">By continuing you agree to the <button className="font-semibold" style={{ color: "#0A0A0A" }}>fare conditions</button> · <button className="font-semibold" style={{ color: "#0A0A0A" }}>baggage rules</button> · <button className="font-semibold" style={{ color: "#0A0A0A" }}>privacy policy</button>.</span><span className="block text-[11px] text-ink-faint mt-1">You'll receive your booking confirmation and e-ticket after successful payment.</span></span><span className="shrink-0"><span className="font-bold uppercase tracking-wide text-white" style={{ background: "#ED1C24", fontSize: "9px", borderRadius: "999px", padding: "3px 8px" }}>Required</span></span></label></Card>

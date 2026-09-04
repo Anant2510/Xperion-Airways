@@ -221,8 +221,8 @@ app.get("/api/routes/suggested", (req, res) => {
     if (searchedPair[key]) { score += 25 + searchedPair[key] * 6; reasons.push(`You searched this ${searchedPair[key]}×`); }
     else if (searchedDest[r.dest]) { score += 12; reasons.push(`Searched ${cityName(r.dest)} ${searchedDest[r.dest]}×`); }
     // Home-airport affinity: routes from Porto (his base) get a nudge
-    if (r.origin === "OPO") { score += 6; if (!reasons.length) reasons.push("From your home airport"); }
-    if (r.origin === "LIS") { score += 3; }
+    if (r.origin === "MIA") { score += 6; if (!reasons.length) reasons.push("From your home airport"); }
+    if (r.origin === "JFK") { score += 3; }
     return { ...r, originCity: ap(r.origin).city, destCity: ap(r.dest).city, destCountry: ap(r.dest).country, destRegion: ap(r.dest).region, score, reason: reasons.slice(0, 2).join(" · ") || null, reasons };
   });
 
@@ -237,8 +237,8 @@ app.get("/api/routes/suggested", (req, res) => {
 
 /* ── Flight search: any origin → dest in the network ─────────── */
 app.get("/api/search", (req, res) => {
-  const origin = (req.query.origin || "OPO").toUpperCase();
-  const dest = (req.query.dest || "LIS").toUpperCase();
+  const origin = (req.query.origin || "MIA").toUpperCase();
+  const dest = (req.query.dest || "JFK").toUpperCase();
   const date = req.query.date || searchToday();
   const route = getRoute(origin, dest);
   if (!route) {
@@ -332,7 +332,7 @@ app.get("/api/profile", (req, res) => {
 
   // Most-flown outbound route from the user's HOME airport, computed live
   // (so it adapts to whichever persona is active, and shifts as they book).
-  const home = user.home_airport || "OPO";
+  const home = user.home_airport || "MIA";
   const outboundAll = history.filter(h => h.route && h.route.startsWith(home + "→"));
   const routeCounts = {};
   outboundAll.forEach(h => { routeCounts[h.route] = (routeCounts[h.route] || 0) + 1; });
@@ -509,8 +509,8 @@ retail.mount(app, { generateFlights, persistFlights, getRoute });
 try { propensity.train(); } catch (e) { log("propensity_train_error", { e: String(e.message || e) }); }
 
 app.get("/api/flights", (req, res) => {
-  const dest = (req.query.dest || "LIS").toUpperCase();
-  const origin = (req.query.origin || "OPO").toUpperCase();
+  const dest = (req.query.dest || "JFK").toUpperCase();
+  const origin = (req.query.origin || "MIA").toUpperCase();
   const date = req.query.date || searchToday();
   if (!getRoute(origin, dest)) { log("api_flights_noroute", { origin, dest }); return res.json([]); }
   const flights = generateFlights(origin, dest, date);
@@ -550,7 +550,7 @@ app.get("/api/seat-recommendation", (req, res) => {
   });
 });
 app.get("/api/destinations", async (req, res) => {
-  const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(req.uid) || {}).home_airport || "OPO";
+  const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(req.uid) || {}).home_airport || "MIA";
   // CONTENT from AEM (headless) when configured; otherwise local SQLite. Personalization is overlaid below.
   let base = null;
   try { base = await aem.getDestinations(); } catch (e) { /* AEM unavailable → fall back to local content */ }
@@ -957,7 +957,7 @@ app.post("/api/disrupt", async (req, res) => {
      WHERE b.user_id = ? AND b.status IN ('confirmed','rebooked') AND f.status IN ('delayed','cancelled')
      ORDER BY b.flight_date LIMIT 1`).get(req.uid) || null);
   const flight_no = req.body.flight_no || pinned?.flight_no || currentBooking(req.uid)?.flight_no
-    || db.prepare("SELECT flight_no FROM travel_history WHERE user_id=? AND route LIKE ? ORDER BY trip_date DESC LIMIT 1").get(req.uid, (u.home_airport || "OPO") + "→%")?.flight_no
+    || db.prepare("SELECT flight_no FROM travel_history WHERE user_id=? AND route LIKE ? ORDER BY trip_date DESC LIMIT 1").get(req.uid, (u.home_airport || "MIA") + "→%")?.flight_no
     || null;
   // A flight number recurs across dates — pin to the instance the persona actually booked so an
   // admin disruption on that date is what gets reported (not a stale same-number row).
@@ -1155,7 +1155,7 @@ app.get("/api/notifications", (req, res) => {
 //               travel credit, with the same +20% goodwill uplift as the fare.
 //   • rebook  → items that travel with the passenger are carried to the new
 //               flight; seat products are re-priced to the new aircraft (a real
-//               delta, +/- €, because seat maps differ), everything else is retained.
+//               delta, +/- $, because seat maps differ), everything else is retained.
 // Returns { items:[{code,name,paid,disposition,amount,note}], total } where total
 // is the cash impact of the ancillaries for that passenger (– = money back to them).
 const ANCILLARY_RULES = {
@@ -1329,7 +1329,7 @@ app.post("/api/ai/plan", async (req, res) => {
     const plan = await callClaude([{ role: "user", content:
       `${u.first_name} (home airport ${u.home_airport}) asks the AI itinerary planner: "${q}".
 ${u.affinity_label ? `Context: ${u.first_name}'s co-branded Xperion card spend marks them a ${u.affinity_label}${categories[0] ? ` (${categories[0].share}% ${categories[0].name})` : ""}. If the request is open-ended ("what should I do", "ideas", "this weekend", "surprise me") or matches that interest, weave in the relevant experience${pkg ? ` — e.g. ${pkg.event} in ${pkg.city} (${pkg.badge})` : ""} and note it pairs ticket + hotel + return flight.` : ""}
-Build a concrete plan using realistic Xperion flights from ${u.home_airport} (short-haul shuttles run frequently ~55–90min, €60–120; long-haul where relevant; other routes plausible).
+Build a concrete plan using realistic Xperion flights from ${u.home_airport} (short-haul shuttles run frequently ~2h55 shuttles, $100–150; long-haul where relevant; other routes plausible).
 Return JSON exactly: {"title": string, "summary": string (1 sentence, personal, use their first name), "legs":[{"day": string, "flight": string, "route": string, "times": string, "why": string (tie to their pattern/interest)}], "tip": string} with 2-4 legs.` }],
       { json: true });
     res.json({ plan, ai: "live" });
@@ -1393,13 +1393,13 @@ const AGENT_TOOLS = [
 
   { name: "search_flights", description: `Search {{airline}} flights for a SPECIFIC route (origin + destination) and date. Only call this when you know BOTH the origin and the destination. If the customer hasn't said where they want to go, do NOT call this — call list_destinations or ask them first. Never assume or default the destination. Dates like 'next Friday' resolve to YYYY-MM-DD (today is ${searchToday()}).`,
     input_schema: { type: "object", properties: {
-      origin: { type: "string", description: "Origin IATA code, e.g. OPO. If the customer didn't specify an origin, use the customer's home airport." },
+      origin: { type: "string", description: "Origin IATA code, e.g. MIA. If the customer didn't specify an origin, use the customer's home airport." },
       dest: { type: "string", description: "Destination IATA code, e.g. LIS, MAD, CDG. REQUIRED — never guess this. If unknown, call list_destinations instead." },
       date: { type: "string", description: `Travel date YYYY-MM-DD. Defaults to today (${searchToday()}) if the customer gave no date.` },
     }, required: ["origin", "dest"] } },
   { name: "list_destinations", description: "List the real cities {{airline}} flies to FROM a given origin airport. Use this whenever the customer asks where they can fly from a city, asks for 'options from <city>' without naming a destination, or asks a factual question like 'do we only fly to X from Y?'. Returns the actual route network from the database.",
     input_schema: { type: "object", properties: {
-      origin: { type: "string", description: "Origin IATA code, e.g. LIS, OPO, MAD." },
+      origin: { type: "string", description: "Origin IATA code, e.g. JFK, MIA, ORD." },
     }, required: ["origin"] } },
   { name: "get_suggestions", description: "Get the customer's personalized suggested destinations, computed from their real flown/booked/searched history. Use when they ask 'where should I go' or for ideas (NOT for factual 'where do we fly from X' questions — use list_destinations for those).",
     input_schema: { type: "object", properties: {} } },
@@ -1499,7 +1499,7 @@ function firstFreeSeat(pref, tier) {
 // scope in this file, so moved bodies resolve them identically at call time.
 /* The booking this CHAT SESSION is talking about. A booking made in this session
    (session.lastPnr, set at checkout) always wins over the date-nearest seeded trip —
-   fixes "pay for LIS→OPO, then check-in answers about tomorrow's OPO→LIS". */
+   fixes "pay for JFK→MIA, then check-in answers about tomorrow's MIA→JFK". */
 const sessionBooking = (uid, session) => {
   const p = session && session.lastPnr;
   if (p) { const b = db.prepare("SELECT * FROM bookings WHERE user_id=? AND pnr=? AND status='confirmed'").get(uid, p); if (b) return b; }
@@ -1509,7 +1509,7 @@ const sessionBooking = (uid, session) => {
 const XperionAdapter = createAirlineAdapter("xperion", {
   search_flights(input, ctx) {
     const { uid, session } = ctx;
-    const origin = (input.origin || "OPO").toUpperCase();
+    const origin = (input.origin || "MIA").toUpperCase();
     const dest = (input.dest || "").toUpperCase();
     // Never guess a destination — tell the agent to ask or list instead.
     if (!dest) return { ok: false, need: "destination", message: "No destination was given. Ask the customer where they want to go, or call list_destinations to show the options from their origin. Do not assume a destination." };
@@ -1534,7 +1534,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
   },
   list_destinations(input, ctx) {
     const { uid, session } = ctx;
-    const origin = (input.origin || "OPO").toUpperCase();
+    const origin = (input.origin || "MIA").toUpperCase();
     const rows = db.prepare("SELECT dest FROM routes WHERE origin=?").all(origin);
     if (!rows.length) return { ok: false, message: `No routes found from ${cityName(origin)} (${origin}). Check the airport code.` };
     const dests = rows.map(r => ({ code: r.dest, city: cityName(r.dest) }))
@@ -1595,7 +1595,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     saveJourney({ origin: af.origin, dest: af.dest, date: af.flight_date, device: "Chat agent", stage: "extras", flight_no: sel.flight_no, seat: sel.seat, items: sel.items }, uid);
     log("agent_extras", { flight_no: sel.flight_no, items: sel.items, total: basket.total });
     return { ok: true, items: basket.named, fare: basket.fare, extras_total: basket.extras, total: basket.total,
-      note: `Basket total is now €${basket.total.toFixed(2)} (fare €${basket.fare} + extras €${basket.extras.toFixed(2)}). Quote this total.` };
+      note: `Basket total is now $${basket.total.toFixed(2)} (fare $${basket.fare} + extras $${basket.extras.toFixed(2)}). Quote this total.` };
   },
   remove_extras(input, ctx) {
     const { uid, session } = ctx;
@@ -1614,8 +1614,8 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     log("agent_extras_removed", { flight_no: sel.flight_no, removed, items: sel.items, total: basket.total });
     return { ok: true, removed, items: basket.named, fare: basket.fare, extras_total: basket.extras, total: basket.total,
       note: removed.length
-        ? `Removed ${removed.join(", ")}. New basket total is €${basket.total.toFixed(2)} (fare €${basket.fare} + extras €${basket.extras.toFixed(2)}). ALWAYS quote this new total.`
-        : `Nothing matched to remove; basket total stays €${basket.total.toFixed(2)}.` };
+        ? `Removed ${removed.join(", ")}. New basket total is $${basket.total.toFixed(2)} (fare $${basket.fare} + extras $${basket.extras.toFixed(2)}). ALWAYS quote this new total.`
+        : `Nothing matched to remove; basket total stays $${basket.total.toFixed(2)}.` };
   },
   list_seats(input, ctx) {
     const { uid, session } = ctx;
@@ -1630,7 +1630,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
         return { cabin: c.label, price_from: price, included: price === 0, examples: free.slice(0, 6), seats_available: free.length };
       });
     return { ok: true, current_seat: cur, current_cabin: seatCabinLabel(cur), tier, cabins,
-      note: `You're in ${cur} (${seatCabinLabel(cur)}). Business and Premium Economy are included with ${tier}; Economy front rows are €8. Tell me a seat (e.g. 12A) or a preference (window, aisle, business) and I'll move you.` };
+      note: `You're in ${cur} (${seatCabinLabel(cur)}). Business and Premium Economy are included with ${tier}; Economy front rows are $8. Tell me a seat (e.g. 12A) or a preference (window, aisle, business) and I'll move you.` };
   },
   change_seat(input, ctx) {
     const { uid, session } = ctx;
@@ -1652,7 +1652,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     log("agent_change_seat", { from: cur, to: target, cabin: seatCabinLabel(target), diff });
     return { ok: true, from: cur, seat: target, cabin: seatCabinLabel(target),
       price: newPrice, included: newPrice === 0, fare_diff: diff,
-      note: `Moved you to ${target} (${seatCabinLabel(target)})${newPrice === 0 ? ", included with " + tier : ", €" + newPrice}${diff > 0 ? ` (+€${diff})` : diff < 0 ? ` (−€${-diff})` : ""}.` };
+      note: `Moved you to ${target} (${seatCabinLabel(target)})${newPrice === 0 ? ", included with " + tier : ", $" + newPrice}${diff > 0 ? ` (+$${diff})` : diff < 0 ? ` (−$${-diff})` : ""}.` };
   },
   checkout(input, ctx) {
     const { uid, session } = ctx;
@@ -1664,7 +1664,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
       if (b && b.flight_no) { let it = []; try { it = JSON.parse(b.items_json || "[]"); } catch {} sel = { flight_no: b.flight_no, items: it, seat: prefSeat(uid) }; }
     }
     if (!sel) {
-      const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "OPO";
+      const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "MIA";
       const row = db.prepare("SELECT route FROM travel_history WHERE user_id=? AND route LIKE ? GROUP BY route ORDER BY COUNT(*) DESC LIMIT 1").get(uid, home + "→%")
         || db.prepare("SELECT route FROM travel_history WHERE user_id=? GROUP BY route ORDER BY COUNT(*) DESC LIMIT 1").get(uid);
       const fr = row ? db.prepare("SELECT flight_no FROM travel_history WHERE user_id=? AND route=? GROUP BY flight_no ORDER BY COUNT(*) DESC LIMIT 1").get(uid, row.route) : null;
@@ -1679,7 +1679,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     const activeVoucher = db.prepare("SELECT amount FROM vouchers WHERE user_id=? AND status='active' ORDER BY id DESC LIMIT 1").get(uid);
     const voucher_amt = input.use_voucher === false ? 0 : Math.min(activeVoucher?.amount || 0, gross);
     const miles_used = input.use_miles === false ? 0 : 6000;
-    const miles_amt = miles_used / 1000 * 3;  // 6000 miles ≈ €18
+    const miles_amt = miles_used / 1000 * 3;  // 6000 miles ≈ $18
     const card_amt = Math.max(0, +(gross - voucher_amt - miles_amt).toFixed(2));
     const pnr = "XP" + Math.random().toString(36).slice(2, 6).toUpperCase();
     const bookDate = sel.date || f.flight_date;   // express queues the recommended date
@@ -1706,11 +1706,11 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     const { uid, session } = ctx;
     const u = db.prepare("SELECT miles, card_brand, card_last4 FROM users WHERE id=?").get(uid);
     const v = db.prepare("SELECT code, amount, status, expiry FROM vouchers WHERE user_id=? ORDER BY id DESC LIMIT 1").get(uid);
-    const milesValue = +(u.miles * 0.003).toFixed(2);   // €0.003/mile, same rate as checkout
+    const milesValue = +(u.miles * 0.003).toFixed(2);   // $0.003/mile, same rate as checkout
     return { ok: true,
       miles: u.miles,
       miles_value_eur: milesValue,
-      miles_rate: "1,000 miles ≈ €3",
+      miles_rate: "1,000 miles ≈ $3",
       voucher: v ? { code: v.code, amount: v.amount, status: v.status, expiry: v.expiry, available: v.status === "active" } : null,
       card: "your saved card",
       note: "You can split any booking across voucher, miles and card on the payment page or right here in chat.",
@@ -1771,7 +1771,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     // The customer's recurring route + the recommended next date for it. Mirrors the
     // /api/profile pattern logic so chat, home and WhatsApp agree. Emits an "express"
     // command (see buildUI) that opens the 2-step Express Checkout on the web screen.
-    const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "OPO";
+    const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "MIA";
     const row = db.prepare("SELECT route, COUNT(*) c FROM travel_history WHERE user_id=? AND route LIKE ? GROUP BY route ORDER BY c DESC LIMIT 1").get(uid, home + "→%")
       || db.prepare("SELECT route, COUNT(*) c FROM travel_history WHERE user_id=? GROUP BY route ORDER BY c DESC LIMIT 1").get(uid);
     const topRoute = row?.route || `${home}→LIS`;
@@ -1852,7 +1852,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     if (summary.some(x => x.type === "refund")) db.prepare("UPDATE bookings SET status='cancelled' WHERE id=?").run(b.id);
     log("disruption_resolved", { pnr: b.pnr, summary, channel: "ai" });
     return { ok: true, pnr: b.pnr, summary,
-      message: summary.map(x => `${x.passenger}: ${x.type}${x.amount ? ` €${x.amount}` : ""}`).join(" · ") + ". Each traveller is handled separately — confirmations are on their way." };
+      message: summary.map(x => `${x.passenger}: ${x.type}${x.amount ? ` $${x.amount}` : ""}`).join(" · ") + ". Each traveller is handled separately — confirmations are on their way." };
   },
   search_multi_city(input, ctx) {
     const { uid, session } = ctx;
@@ -1871,7 +1871,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     if (bad.length) return { ok: false, state: "no_route", legs: out, message: `Xperion doesn't fly ${bad.map(l => `${cityName(l.origin)}→${cityName(l.dest)}`).join(", ")} in this network.` };
     session.multiCity = { legs: out };
     return { ok: true, legs: out, from_total: priced,
-      message: out.map(l => `Flight ${l.leg}: ${l.origin}→${l.dest} ${l.date} — ${l.flights[0].flight_no} ${l.flights[0].dep}`).join(" · ") + `. Whole itinerary from €${priced}.` };
+      message: out.map(l => `Flight ${l.leg}: ${l.origin}→${l.dest} ${l.date} — ${l.flights[0].flight_no} ${l.flights[0].dep}`).join(" · ") + `. Whole itinerary from $${priced}.` };
   },
   park_trip(input, ctx) {
     const { uid, session } = ctx;
@@ -1898,7 +1898,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     db.prepare("INSERT INTO holds (user_id,flight_no,items_json,total,expires_at,created_at) VALUES (?,?,?,?,?,?)")
       .run(uid, fno, JSON.stringify({ items: [], duration: dur, fee }), f.price, exp, now());
     log("hold_created", { flight_no: fno, duration: dur, channel: "ai" });
-    return { ok: true, flight_no: fno, price: f.price, duration: dur, expires_at: exp, message: `Held ${fno} at €${f.price} until ${exp}.` };
+    return { ok: true, flight_no: fno, price: f.price, duration: dur, expires_at: exp, message: `Held ${fno} at $${f.price} until ${exp}.` };
   },
   get_hold(input, ctx) {
     const { uid, session } = ctx;
@@ -1914,7 +1914,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     const f = flightByNo(b.flight_no) || {};
     const target = input.cabin === "Business" ? "Business" : "Premium";
     const price = Math.round((f.price || 100) * (target === "Business" ? 1.9 : 0.55));
-    if (input.confirm !== true) return { ok: false, state: "needs_confirm", pnr: b.pnr, cabin: target, price, message: `Upgrading ${b.pnr} to ${target} costs €${price}. Confirm?` };
+    if (input.confirm !== true) return { ok: false, state: "needs_confirm", pnr: b.pnr, cabin: target, price, message: `Upgrading ${b.pnr} to ${target} costs $${price}. Confirm?` };
     const meta = _safeJSON(b.meta_json, {}) || {};
     meta.cabin = target;
     db.prepare("UPDATE bookings SET meta_json=? WHERE id=?").run(JSON.stringify(meta), b.id);
@@ -1952,7 +1952,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     const amt = pay.card_amt || pay.total || 0;
     return { ok: true, refund: true, pnr: c.pnr, amount: amt, method: pay.card_amt ? "Original card" : "Miles & voucher",
       stage: "Processing with your bank", eta: "5–7 business days",
-      message: `Refund for ${c.pnr} — €${amt} back to your original payment method, processing now (5–7 business days).` };
+      message: `Refund for ${c.pnr} — $${amt} back to your original payment method, processing now (5–7 business days).` };
   },
   cancel_booking(input, ctx) {
     const { uid, session } = ctx;
@@ -1973,9 +1973,9 @@ const XperionAdapter = createAirlineAdapter("xperion", {
 }, {
   name: "Xperion Airways",
   shortName: "Xperion",          // keeps tool descriptions byte-identical to pre-de-brand wording
-  homeAirport: "OPO",
-  currency: "EUR",
-  locale: "pt-PT",
+  homeAirport: "MIA",
+  currency: "USD",
+  locale: "en-US",
   brandLine: "Personalised from the customer's Adobe Real-Time CDP profile.",
   cdp: true,
   theme: { accent: "#46a41a", accentDeep: "#2e7d33", accentDark: "#336614",
@@ -2168,9 +2168,9 @@ function deterministicAgent(text, session) {
     calls.push({ name, input, result }); return result;
   };
   const me = db.prepare("SELECT home_airport, first_name FROM users WHERE id=?").get(uid) || {};
-  // Home airport comes from the tenant's config (Xperion = OPO), never a hardcoded hub.
+  // Home airport comes from the tenant's config (Xperion = MIA), never a hardcoded hub.
   const _tcfg = (getAirline(session && session.tenant) || {}).config || {};
-  const homeCode = me.home_airport || _tcfg.homeAirport || "LIS";
+  const homeCode = me.home_airport || _tcfg.homeAirport || "JFK";
   const has = (...ws) => ws.some(w => q.includes(w));
   const done = (reply) => ({ reply, toolCalls: calls });
   // A bare confirmation resumes the pending action (cancel, upgrade, split…).
@@ -2222,7 +2222,7 @@ function deterministicAgent(text, session) {
   }
   if (has("multi city", "multi-city", "then to", "and then fly")) {
     const raw = (text || "").toUpperCase().match(/\b[A-Z]{3}\b/g) || [];
-    const codes = raw.filter((c, i) => c !== raw[i - 1]);          // drop repeats: OPO LIS LIS MAD → OPO LIS MAD
+    const codes = raw.filter((c, i) => c !== raw[i - 1]);          // drop repeats: MIA JFK JFK ORD → MIA JFK ORD
     const legs = [];
     for (let i = 0; i + 1 < codes.length; i++) if (codes[i] !== codes[i + 1]) legs.push({ origin: codes[i], dest: codes[i + 1] });
     const r = run("search_multi_city", { legs });
@@ -2234,7 +2234,7 @@ function deterministicAgent(text, session) {
   }
   if (has("on hold", "my hold", "held fare", "still held", "any hold") || (has("hold") && has("do i", "is there", "what", "check", "status", "?"))) {
     const r = run("get_hold", {});
-    return done(r.held ? `${r.flight_no} is held at €${r.price} until ${r.expires_at}.` : "You have no fare on hold right now.");
+    return done(r.held ? `${r.flight_no} is held at $${r.price} until ${r.expires_at}.` : "You have no fare on hold right now.");
   }
   if (has("hold", "lock the fare", "lock this fare", "save this fare")) {
     const dur = has("7 day", "7d", "week") ? "7d" : has("24") ? "24h" : "48h";
@@ -2265,7 +2265,7 @@ function deterministicAgent(text, session) {
     const confirm = has("yes", "confirm", "go ahead", "do it", "please cancel");
     const r = run("cancel_booking", { confirm });
     if (r.state === "needs_confirm") return done(`Just to confirm — cancel ${r.pnr} (${r.route}, ${r.date})? Say "yes, cancel" and I'll refund it.`);
-    if (r.state === "cancelled") return done(`Done — ${r.pnr} is cancelled and refunded (${r.refund.miles} miles, voucher €${r.refund.voucher}, card €${r.refund.card}).`);
+    if (r.state === "cancelled") return done(`Done — ${r.pnr} is cancelled and refunded (${r.refund.miles} miles, voucher $${r.refund.voucher}, card $${r.refund.card}).`);
     return done(r.message || "There's nothing to cancel.");
   }
   // check in
@@ -2278,13 +2278,13 @@ function deterministicAgent(text, session) {
   // wallet / miles / voucher
   if (has("miles", "voucher", "balance", "points", "wallet") || (/\bpay with\b/.test(q) && has("miles", "voucher", "card", "points")) || has("what can i pay", "how can i pay", "how do i pay", "payment method")) {
     const r = run("get_wallet");
-    const v = r.voucher && r.voucher.available ? ` Your voucher ${r.voucher.code} is worth €${r.voucher.amount}.` : "";
-    return done(`You have ${r.miles.toLocaleString()} miles (≈ €${r.miles_value_eur}).${v} Any booking can be split across miles, voucher and your ${r.card}.`);
+    const v = r.voucher && r.voucher.available ? ` Your voucher ${r.voucher.code} is worth $${r.voucher.amount}.` : "";
+    return done(`You have ${r.miles.toLocaleString()} miles (≈ $${r.miles_value_eur}).${v} Any booking can be split across miles, voucher and your ${r.card}.`);
   }
   // personalized package / what to do
   if (has("package", "recommend", "what should i do", "things to do", "weekend", "anything fun", "what to do")) {
     const r = run("get_recommendation");
-    if (r.package) { const p = r.package; return done(`Because of your ${r.affinity_label} card spend, I'd suggest the ${p.event} at ${p.venue} — ticket + ${p.hotel_nights} nights at ${p.hotel} + return flight, €${p.total} all-in.`); }
+    if (r.package) { const p = r.package; return done(`Because of your ${r.affinity_label} card spend, I'd suggest the ${p.event} at ${p.venue} — ticket + ${p.hotel_nights} nights at ${p.hotel} + return flight, $${p.total} all-in.`); }
     return done("Let me pull a package tailored to you.");
   }
   // seat (change or list)
@@ -2308,10 +2308,10 @@ function deterministicAgent(text, session) {
   if (fno && !/ to | from /.test(q)) {
     if (has("book", "select", "choose", "take", "pick", "add")) {
       const r = run("select_flight", { flight_no: "XP" + fno });
-      return done(r.ok ? `Added ${r.flight_no} (${r.route}, ${r.dep}–${r.arr}, €${r.price}) to your basket, seat ${r.seat}. Say "check out" to pay.` : (r.message || "Search the route first."));
+      return done(r.ok ? `Added ${r.flight_no} (${r.route}, ${r.dep}–${r.arr}, $${r.price}) to your basket, seat ${r.seat}. Say "check out" to pay.` : (r.message || "Search the route first."));
     }
     const r = run("get_flight_info", { flight_no: "XP" + fno });
-    return done(r.ok ? `${r.flight_no} ${r.route} departs ${r.dep}, arrives ${r.arr}, €${r.price}. ${r.note}` : (r.message || "I don't have that flight yet."));
+    return done(r.ok ? `${r.flight_no} ${r.route} departs ${r.dep}, arrives ${r.arr}, $${r.price}. ${r.note}` : (r.message || "I don't have that flight yet."));
   }
   // ordinal / positional pick from the last shown list ("3rd option", "the second one",
   // "option 2", "I'll go with the third", "#1", "the last one"). Maps to the Nth flight in
@@ -2328,7 +2328,7 @@ function deterministicAgent(text, session) {
       if (idx >= 1 && idx <= n) {
         const f = session.lastSearch.flights[idx - 1];
         const r = run("select_flight", { flight_no: f.flight_no });
-        if (r.ok) return done(`Added ${r.flight_no} (${r.route}, ${r.dep}–${r.arr}, €${r.price}) to your basket, seat ${r.seat}. Say "check out" to pay.`);
+        if (r.ok) return done(`Added ${r.flight_no} (${r.route}, ${r.dep}–${r.arr}, $${r.price}) to your basket, seat ${r.seat}. Say "check out" to pay.`);
         return done(r.message || "Let me pull those flights up again.");
       }
       if (explicit) return done(`I showed ${n} flights — pick a number from 1 to ${n}, or say the flight number (e.g. ${session.lastSearch.flights[0].flight_no}).`);
@@ -2343,7 +2343,7 @@ function deterministicAgent(text, session) {
     if (!pickNo && has("latest", "last flight", "evening", "night", "later one")) pickNo = fl.slice().sort((a, b) => String(b.dep).localeCompare(String(a.dep)))[0].flight_no;
     if (pickNo) {
       const r = run("select_flight", { flight_no: pickNo });
-      if (r.ok) return done(`Added ${r.flight_no} (${r.route}, ${r.dep}–${r.arr}, €${r.price}) to your basket, seat ${r.seat}. Say "check out" to pay.`);
+      if (r.ok) return done(`Added ${r.flight_no} (${r.route}, ${r.dep}–${r.arr}, $${r.price}) to your basket, seat ${r.seat}. Say "check out" to pay.`);
     }
   }
   // checkout / pay — confirm payment for the queued flight (express, search, or usual)
@@ -2355,7 +2355,7 @@ function deterministicAgent(text, session) {
   const shortYes = queued && /^(yes|yep|yeah|sure|ok|okay|confirm|go ahead|do it|proceed|pay|please pay|pay it|let'?s do it|sounds good|confirm it)[\s.!]*$/i.test(q.trim());
   if (payConfirm || shortYes) {
     const r = run("checkout", {});
-    if (r.ok) return done(`✅ Payment confirmed — booking ${r.pnr}. ${r.route}, departing ${r.dep}. €${r.total} settled (voucher €${r.split.voucher} · ${r.split.miles.toLocaleString()} miles · card €${r.split.card}). Your confirmation is on screen now.`);
+    if (r.ok) return done(`✅ Payment confirmed — booking ${r.pnr}. ${r.route}, departing ${r.dep}. $${r.total} settled (voucher $${r.split.voucher} · ${r.split.miles.toLocaleString()} miles · card $${r.split.card}). Your confirmation is on screen now.`);
     return done(r.message || "Pick a flight first and I'll check you out.");
   }
   // add / remove extras
@@ -2390,7 +2390,7 @@ function deterministicAgent(text, session) {
     const looksLikeFollowup = followDate && (/\b(how about|what about|and|same|that route|those|again|instead|make it|change.*date|different date|for the|on the)\b/.test(q) || q.trim().split(/\s+/).length <= 6);
     if (ls && ls.dest && followDate && !namesNewCity && looksLikeFollowup) {
       const r = run("search_flights", { origin: ls.origin, dest: ls.dest, date: followDate });
-      if (r.ok) { const lo = Math.min(...r.flights.map(f => f.price)); return done(`Found ${r.flights.length} flights ${cityName(r.origin)}→${r.city} on ${r.date}, from €${lo}. Pick one below, or say a flight number to add it.`); }
+      if (r.ok) { const lo = Math.min(...r.flights.map(f => f.price)); return done(`Found ${r.flights.length} flights ${cityName(r.origin)}→${r.city} on ${r.date}, from $${lo}. Pick one below, or say a flight number to add it.`); }
       return done(r.message || "I couldn't find that route on that date — want to try another date?");
     }
   }
@@ -2444,7 +2444,7 @@ function deterministicAgent(text, session) {
       const sh = r.shaped || {};
       const noun = sh.mode === "cheap" ? "cheapest " : sh.mode === "early" ? "earliest " : sh.mode === "late" ? "latest " : "";
       const shown = sh.n && sh.n < sh.total ? `Showing the ${sh.n} ${noun}of ${sh.total} flights` : `Found ${r.flights.length} flights`;
-      return done(`${shown} ${cityName(r.origin)}→${r.city} on ${r.date}, from €${lo}. Pick one below, or say a flight number to add it.`);
+      return done(`${shown} ${cityName(r.origin)}→${r.city} on ${r.date}, from $${lo}. Pick one below, or say a flight number to add it.`);
     }
     if (r.available_destinations) return done(`${r.message} From ${cityName(origin)} you can fly to ${r.available_destinations.slice(0, 6).map(d => d.city).join(", ")} and more.`);
     return done(r.message || "Tell me the route (e.g. 'Lisbon to Madrid') and I'll search.");
@@ -2616,38 +2616,38 @@ app.post("/api/ai/agent", async (req, res) => {
 // shared by the home screen + WhatsApp so the story is identical across channels.
 app.get("/api/stopover", (req, res) => {
   const u = db.prepare("SELECT first_name, tier, home_airport, affinity, affinity_label FROM users WHERE id=?").get(req.uid) || {};
-  const home = u.home_airport || "OPO";
-  const hub = home === "LIS" ? "OPO" : "LIS";        // stop in the Portugal hub you're not based at
+  const home = u.home_airport || "MIA";
+  const hub = home === "JFK" ? "MIA" : "JFK";        // stop in the hub you're not based at
   const nights = 3;
   const HOTELS = {
-    LIS: { name: "Hotel Avenida Palace", area: "Avenida da Liberdade", price: 80 },
-    OPO: { name: "Hotel Infante Sagres", area: "Ribeira", price: 72 },
+    JFK: { name: "Midtown Grand", area: "Manhattan", price: 189 },
+    MIA: { name: "Bayside Grand", area: "Downtown Miami", price: 129 },
   };
-  const hotel = { ...(HOTELS[hub] || HOTELS.LIS) };
+  const hotel = { ...(HOTELS[hub] || HOTELS.MIA) };
   hotel.nights = nights; hotel.total = nights * hotel.price;
   const EXP = {
-    LIS: {
-      football: { title: "Matchday at Estádio da Luz", tag: "Football", price: 70 },
-      golf: { title: "Round at Penha Longa Resort", tag: "Golf", price: 120 },
-      music: { title: "Fado night in Alfama", tag: "Live music", price: 45 },
+    JFK: {
+      football: { title: "Matchday in the Meadowlands", tag: "Football", price: 95 },
+      golf: { title: "Round at Bethpage-style parkland", tag: "Golf", price: 140 },
+      music: { title: "Live session in Brooklyn", tag: "Live music", price: 55 },
       general: [
-        { title: "Time Out Market food crawl", tag: "Food", price: 35 },
-        { title: "Belém & Jerónimos Monastery", tag: "Culture", price: 25 },
-        { title: "Sintra palaces day trip", tag: "Day trip", price: 60 },
+        { title: "Chelsea Market food crawl", tag: "Food", price: 40 },
+        { title: "Statue of Liberty & harbor sail", tag: "Culture", price: 35 },
+        { title: "Hudson Valley day trip", tag: "Day trip", price: 65 },
       ],
     },
-    OPO: {
-      football: { title: "Matchday at Estádio do Dragão", tag: "Football", price: 65 },
-      golf: { title: "Round at Oporto Golf Club", tag: "Golf", price: 110 },
-      music: { title: "Live session at Casa da Música", tag: "Live music", price: 40 },
+    MIA: {
+      football: { title: "Matchday at Gardens Stadium", tag: "Football", price: 85 },
+      golf: { title: "Round at Blue Lagoon links", tag: "Golf", price: 120 },
+      music: { title: "Live set in Wynwood", tag: "Live music", price: 45 },
       general: [
-        { title: "Port wine cellar tasting", tag: "Wine", price: 30 },
-        { title: "Douro river cruise", tag: "River", price: 28 },
-        { title: "Ribeira & Livraria Lello walk", tag: "Culture", price: 20 },
+        { title: "Little Havana food walk", tag: "Food", price: 30 },
+        { title: "Everglades airboat morning", tag: "Adventure", price: 45 },
+        { title: "Art Deco district walk", tag: "Culture", price: 20 },
       ],
     },
   };
-  const hubExp = EXP[hub] || EXP.LIS;
+  const hubExp = EXP[hub] || EXP.MIA;
   const hero = hubExp[u.affinity] || null;
   const experiences = [hero, ...hubExp.general].filter(Boolean).slice(0, 3);
   res.json({
@@ -2667,13 +2667,13 @@ app.get("/api/stopover", (req, res) => {
 // offer shows on the home screen and on WhatsApp. Rotates weekly (stable within a week).
 app.get("/api/offers/today", (req, res) => {
   const u = db.prepare("SELECT first_name, tier, home_airport, miles FROM users WHERE id=?").get(req.uid) || {};
-  const home = u.home_airport || "OPO";
+  const home = u.home_airport || "MIA";
   const ranked = db.prepare(
     "SELECT f.dest d, COUNT(*) c FROM bookings b JOIN flights f ON b.flight_no=f.flight_no WHERE b.user_id=? AND b.status!='cancelled' AND f.dest!=? GROUP BY f.dest ORDER BY c DESC, f.dest"
   ).all(req.uid, home).map(r => r.d);
   let cands = ranked.length ? ranked
     : db.prepare("SELECT dest FROM routes WHERE origin=? ORDER BY base_fare ASC, dest LIMIT 4").all(home).map(r => r.dest);
-  if (!cands.length) cands = ["LIS"];
+  if (!cands.length) cands = ["JFK"];
   const weekIdx = Math.floor(Date.now() / (7 * 86400e3));     // rotates each week
   const dest = cands[weekIdx % cands.length];
   const route = db.prepare("SELECT base_fare FROM routes WHERE origin=? AND dest=?").get(home, dest) || {};
@@ -2694,8 +2694,8 @@ app.get("/api/offers/today", (req, res) => {
     badge: "Offer of the week",
     origin: home, dest, originCity: cityName(home), destCity: cityName(dest),
     price, was: base, discountPct, tier, milesPerk, perk, reason,
-    title: `${cityName(dest)} from €${price}`,
-    detail: `${cityName(home)} → ${cityName(dest)} · was €${base}, now €${price}. ${perk}.`,
+    title: `${cityName(dest)} from $${price}`,
+    detail: `${cityName(home)} → ${cityName(dest)} · was $${base}, now $${price}. ${perk}.`,
   });
 });
 
@@ -2706,7 +2706,7 @@ app.get("/api/offers/today", (req, res) => {
    personalization ledger can show precisely what drove it. Degrades to DB-only when CDP is off. */
 async function buildOfferTiles(identity, uid = SERVER_DEFAULT_UID) {
   const u = db.prepare("SELECT first_name, tier, miles, home_airport, member_no, affinity_label FROM users WHERE id=?").get(uid) || {};
-  const home = u.home_airport || "OPO";
+  const home = u.home_airport || "MIA";
   const tier = u.tier || "Gold";
   const milesBal = u.miles || 0;
   const milesPerk = tier === "Platinum" ? "Triple miles" : tier === "Silver" ? "25% bonus miles" : "Double miles";
@@ -2714,7 +2714,7 @@ async function buildOfferTiles(identity, uid = SERVER_DEFAULT_UID) {
   const flownRoute = routeRow ? routeRow.route : null;
   const flownCount = routeRow ? routeRow.c : 0;
   const bookedRow = db.prepare("SELECT f.dest d, COUNT(*) c FROM bookings b JOIN flights f ON b.flight_no=f.flight_no WHERE b.user_id=? AND b.status!='cancelled' GROUP BY f.dest ORDER BY c DESC LIMIT 1").get(uid);
-  const topDest = bookedRow ? bookedRow.d : (flownRoute ? flownRoute.split("→")[1] : "LIS");
+  const topDest = bookedRow ? bookedRow.d : (flownRoute ? flownRoute.split("→")[1] : "JFK");
   const topDestCity = cityName(topDest);
   const past = db.prepare("SELECT items_json FROM bookings WHERE user_id=? AND status!='cancelled'").all(uid);
   const aCounts = {};
@@ -2731,10 +2731,10 @@ async function buildOfferTiles(identity, uid = SERVER_DEFAULT_UID) {
   tiles.push({
     id: "miles_hotel", icon: "home", badge: `Because you're ${tier}`, via: "Loyalty (DB)",
     title: `Use miles to discount your ${topDestCity} hotel`,
-    detail: `Apply 8,000 mi to any 3-night stay in ${topDestCity} · save up to €80 instantly.`,
+    detail: `Apply 8,000 mi to any 3-night stay in ${topDestCity} · save up to $80 instantly.`,
     value: "8,000 mi", cta: "Apply", action: "miles",
     reason: `${tier} member with ${milesBal.toLocaleString()} miles · ${topDestCity} is your most-visited destination`,
-    signals: [`${tier} tier · ${milesBal.toLocaleString()} tap.miles available (users)`,
+    signals: [`${tier} tier · ${milesBal.toLocaleString()} miles available (users)`,
       bookedRow ? `${topDestCity} booked ${bookedRow.c}× (bookings)` : `${topDestCity} on record (travel_history)`],
   });
   if (flownRoute) {
@@ -2776,11 +2776,11 @@ async function buildOfferTiles(identity, uid = SERVER_DEFAULT_UID) {
     tiles.unshift({
       id: "complete_hold", icon: "lock", badge: "Held · price locked", via: "Fare hold (DB)",
       title: `Complete your held ${hcity} fare`,
-      detail: `Locked at €${Math.round(heldRow.total || 0)} until ${heldRow.expires_at} — finish before it expires.`,
+      detail: `Locked at $${Math.round(heldRow.total || 0)} until ${heldRow.expires_at} — finish before it expires.`,
       value: "Locked", cta: "Resume", action: "cart",
       flight: hf || null, price: Math.round(heldRow.total || hf?.price || 0), until: hUntil, duration: hMeta.duration || "48h",
       reason: `You placed a fare hold on ${heldRow.flight_no}; price protected until ${heldRow.expires_at}`,
-      signals: [`Active fare hold on ${heldRow.flight_no} (holds)`, `Locked total €${Math.round(heldRow.total || 0)} · expires ${heldRow.expires_at}`],
+      signals: [`Active fare hold on ${heldRow.flight_no} (holds)`, `Locked total $${Math.round(heldRow.total || 0)} · expires ${heldRow.expires_at}`],
     });
   }
   return { tier, home, cdpOn, audiences, segments: localSegs, tiles };
@@ -2795,7 +2795,7 @@ app.get("/api/offers/tiles", async (req, res) => {
    lets a demo show the customer the database evidence behind every personalization. */
 app.get("/api/admin/personalization", async (req, res) => {
   const u = db.prepare("SELECT member_no, email, full_name, tier, miles, home_airport, affinity_label FROM users WHERE id=?").get(req.uid) || {};
-  const home = u.home_airport || "OPO";
+  const home = u.home_airport || "MIA";
   let localSegs = [], audiences = [], localAud = [], cdpOn = false;
   try { localSegs = (segments.evaluate(u.member_no).segments) || []; } catch { }
   try {
@@ -2842,7 +2842,7 @@ app.get("/api/admin/personalization", async (req, res) => {
   const activeHolds = holdRows.filter(h => h.status === "active");
   if (activeHolds.length) surfaces.push({ surface: "Fare holds → complete-your-hold offer", items: activeHolds.map(h => ({
     title: `Held ${h.flight_no}`, via: "Fare hold (DB)", reason: `Price locked until ${h.expires_at} — surfaced as a resume-your-hold tile`,
-    signals: [`holds: ${h.flight_no} active · total €${Math.round(h.total || 0)} · expires ${h.expires_at}`],
+    signals: [`holds: ${h.flight_no} active · total $${Math.round(h.total || 0)} · expires ${h.expires_at}`],
   })) });
   res.json({
     identity: { member_no: u.member_no, email: u.email, name: u.full_name, tier: u.tier, miles: u.miles, home_airport: home, affinity: u.affinity_label },
@@ -2954,7 +2954,7 @@ app.get("/api/admin/cdp", (req, res) => {
   // How each behaviour becomes a standard CDP entity (the integration story)
   const cdpMapping = [
     { cdp: "Identity / Profile", standard: "Profile + Identifiers", source: "users, preferences", example: "userId, email, loyaltyTier, seatPref, savedCard" },
-    { cdp: "Traits", standard: "Computed traits / attributes", source: "travel_history, bookings", example: "lifetimeFlights, topRoute=OPO→LIS, homeAirport=OPO" },
+    { cdp: "Traits", standard: "Computed traits / attributes", source: "travel_history, bookings", example: "lifetimeFlights, topRoute=MIA→JFK, homeAirport=MIA" },
     { cdp: "Track Events", standard: "Behavioural events", source: "events, searches", example: "Flight Searched, Booking Completed, Checked In, Search Abandoned" },
     { cdp: "Audiences / Segments", standard: "Real-time audiences", source: "derived from events", example: "Abandoned-search, Gold-commuter, Lapsing-flyer" },
     { cdp: "Journeys", standard: "Orchestration", source: "email outbox + events", example: "Search → follow-up → offer (45s demo / hours in prod)" },
@@ -3034,9 +3034,9 @@ app.get("/api/admin/selftest", (req, res) => {
   add("Top destination signal", "Personalization", () => { const rows = db.prepare("SELECT f.dest d, COUNT(*) c FROM bookings b JOIN flights f ON b.flight_no=f.flight_no WHERE b.user_id=1 AND b.status!='cancelled' GROUP BY f.dest ORDER BY c DESC").all(); const top = rows[0]; return { ok: !!top && top.c >= 2, detail: top ? `${cityName(top.d)} booked ${top.c}×` : "none" }; });
 
   // — Search engine —
-  add("Search: route generation", "Search", () => { const f = getRoute("OPO", "LIS") ? generateFlights("OPO", "LIS", "2026-06-15") : []; return { ok: f.length > 0, detail: `${f.length} flights` }; });
-  add("Search: any network route (OPO→AMS)", "Search", () => { const f = getRoute("OPO", "AMS") ? generateFlights("OPO", "AMS", "2026-06-15") : []; return { ok: f.length > 0, detail: `${f.length} flights` }; });
-  add("List destinations from Lisbon", "Search", () => { const c = count("SELECT COUNT(*) c FROM routes WHERE origin='LIS'"); return { ok: c > 10, detail: `${c} cities from LIS` }; });
+  add("Search: route generation", "Search", () => { const f = getRoute("MIA", "JFK") ? generateFlights("MIA", "JFK", "2026-06-15") : []; return { ok: f.length > 0, detail: `${f.length} flights` }; });
+  add("Search: any network route (MIA→AMS)", "Search", () => { const f = getRoute("MIA", "AMS") ? generateFlights("MIA", "AMS", "2026-06-15") : []; return { ok: f.length > 0, detail: `${f.length} flights` }; });
+  add("List destinations from New York", "Search", () => { const c = count("SELECT COUNT(*) c FROM routes WHERE origin='JFK'"); return { ok: c > 10, detail: `${c} cities from JFK` }; });
 
   // — Integrations —
   add("AI (Xperion AI) connectivity", "Integrations", () => ({ ok: hasKey(), detail: hasKey() ? "live (API key found)" : "fallback mode — set ANTHROPIC_API_KEY" }));
@@ -3134,7 +3134,7 @@ app.post("/api/auth/register", (req, res) => {
   const uid = nextFreeUid();
   if (!uid) return res.status(409).json({ ok: false, error: "registration full — reset the demo to free slots" });
   const member_no = "XP-9900" + String(uid).padStart(2, "0");   // continues the 99000x sequence; resolvable by PSS/stitch
-  const home = (home_airport || "LIS").toUpperCase();
+  const home = (home_airport || "JFK").toUpperCase();
   // Blank, VALID users row — tier Member, miles 0, no card/affinity/voucher/history.
   db.prepare(`INSERT INTO users (id,member_no,first_name,full_name,email,phone,tier,miles,home_airport)
     VALUES (?,?,?,?,?,?,?,?,?)`).run(uid, member_no, first_name, first_name, email, phone || null, "Member", 0, home);
@@ -3305,7 +3305,7 @@ app.get("/api/admin/cdp/events", (req, res) => { res.json(cdpEvents.eventsState(
 // Fire one test event (current persona) at the streaming inlet — verifies the pipe live.
 app.post("/api/admin/cdp/event/test", async (req, res) => {
   const stage = (req.body && req.body.stage) || "results";
-  const r = await cdpEvents.streamEvent(stage, liveIdentity(), { origin: "OPO", destination: "LIS", travelDate: searchToday(), cabin: "Economy", channel: "Demo test", abandoned: false });
+  const r = await cdpEvents.streamEvent(stage, liveIdentity(), { origin: "MIA", destination: "JFK", travelDate: searchToday(), cabin: "Economy", channel: "Demo test", abandoned: false });
   res.json(r);
 });
 // Force streaming segmentation to MATERIALIZE membership for the demo personas. Batch-ingested
@@ -3325,7 +3325,7 @@ app.post("/api/admin/cdp/segments/materialize", async (req, res) => {
     let r;
     try {
       r = await cdpEvents.streamEvent(stage, { loyaltyId: u.member_no, email: u.email },
-        { origin: u.home_airport || "OPO", destination: "LIS", travelDate: searchToday(), cabin: "Economy", channel: "Segment materialize", abandoned: false });
+        { origin: u.home_airport || "MIA", destination: "JFK", travelDate: searchToday(), cabin: "Economy", channel: "Segment materialize", abandoned: false });
     } catch (e) { r = { ok: false, error: String((e && e.message) || e) }; }
     results.push({ persona: k, loyaltyId: u.member_no, ok: r && r.ok !== false, detail: r });
   }
@@ -3372,7 +3372,7 @@ app.post("/api/pss/test", async (req, res) => {
     pss_ref: b.pss_ref || ("PSS-" + Date.now()),
     pnr: b.pnr || ("PSS" + Math.random().toString(36).slice(2, 7).toUpperCase()),
     loyalty_id: u.member_no, email: u.email, full_name: u.full_name,
-    origin: b.origin || u.home_airport || "OPO", destination: b.destination || "LIS",
+    origin: b.origin || u.home_airport || "MIA", destination: b.destination || "JFK",
     travel_date: b.travel_date || searchToday(), flight_no: b.flight_no || "XP1927",
     seat: b.seat || "—", cabin: b.cabin || "Economy",
     amount: b.amount != null ? b.amount : 540, currency: "EUR",
@@ -3407,7 +3407,7 @@ app.post("/api/pss/book", async (req, res) => {
     pss_ref: b.pss_ref || ("PSS-" + Date.now()),
     pnr: b.pnr || ("PSS" + Math.random().toString(36).slice(2, 7).toUpperCase()),
     loyalty_id: ident.member_no, email: ident.email, full_name: ident.full_name, phone: ident.phone,
-    origin: b.origin || ident.home_airport || "OPO", destination: b.destination || "LIS",
+    origin: b.origin || ident.home_airport || "MIA", destination: b.destination || "JFK",
     travel_date: b.travel_date || searchToday(), flight_no: b.flight_no || "XP1927",
     seat: b.seat || "—", cabin: b.cabin || "Economy",
     amount: b.amount != null ? b.amount : 540, currency: "EUR",

@@ -610,7 +610,7 @@ export function registerSeatMapTools(getCtx) {
 /* ── test / console access ───────────────────────────────────────────────── */
 // Exposed so the tools can be exercised from DevTools without an agent — useful
 // when demoing on a browser where the flag is unavailable:
-//   await window.__tapTools.run("search_flights", { origin: "OPO", dest: "LIS" })
+//   await window.__tapTools.run("search_flights", { origin: "MIA", dest: "JFK" })
 if (typeof window !== "undefined") {
   window.__tapTools = {
     run: runTool,

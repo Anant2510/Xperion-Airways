@@ -36,10 +36,10 @@ function resolvePersona(v) {
 // One-tap demo sign-in so any of the three members can be reached without typing the exact
 // email (which is why login kept defaulting to whoever was active — usually Daniel).
 const DEMO = [
-  { id: "daniel", name: "Daniel Ferreira", tier: "Gold", hub: "Porto · OPO", email: "anant.direct2links+daniel@gmail.com" },
-  { id: "sofia", name: "Sofia Marques", tier: "Silver", hub: "Lisbon · LIS", email: "anant.direct2links+sofia@gmail.com" },
+  { id: "daniel", name: "Daniel Ferreira", tier: "Gold", hub: "Miami · MIA", email: "anant.direct2links+daniel@gmail.com" },
+  { id: "sofia", name: "Sofia Marques", tier: "Silver", hub: "New York · JFK", email: "anant.direct2links+sofia@gmail.com" },
   { id: "lars", name: "Lars Andersen", tier: "Platinum", hub: "Frankfurt · FRA", email: "anant.direct2links+lars@gmail.com" },
-  { id: "maria", name: "Maria Costa", tier: "Bronze", hub: "Lisbon · LIS", email: "anant.direct2links+maria@gmail.com" },
+  { id: "maria", name: "Maria Costa", tier: "Bronze", hub: "New York · JFK", email: "anant.direct2links+maria@gmail.com" },
   { id: "james", name: "James Bennett", tier: "Gold", hub: "London · LHR", email: "anant.direct2links+james@gmail.com" },
 ];
 
@@ -54,7 +54,7 @@ export function LoginModal({ profile, onClose, onLogin, onRegister, onAdminLogin
   const [firstName, setFirstName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [home, setHome] = useState("LIS");
+  const [home, setHome] = useState("JFK");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   // One-tap chips are data-driven from /api/personas so EVERY seeded persona appears
@@ -64,7 +64,7 @@ export function LoginModal({ profile, onClose, onLogin, onRegister, onAdminLogin
     let alive = true;
     api.get("/personas").then(d => {
       if (!alive || !d || !Array.isArray(d.personas) || !d.personas.length) return;
-      const CITY = { OPO: "Porto", LIS: "Lisbon", FRA: "Frankfurt", LHR: "London", GRU: "São Paulo", BOS: "Boston", JFK: "New York", MAD: "Madrid", CDG: "Paris", FCO: "Rome", BCN: "Barcelona" };
+      const CITY = { MIA: "Miami", JFK: "New York", FRA: "Frankfurt", LHR: "London", GRU: "São Paulo", BOS: "Boston", JFK: "New York", MAD: "Madrid", CDG: "Paris", FCO: "Rome", MCO: "Orlando" };
       setDemoList(d.personas.map(p => ({ id: p.id, name: p.label || p.id, tier: p.tier, hub: (CITY[p.home] ? CITY[p.home] + " · " : "") + (p.home || "") })));
     }).catch(() => { });
     return () => { alive = false; };
@@ -106,7 +106,7 @@ export function LoginModal({ profile, onClose, onLogin, onRegister, onAdminLogin
     e?.preventDefault?.();
     const fn = (firstName || "").trim(), em = (regEmail || "").trim();
     if (!fn || !em) { setErr("First name and email are required."); return; }
-    run(() => onRegister({ first_name: fn, email: em, phone: (phone || "").trim() || undefined, home_airport: (home || "LIS").trim().toUpperCase() }));
+    run(() => onRegister({ first_name: fn, email: em, phone: (phone || "").trim() || undefined, home_airport: (home || "JFK").trim().toUpperCase() }));
   };
   const submitAdmin = (e) => {
     e?.preventDefault?.();
@@ -189,12 +189,12 @@ export function LoginModal({ profile, onClose, onLogin, onRegister, onAdminLogin
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="block text-[10px] font-bold tracking-wide uppercase text-ink-slate mb-1">Phone <span className="text-ink-faint normal-case font-medium">(optional)</span></span>
-                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+351 …"
+                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 …"
                   className="w-full bg-surface border border-line-strong rounded-xl px-3 py-2.5 text-[14px] focus:border-tap-green outline-none" />
               </label>
               <label className="block">
                 <span className="block text-[10px] font-bold tracking-wide uppercase text-ink-slate mb-1">Home airport</span>
-                <input value={home} onChange={e => setHome(e.target.value)} placeholder="LIS" maxLength={3}
+                <input value={home} onChange={e => setHome(e.target.value)} placeholder="JFK" maxLength={3}
                   className="w-full bg-surface border border-line-strong rounded-xl px-3 py-2.5 text-[14px] uppercase focus:border-tap-green outline-none" />
               </label>
             </div>

@@ -80,14 +80,14 @@ function wrap({ title, accent = GREEN, preheader = "", bodyHtml, cta }) {
 
 const { AIRPORTS } = require("./routes-data");
 const cityName = (c) => (AIRPORTS[c] && AIRPORTS[c].city) || c;
-const routeLabel = (f) => `${cityName(f.origin || "OPO")} → ${cityName(f.dest || "LIS")}`;
+const routeLabel = (f) => `${cityName(f.origin || "MIA")} → ${cityName(f.dest || "JFK")}`;
 
 const flightRow = (f) => `
   <table width="100%" style="background:#F2F6F3;border-radius:10px;margin:14px 0"><tr>
     <td style="padding:14px 18px">
-      <b style="font-size:18px;color:#0E1F18">${f.origin || "OPO"} ${f.dep}</b>
+      <b style="font-size:18px;color:#0E1F18">${f.origin || "MIA"} ${f.dep}</b>
       <span style="color:${GREEN};margin:0 8px">✈</span>
-      <b style="font-size:18px;color:#0E1F18">${f.dest || "LIS"} ${f.arr}</b>
+      <b style="font-size:18px;color:#0E1F18">${f.dest || "JFK"} ${f.arr}</b>
       <div style="font-size:12px;color:#6b7a73;margin-top:3px">${f.flight_no}${f.flight_date ? " · " + f.flight_date : ""}${(() => { try { const { db } = require("./db"); const pr = db.prepare("SELECT seat FROM preferences WHERE user_id=1").get(); return pr?.seat ? " · Seat " + pr.seat.split(" ")[0] : ""; } catch { return ""; } })()} · ${f.aircraft || ""}</div>
     </td>
   </tr></table>`;
@@ -127,7 +127,7 @@ const TEMPLATES = {
       title: `You're booked, ${r.name.split(" ")[0]}.`,
       preheader: "Instant confirmation — boarding pass arrives automatically 24h before.",
       bodyHtml: `Confirmation <b>${pnr}</b> — paid in one transaction:
-        voucher <b>−€${pay.voucher_amt.toFixed(2)}</b>, ${pay.miles_used.toLocaleString()} miles <b>−€${pay.miles_amt.toFixed(2)}</b>, ${card} <b>€${pay.card_amt.toFixed(2)}</b>.
+        voucher <b>−$${pay.voucher_amt.toFixed(2)}</b>, ${pay.miles_used.toLocaleString()} miles <b>−$${pay.miles_amt.toFixed(2)}</b>, ${card} <b>$${pay.card_amt.toFixed(2)}</b>.
         ${flightRow(f)}
         Auto check-in is ON — your boarding pass will simply appear in the app 24 hours before departure. Your preferences are pre-applied to seat ${seat}.`,
       cta: { label: "Manage this booking" },
@@ -139,7 +139,7 @@ const TEMPLATES = {
     html: wrap({
       title: "Your extras are added.",
       accent: GOLD,
-      bodyHtml: `We've added these to <b>${pnr}</b>${total > 0 ? ` and charged <b>€${Number(total).toFixed(2)}</b> to your saved card` : " at no extra charge"}:
+      bodyHtml: `We've added these to <b>${pnr}</b>${total > 0 ? ` and charged <b>$${Number(total).toFixed(2)}</b> to your saved card` : " at no extra charge"}:
         <ul style="padding-left:18px;margin:10px 0">${names.map(n => `<li style="margin:6px 0">${n}</li>`).join("")}</ul>
         ${f ? flightRow(f) : ""}
         They're on your booking now — view them any time under Manage my booking.`,
@@ -206,11 +206,11 @@ const TEMPLATES = {
     const label = duration === "7d" ? "7 days" : duration === "48h" ? "48 hours" : "24 hours";
     const deductible = duration === "7d" ? "" : " — fully deductible from your final fare";
     return ({
-      subject: `Held for you — ${f.flight_no} locked for ${label} (€${(fee || 0).toFixed(2)} fee)`,
+      subject: `Held for you — ${f.flight_no} locked for ${label} ($${(fee || 0).toFixed(2)} fee)`,
       html: wrap({
         title: "Take your time. We'll hold it.",
         accent: GOLD,
-        bodyHtml: `Your fare on ${f.flight_no} — flight, seat ${me().seat} and current taxes — is locked at <b>€${(total || 0).toFixed(2)}</b> for <b>${label}</b>. Hold fee <b>€${(fee || 0).toFixed(2)}</b>${deductible}.
+        bodyHtml: `Your fare on ${f.flight_no} — flight, seat ${me().seat} and current taxes — is locked at <b>$${(total || 0).toFixed(2)}</b> for <b>${label}</b>. Hold fee <b>$${(fee || 0).toFixed(2)}</b>${deductible}.
         ${flightRow(f)}
         The price won't move even if fares rise. We'll remind you 6 hours before the hold expires on <b>${expires}</b>.`,
         cta: { label: "Complete booking" },
@@ -221,7 +221,7 @@ const TEMPLATES = {
     subject: `Cancelled ✓ ${b.pnr} — refund issued instantly`,
     html: wrap({
       title: "Cancelled, refunded, done.",
-      bodyHtml: `Booking <b>${b.pnr}</b> (${b.flight_no}) is cancelled.${pay ? `<br/><br/>Your refund went back the way you paid, instantly: ${pay.miles_used > 0 ? `<b>${pay.miles_used.toLocaleString()} miles</b> restored, ` : ""}${pay.voucher_amt > 0 ? `voucher <b>€${pay.voucher_amt.toFixed(2)}</b> reactivated, ` : ""}<b>€${pay.card_amt.toFixed(2)}</b> returned to your ${me().card}.` : ""}<br/><br/>No forms, no waiting on hold.`,
+      bodyHtml: `Booking <b>${b.pnr}</b> (${b.flight_no}) is cancelled.${pay ? `<br/><br/>Your refund went back the way you paid, instantly: ${pay.miles_used > 0 ? `<b>${pay.miles_used.toLocaleString()} miles</b> restored, ` : ""}${pay.voucher_amt > 0 ? `voucher <b>$${pay.voucher_amt.toFixed(2)}</b> reactivated, ` : ""}<b>$${pay.card_amt.toFixed(2)}</b> returned to your ${me().card}.` : ""}<br/><br/>No forms, no waiting on hold.`,
       cta: { label: "Book a new trip" },
     }),
   }),
@@ -238,25 +238,25 @@ const TEMPLATES = {
     subject: `Still thinking about ${destCity}? Your ${originCity} → ${destCity} search is saved`,
     html: wrap({
       title: `Pick up where you left off, ${me().first}.`,
-      preheader: `Your ${originCity} → ${destCity} search is saved — fares from €${low}.`,
+      preheader: `Your ${originCity} → ${destCity} search is saved — fares from $${low}.`,
       bodyHtml: `You were looking at <b>${originCity} (${origin}) → ${destCity} (${dest})</b> for ${date}.
         ${flightRow({ origin, dest, dep: "", arr: "", flight_no: "Xperion", aircraft: "" })}
-        We've saved it to your trips so you can finish in one tap — fares currently from <b>€${low}</b>.
-        Your seat ${me().seat} and usual extras are pre-set${me().voucher ? `, and you can pay with your €${me().voucher} voucher + miles` : ""}.`,
+        We've saved it to your trips so you can finish in one tap — fares currently from <b>$${low}</b>.
+        Your seat ${me().seat} and usual extras are pre-set${me().voucher ? `, and you can pay with your $${me().voucher} voucher + miles` : ""}.`,
       cta: { label: `Resume ${destCity} search` },
     }),
   }),
   search_offer: ({ origin, dest, originCity, destCity, date, low, discount }) => ({
-    subject: `A little nudge for ${destCity} — €${discount} off if you book today`,
+    subject: `A little nudge for ${destCity} — $${discount} off if you book today`,
     accent: GOLD,
     html: wrap({
-      title: `Your ${destCity} trip, with €${discount} off.`,
+      title: `Your ${destCity} trip, with $${discount} off.`,
       accent: GOLD,
       preheader: `Exclusive ${me().tier} offer on your saved ${originCity} → ${destCity} search.`,
-      bodyHtml: `Still on the fence about <b>${originCity} → ${destCity}</b>? As a Xperion Miles ${me().tier} member, here's <b>€${discount} off</b> if you book this route today.
+      bodyHtml: `Still on the fence about <b>${originCity} → ${destCity}</b>? As a Xperion Miles ${me().tier} member, here's <b>$${discount} off</b> if you book this route today.
         ${flightRow({ origin, dest, dep: "", arr: "", flight_no: "Xperion", aircraft: "" })}
-        That brings your fare to about <b>€${Math.max(0, low - discount)}</b> before voucher and miles. The offer is held for 48 hours — one tap to book.`,
-      cta: { label: `Book ${destCity} with €${discount} off` },
+        That brings your fare to about <b>$${Math.max(0, low - discount)}</b> before voucher and miles. The offer is held for 48 hours — one tap to book.`,
+      cta: { label: `Book ${destCity} with $${discount} off` },
     }),
   }),
 };

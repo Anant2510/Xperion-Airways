@@ -11,7 +11,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
   console.log('\n== 1. CUSTOMER-SPECIFIC PRICING ==');
-  const cmp = await J('/api/retail/compare?origin=LIS&dest=OPO&date=2026-09-20');
+  const cmp = await J('/api/retail/compare?origin=JFK&dest=MIA&date=2026-09-20');
   const totals = (cmp.b.personas || []).map((p) => p.total);
   const distinct = new Set(totals).size;
   ok('compare endpoint returns personas', cmp.s === 200 && totals.length >= 5, `${totals.length} personas`);
@@ -22,7 +22,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   console.log('\n== 2. PROPENSITY MODEL ==');
   const m = await J('/api/retail/model');
   ok('model trained from real rows', m.b.ready === true && m.b.training_rows > 50, `${m.b.training_rows} rows`);
-  const of1 = await P('/api/retail/offers', { origin: 'LIS', dest: 'OPO', date: '2026-09-20' });
+  const of1 = await P('/api/retail/offers', { origin: 'JFK', dest: 'MIA', date: '2026-09-20' });
   const top1 = of1.b.offers?.[0]?.propensity_top || [];
   ok('offers carry propensity scores + drivers', top1.length > 0 && top1.every((t) => t.p === null || (t.p >= 0 && t.p <= 1)), JSON.stringify(top1.map((t) => `${t.code}:${t.p}`)));
 
@@ -47,7 +47,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   console.log('\n== 5. ORDER-ITEM SERVICING as Bronze persona (bundle + per-item cancel) ==');
   await P('/api/persona', { persona: 'maria', id: 'maria' });
-  const ofm = await P('/api/retail/offers', { origin: 'LIS', dest: 'OPO', date: '2026-09-22', limit: 1 });
+  const ofm = await P('/api/retail/offers', { origin: 'JFK', dest: 'MIA', date: '2026-09-22', limit: 1 });
   const om = ofm.b.offers?.[0];
   ok('Bronze offer has PAID ancillaries + propensity ranking', (om?.propensity_top || []).some((t) => t.price > 0), JSON.stringify((om?.propensity_top || []).map((t) => `${t.code}:€${t.price}@p${t.p}`)));
   ok('dynamic bundle composed with saving', !om?.bundle || (om.bundle.items.length >= 2 && om.bundle.saving > 0), om?.bundle ? `${om.bundle.items.join('+')} save €${om.bundle.saving}` : 'no bundle');
@@ -67,7 +67,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   console.log('\n== 6. EXPIRY → REPRICE AT COMMIT ==');
   const ttl = Number(process.env.TEST_TTL_MS || 0);
   if (ttl) {
-    const of2 = await P('/api/retail/offers', { origin: 'LIS', dest: 'OPO', date: '2026-09-21', limit: 1 });
+    const of2 = await P('/api/retail/offers', { origin: 'JFK', dest: 'MIA', date: '2026-09-21', limit: 1 });
     const off2 = of2.b.offers[0];
     const serverTtl = new Date(off2.expires_at).getTime() - Date.now();
     if (serverTtl > ttl + 5000) {
@@ -88,21 +88,23 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   console.log('\n== 7. CHAT BUG FIX — session booking wins ==');
   const sid = 'fix-' + Date.now(); const msgs = [];
   const turn = async (t) => { msgs.push({ role: 'user', content: t }); const r = await P('/api/ai/agent', { messages: msgs, sessionId: sid }); msgs.push({ role: 'assistant', content: r.b.reply || '' }); return r.b; };
-  await turn('flights from Lisbon to Porto on 20 September');
-  await turn('select XP919');
+  const sr = await turn('flights from New York to Miami on 20 September');
+  const srFlights = ((sr.cards || []).find((c) => c.type === 'flights') || {}).flights || [];
+  const pickFno = (srFlights[1] || srFlights[0] || {}).flight_no || 'XP1931';
+  await turn('select ' + pickFno);
   const payT = await turn('pay');
   const newPnr = /XP[A-Z0-9]{4}/.exec(payT.reply || '')?.[0];
   const ci = await turn('check me in');
   const gb = await turn('what is my booking');
   ok('checkout returns order_id on the card', !!(payT.cards || []).find((c) => c.type === 'confirmation')?.order_id, (payT.cards || [])[0]?.order_id);
-  ok('check-in refers to the booking JUST made (Lisbon→Porto)', /Lisbon→Porto/.test(ci.reply || ''), (ci.reply || '').slice(0, 90));
+  ok('check-in refers to the booking JUST made (New York→Miami)', /New York→Miami/.test(ci.reply || ''), (ci.reply || '').slice(0, 90));
   ok('"my booking" returns the new PNR', newPnr && (gb.reply || '').includes(newPnr), `${newPnr} in "${(gb.reply || '').slice(0, 80)}"`);
 
   console.log('\n== 8. LEGACY CHANNELS BECOME ORDERS ==');
   const orders = await J('/api/retail/orders');
   const chatOrder = (orders.b.orders || []).find((o) => o.channel === 'chat');
   ok('chat checkout produced an Order', !!chatOrder, chatOrder?.id);
-  const payDirect = await P('/api/pay', { flight_no: 'XP919', total: 70, card_amt: 70, items: ['lounge'], date: '2026-09-20' });
+  const payDirect = await P('/api/pay', { flight_no: pickFno, total: 70, card_amt: 70, items: ['lounge'], date: '2026-09-20' });
   ok('/api/pay returns order_id (web strangler hook)', payDirect.s === 200 && !!payDirect.b.order_id, payDirect.b.order_id);
 
   console.log('\n== 9. REGRESSIONS ==');

@@ -34,15 +34,15 @@ function deriveFares(price, cabinPrices) {
       feats: [["Cabin bag · 8kg", 1], ["Checked bag", 0], ["Seat selection", 0], ["Changes", 0], ["Refund", 0], ["Earn 50% miles", 1]] },
     { key: "Classic", cabin: "Economy", tag: "MOST POPULAR", tone: "lime", sub: "1 bag · seat select · 50% refundable", price: classic,
       was: Math.round(classic * 1.2), milesOpt: { mi: roundTo(classic * 110, 500), cash: Math.round(classic * 0.18) },
-      feats: [["Cabin bag · 8kg", 1], ["Checked bag · 23kg", 1], ["Standard seat select", 1], ["Changes for €40", 1], ["50% refund", 1], ["Earn 100% miles", 1]] },
+      feats: [["Cabin bag · 8kg", 1], ["Checked bag · 23kg", 1], ["Standard seat select", 1], ["Changes for $40", 1], ["50% refund", 1], ["Earn 100% miles", 1]] },
     { key: "Plus", cabin: "Economy", tag: "GOLD VALUE", tone: "gold", sub: "2 bags · extra legroom · full flex", price: plus,
       feats: [["Cabin bag + priority", 1], ["2× checked bags · 23kg", 1], ["Extra legroom seat", 1], ["Free changes", 1], ["Full refund · taxes only fee", 1], ["Earn 125% miles", 1]] },
     { key: "Premium", cabin: "Premium", tag: "MORE SPACE", tone: "lime", sub: "Premium cabin · wider seat · priority", price: premium,
-      feats: [["Premium wider seat · recline", 1], ["2× checked bags · 23kg", 1], ["Priority check-in & boarding", 1], ["Welcome drink · enhanced meal", 1], ["Changes for €25", 1], ["Earn 150% miles", 1]] },
+      feats: [["Premium wider seat · recline", 1], ["2× checked bags · 23kg", 1], ["Priority check-in & boarding", 1], ["Welcome drink · enhanced meal", 1], ["Changes for $25", 1], ["Earn 150% miles", 1]] },
     { key: "Premium Flex", cabin: "Premium", tag: "FLEXIBLE", tone: "gold", sub: "Premium cabin · fully flexible", price: premFlex,
       feats: [["Premium wider seat · recline", 1], ["2× checked bags · 23kg", 1], ["Priority everything · fast-track", 1], ["Welcome drink · enhanced meal", 1], ["Free changes & full refund", 1], ["Earn 175% miles", 1]] },
     { key: "Executive", cabin: "Business", tag: "BUSINESS", tone: "dark", sub: "Business cabin · lounge · premium meal", price: exec,
-      feats: [["Lounge access", 1], ["2× checked bags · 32kg", 1], ["Business seat 1A–3F", 1], ["Changes for €60", 1], ["Priority boarding · fast-track", 1], ["Earn 200% miles", 1]] },
+      feats: [["Lounge access", 1], ["2× checked bags · 32kg", 1], ["Business seat 1A–3F", 1], ["Changes for $60", 1], ["Priority boarding · fast-track", 1], ["Earn 200% miles", 1]] },
     { key: "Executive Flex", cabin: "Business", tag: "FULL FLEX", tone: "dark", sub: "Business · fully flexible & refundable", price: execFlex,
       feats: [["Lounge access", 1], ["2× checked bags · 32kg", 1], ["Business seat 1A–3F", 1], ["Free changes & full refund", 1], ["Priority boarding · fast-track", 1], ["Earn 250% miles", 1]] },
   ];
@@ -120,8 +120,8 @@ export function Results({ shared, params, go }) {
   const mLeg = isMulti ? (mLegs[legIndex] || mLegs[0]) : null;
   const leg = isMulti ? ("leg" + legIndex) : (params.leg === "inbound" ? "inbound" : "outbound");
   // resolve this leg's route + date
-  const origin = isMulti ? (mLeg.origin || "LIS") : ((leg === "inbound" ? params.dest : params.origin) || (leg === "inbound" ? "LIS" : "OPO"));
-  const dest = isMulti ? (mLeg.dest || "OPO") : ((leg === "inbound" ? params.origin : params.dest) || (leg === "inbound" ? "OPO" : "LIS"));
+  const origin = isMulti ? (mLeg.origin || "JFK") : ((leg === "inbound" ? params.dest : params.origin) || (leg === "inbound" ? "JFK" : "MIA"));
+  const dest = isMulti ? (mLeg.dest || "MIA") : ((leg === "inbound" ? params.origin : params.dest) || (leg === "inbound" ? "MIA" : "JFK"));
   const date = isMulti ? (mLeg.date || _isoPlus(3 + legIndex * 3)) : ((leg === "inbound" ? params.ret : params.date) || _isoPlus(leg === "inbound" ? 5 : 3));
   const retDate = params.ret || _isoPlus(5);
   const pax = +params.pax || 1, cabin = params.cabin || "Economy";
@@ -129,7 +129,7 @@ export function Results({ shared, params, go }) {
   // Express Checkout (which skips the Passenger step) and tripTotals() both fell back to 1 adult.
   if (!trip.pnr && trip.pax !== pax) trip.pax = pax;
   const adults = +params.adults || pax, children = +params.children || 0, infants = +params.infants || 0;   // #13 — passenger-type breakdown
-  // Pay-with-Miles: when the toggle is on, price each fare as "miles you have + € remaining".
+  // Pay-with-Miles: when the toggle is on, price each fare as "miles you have + $ remaining".
   const payMilesOn = params.payMiles === true || params.payMiles === "true";
   const userMiles = +(shared?.profile?.user?.miles) || 0;
   const tier = shared?.profile?.user?.tier || "";
@@ -378,7 +378,7 @@ export function Results({ shared, params, go }) {
               <DualRange key={`dep-${clearNonce}`} min={0} max={24} lo={F.depLo} hi={F.depHi} onLo={v => setF({ ...F, depLo: v })} onHi={v => setF({ ...F, depHi: v })} fmtLo={`${String(F.depLo).padStart(2, "0")}:00`} fmtHi={`${String(F.depHi).padStart(2, "0")}:00`} />
             </FGroup>
             <FGroup title="Price range">
-              <DualRange key={`price-${clearNonce}`} min={0} max={800} step={10} lo={F.priceLo} hi={F.priceHi} onLo={v => setF({ ...F, priceLo: v })} onHi={v => setF({ ...F, priceHi: v })} fmtLo={EUR(F.priceLo)} fmtHi={F.priceHi >= 800 ? "€800+" : EUR(F.priceHi)} />
+              <DualRange key={`price-${clearNonce}`} min={0} max={800} step={10} lo={F.priceLo} hi={F.priceHi} onLo={v => setF({ ...F, priceLo: v })} onHi={v => setF({ ...F, priceHi: v })} fmtLo={EUR(F.priceLo)} fmtHi={F.priceHi >= 800 ? "$800+" : EUR(F.priceHi)} />
             </FGroup>
             <FGroup title="Airline">
               {["Xperion Airways", "Xperion Express", "Partners"].map(a => <Chk key={a} label={a} count={counts.airline[a] || 0} on={F.airlines.has(a)} set={v => { const s = new Set(F.airlines); v ? s.add(a) : s.delete(a); setF({ ...F, airlines: s }); }} />)}
@@ -441,7 +441,7 @@ export function Results({ shared, params, go }) {
                     <div className="text-[11px] font-bold uppercase tracking-wide text-lime">Smart re-rank · paired with your outbound</div>
                     <div className="text-[14px] font-semibold mt-1">Re-ordered for the cheapest pairing, best gate-to-gate time, and full {shared?.profile?.user?.tier || "Gold"} benefits on both legs.</div>
                     <div className="flex flex-wrap gap-2 mt-2.5">
-                      {["+ Bundle bag −€15", "+ Same-day return", "+ Earn 2× miles"].map(t => <span key={t} className="text-[11px] font-semibold rounded-full border border-white/25 px-2.5 py-1 text-lime">{t}</span>)}
+                      {["+ Bundle bag −$15", "+ Same-day return", "+ Earn 2× miles"].map(t => <span key={t} className="text-[11px] font-semibold rounded-full border border-white/25 px-2.5 py-1 text-lime">{t}</span>)}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
@@ -527,7 +527,7 @@ export function Results({ shared, params, go }) {
                 {isMulti
                   ? <div className="text-[13px] font-semibold truncate">{String(sel.flight.flight_no).replace(/([A-Za-z]+)\s*(\d+)/, "$1 $2")} {sel.flight.origin}→{sel.flight.dest} · {EUR(sel.price)}{(trip.legs || []).filter(Boolean).length > 1 && <> &nbsp;·&nbsp; itinerary <span className="text-lime">{EUR((trip.legs || []).filter(Boolean).reduce((s, l) => s + l.price, 0))}</span></>}</div>
                   : leg === "inbound" && trip.outbound
-                  ? <div className="text-[13px] font-semibold truncate">{String(trip.outbound.flight.flight_no).replace(/([A-Za-z]+)\s*(\d+)/, "$1 $2")} {trip.outbound.flight.origin}→{trip.outbound.flight.dest} {EUR(trip.outbound.price)} &nbsp;+&nbsp; {String(sel.flight.flight_no).replace(/([A-Za-z]+)\s*(\d+)/, "$1 $2")} {sel.flight.origin}→{sel.flight.dest} {EUR(sel.price)} &nbsp;=&nbsp; <span className="text-lime">{EUR(trip.outbound.price + sel.price - 15)}</span> <span className="text-white/60 font-normal">(bundle saved €15)</span></div>
+                  ? <div className="text-[13px] font-semibold truncate">{String(trip.outbound.flight.flight_no).replace(/([A-Za-z]+)\s*(\d+)/, "$1 $2")} {trip.outbound.flight.origin}→{trip.outbound.flight.dest} {EUR(trip.outbound.price)} &nbsp;+&nbsp; {String(sel.flight.flight_no).replace(/([A-Za-z]+)\s*(\d+)/, "$1 $2")} {sel.flight.origin}→{sel.flight.dest} {EUR(sel.price)} &nbsp;=&nbsp; <span className="text-lime">{EUR(trip.outbound.price + sel.price - 15)}</span> <span className="text-white/60 font-normal">(bundle saved $15)</span></div>
                   : <div className="text-[13px] font-semibold">{String(sel.flight.flight_no).replace(/([A-Za-z]+)\s*(\d+)/, "$1 $2")} · {new Date((leg === "inbound" ? retDate : date) + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · {sel.flight.dep} → {sel.flight.arr} · {EUR(sel.price)}</div>}
               </> : <>
                 <div className={cx("font-bold", leg !== "inbound" && "text-white/50")} style={leg === "inbound" ? { fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 600, letterSpacing: "1px", color: "#9EFC38" } : { fontSize: "10px", letterSpacing: "1px" }}>{isMulti ? `Select flight ${legIndex + 1} of ${mLegs.length}` : (leg === "inbound" ? "OUTBOUND ✓ · INBOUND: select to continue" : "Select your outbound flight")}</div>
@@ -695,7 +695,7 @@ function CompareFareModal({ f, selectedKey, originCity, destCity, onClose, onPic
     { label: "Seat selection", sub: "Standard", cells: ["add:8", "add:8", "inc", "inc", "incXL"] },
     { label: "Meal", sub: "Hot · drinks", cells: ["add:14", "Snack", "Hot", "Hot+wine", "Premium menu"] },
     { label: "Refund", sub: "If you cancel", cells: ["pct:0", "pct:0", "ok:80%", "ok:90%", "ok:100%"] },
-    { label: "Change fee", sub: "Per change", cells: ["€80", "€55", "€20", "€0", "€0"] },
+    { label: "Change fee", sub: "Per change", cells: ["$80", "$55", "$20", "$0", "$0"] },
     { label: "Miles earned", sub: "Status miles", cells: ["25%", "50%", "100%", "150%", "200%"] },
     { label: "Lounge access", sub: "Xperion Premium", cells: ["no", "no", "no", "no", "inc"] },
   ];
@@ -704,7 +704,7 @@ function CompareFareModal({ f, selectedKey, originCity, destCity, onClose, onPic
     if (v === "inc2") return <span className="inline-flex items-center gap-0.5 text-tap-green font-semibold"><Icon name="check" size={14} /> ×2</span>;
     if (v === "incXL") return <span className="inline-flex items-center gap-0.5 text-tap-green font-semibold"><Icon name="check" size={14} /> XL</span>;
     if (v === "no") return <span className="text-ink-faint">—</span>;
-    if (v.startsWith("add:")) return <span className="text-ink-faint">— €{v.slice(4)}</span>;
+    if (v.startsWith("add:")) return <span className="text-ink-faint">— ${v.slice(4)}</span>;
     if (v.startsWith("ok:")) return <span className="text-tap-greenDeep font-semibold inline-flex items-center gap-0.5"><Icon name="check" size={13} /> {v.slice(3)}</span>;
     if (v.startsWith("pct:")) return <span className="text-ink-faint">— {v.slice(4)}</span>;
     return <span className="text-ink">{v}</span>;
@@ -761,7 +761,7 @@ function CompareFareModal({ f, selectedKey, originCity, destCity, onClose, onPic
         <div className="flex items-center gap-4 mt-3 text-[11px] text-ink-muted flex-wrap">
           <span className="inline-flex items-center gap-1"><Icon name="check" size={12} className="text-tap-green" /> Included</span>
           <span className="text-ink-faint">— Not included</span>
-          <span className="text-ink-faint">— €N Available as paid add-on</span>
+          <span className="text-ink-faint">— $N Available as paid add-on</span>
         </div>
         <div className="flex items-center justify-between mt-5 gap-3">
           <Btn variant="outline" onClick={onClose}>← Back to results</Btn>
@@ -821,7 +821,7 @@ function FlightCard({ f, expanded, sel, lowest, pairing, pairingInfo, originCity
         </div>{/* end flight details row */}
         {/* price panel — light grey, right-aligned */}
         <div className="text-right min-w-[151px] self-stretch flex flex-col justify-center border-l" style={{ borderColor: "#ECECEF", background: isSelected ? "rgba(249,249,250,1)" : "transparent", margin: "-20px -20px -20px 0", padding: "22px 24px 22px 20px", borderTopRightRadius: "14px", borderBottomRightRadius: "14px" }}>
-          {pairing && <div className="text-[11px] font-bold text-tap-greenDeep">BUNDLE −€15</div>}
+          {pairing && <div className="text-[11px] font-bold text-tap-greenDeep">BUNDLE −$15</div>}
           {payMilesOn && milesFor ? (() => { const mm = milesFor(selFare.price); return (
             <><div className="text-[18px] font-bold text-tap-greenDeep v2-num leading-tight">{mm.full ? `${miles(mm.miles)} mi` : `${miles(mm.miles)} mi + ${EUR(mm.cash)}`}</div>
             <div className="text-[10px] text-ink-faint v2-num">or {EUR(selFare.price)} cash</div></>); })() : (<>

@@ -32,6 +32,8 @@ const REGION_MIN = {
   "Africa|North America": 660, "Africa|South America": 600, "Africa|Asia": 600,
   "Middle East|North America": 720, "Middle East|South America": 780, "Asia|Middle East": 420,
   "Asia|North America": 720, "North America|South America": 510, "Asia|South America": 900,
+  "Oceania|Oceania": 240, "Asia|Oceania": 540, "North America|Oceania": 780,
+  "Europe|Oceania": 1260, "South America|Oceania": 780, "Africa|Oceania": 840, "Middle East|Oceania": 840,
 };
 function synthRoute(origin, dest) {
   const A = AIRPORTS[origin], B = AIRPORTS[dest];
@@ -40,7 +42,7 @@ function synthRoute(origin, dest) {
   let h = 0; for (const c of origin + dest) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const duration_min = Math.round(base * (0.85 + (h % 30) / 100));   // deterministic ±15% per pair
   const base_fare = Math.max(55, Math.round(duration_min * 0.86));
-  const region = A.region === "Europe" && B.region === "Europe" ? "Europe" : "Intercontinental";
+  const region = A.region === B.region ? "Regional" : "Intercontinental";
   return { origin, dest, duration_min, base_fare, region };
 }
 
@@ -54,34 +56,35 @@ function getRoute(origin, dest) {
 
 // The home shuttle has fixed, real flight numbers so the persona's history lines up
 const PINNED = {
-  "OPO-LIS": [
-    { flight_no: "XP1921", dep: "06:35", arr: "07:30", aircraft: "A320neo", price: 74, seats_left: 31 },
-    { flight_no: "XP1927", dep: "07:05", arr: "08:00", aircraft: "A321neo", price: 86, seats_left: 18, recommended: 1 },
-    { flight_no: "XP1931", dep: "09:10", arr: "10:05", aircraft: "A320neo", price: 62, seats_left: 44, lowest: 1 },
-    { flight_no: "XP1937", dep: "12:40", arr: "13:35", aircraft: "A319",    price: 69, seats_left: 52 },
-    { flight_no: "XP1943", dep: "18:35", arr: "19:30", aircraft: "A321neo", price: 91, seats_left: 12 },
+  // Daniel's business shuttle (Miami ⇄ New York) — his usual is XP1927
+  "MIA-JFK": [
+    { flight_no: "XP1921", dep: "06:35", arr: "09:30", aircraft: "A321neo", price: 118, seats_left: 31 },
+    { flight_no: "XP1927", dep: "07:05", arr: "10:00", aircraft: "A321neo", price: 134, seats_left: 18, recommended: 1 },
+    { flight_no: "XP1931", dep: "09:10", arr: "12:05", aircraft: "A321neo", price: 104, seats_left: 44, lowest: 1 },
+    { flight_no: "XP1937", dep: "12:40", arr: "15:35", aircraft: "A320neo", price: 112, seats_left: 52 },
+    { flight_no: "XP1943", dep: "18:35", arr: "21:30", aircraft: "A321neo", price: 141, seats_left: 12 },
   ],
-  // Sofia's leisure commute (Lisbon ⇄ Madeira) — her usual is XP1696
-  "LIS-FNC": [
-    { flight_no: "XP1690", dep: "07:30", arr: "09:10", aircraft: "A320neo", price: 52, seats_left: 41, lowest: 1 },
-    { flight_no: "XP1696", dep: "10:20", arr: "12:00", aircraft: "A321neo", price: 58, seats_left: 23, recommended: 1 },
-    { flight_no: "XP1698", dep: "15:10", arr: "16:50", aircraft: "A319",    price: 66, seats_left: 38 },
-    { flight_no: "XP1702", dep: "19:25", arr: "21:05", aircraft: "A320neo", price: 61, seats_left: 29 },
+  // Sofia's leisure commute (New York ⇄ Cancún) — her usual is XP1696
+  "JFK-CUN": [
+    { flight_no: "XP1690", dep: "07:30", arr: "11:30", aircraft: "A321neo", price: 152, seats_left: 41, lowest: 1 },
+    { flight_no: "XP1696", dep: "10:20", arr: "14:20", aircraft: "A321neo", price: 168, seats_left: 23, recommended: 1 },
+    { flight_no: "XP1698", dep: "15:10", arr: "19:10", aircraft: "A320neo", price: 176, seats_left: 38 },
+    { flight_no: "XP1702", dep: "19:25", arr: "23:25", aircraft: "A321neo", price: 161, seats_left: 29 },
   ],
-  // Sofia's in-progress search (Lisbon → Barcelona) — her saved journey is on XP1042
-  "LIS-BCN": [
-    { flight_no: "XP1038", dep: "06:50", arr: "08:35", aircraft: "A320neo", price: 66, seats_left: 44, lowest: 1 },
-    { flight_no: "XP1042", dep: "11:30", arr: "13:15", aircraft: "A321neo", price: 74, seats_left: 21, recommended: 1 },
-    { flight_no: "XP1050", dep: "18:40", arr: "20:25", aircraft: "A320neo", price: 70, seats_left: 33 },
+  // Sofia's in-progress search (New York → Orlando) — her saved journey is on XP1042
+  "JFK-MCO": [
+    { flight_no: "XP1038", dep: "06:50", arr: "09:40", aircraft: "A320neo", price: 96,  seats_left: 44, lowest: 1 },
+    { flight_no: "XP1042", dep: "11:30", arr: "14:20", aircraft: "A321neo", price: 114, seats_left: 21, recommended: 1 },
+    { flight_no: "XP1050", dep: "18:40", arr: "21:30", aircraft: "A320neo", price: 108, seats_left: 33 },
   ],
-  // Lars's transatlantic commute (Frankfurt ⇄ New York) — his usual is XP201 (Business)
+  // Lars's transatlantic commute (Frankfurt ⇄ New York) — his usual is XP211 (Business)
   "FRA-JFK": [
-    { flight_no: "XP201", dep: "10:40", arr: "13:30", aircraft: "A330neo", price: 612, seats_left: 14, recommended: 1 },
-    { flight_no: "XP207", dep: "16:55", arr: "19:45", aircraft: "A339",    price: 668, seats_left: 9 },
+    { flight_no: "XP211", dep: "10:40", arr: "13:30", aircraft: "A330neo", price: 612, seats_left: 14, recommended: 1 },
+    { flight_no: "XP217", dep: "16:55", arr: "19:45", aircraft: "A339",    price: 668, seats_left: 9 },
   ],
   "JFK-FRA": [
-    { flight_no: "XP202", dep: "18:20", arr: "08:05", aircraft: "A330neo", price: 598, seats_left: 12, recommended: 1, lowest: 1 },
-    { flight_no: "XP208", dep: "21:30", arr: "11:15", aircraft: "A339",    price: 640, seats_left: 17 },
+    { flight_no: "XP212", dep: "18:20", arr: "08:05", aircraft: "A330neo", price: 598, seats_left: 12, recommended: 1, lowest: 1 },
+    { flight_no: "XP218", dep: "21:30", arr: "11:15", aircraft: "A339",    price: 640, seats_left: 17 },
   ],
 };
 

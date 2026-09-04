@@ -12,16 +12,16 @@ const NAV = [
   { key: "home", label: "Book", tk: "book" },
   { key: "stopover", label: "Portugal Stopover" },
   { key: "extras", label: "Trip Extras", tk: "extras" },
-  { key: "miles", label: "Xperion Xperion Miles" },
+  { key: "miles", label: "Xperion Miles" },
   { key: "ai", label: "Xperion AI" },
 ];
 
 const SEARCH_DESTS = [
-  { code: "BCN", city: "Barcelona", country: "Spain" }, { code: "MAD", city: "Madrid", country: "Spain" },
+  { code: "MCO", city: "Orlando", country: "Spain" }, { code: "MAD", city: "Madrid", country: "Spain" },
   { code: "LHR", city: "London", country: "United Kingdom" }, { code: "CDG", city: "Paris", country: "France" },
   { code: "FCO", city: "Rome", country: "Italy" }, { code: "AMS", city: "Amsterdam", country: "Netherlands" },
-  { code: "BRU", city: "Brussels", country: "Belgium" }, { code: "FNC", city: "Funchal", country: "Madeira" },
-  { code: "LIS", city: "Lisbon", country: "Portugal" }, { code: "OPO", city: "Porto", country: "Portugal" },
+  { code: "BRU", city: "Brussels", country: "Belgium" }, { code: "CUN", city: "Cancún", country: "Cancún" },
+  { code: "JFK", city: "New York", country: "Portugal" }, { code: "MIA", city: "Miami", country: "Portugal" },
   { code: "GRU", city: "São Paulo", country: "Brazil" }, { code: "GIG", city: "Rio de Janeiro", country: "Brazil" },
   { code: "JFK", city: "New York", country: "United States" }, { code: "MXP", city: "Milan", country: "Italy" },
   { code: "MUC", city: "Munich", country: "Germany" }, { code: "BER", city: "Berlin", country: "Germany" },
@@ -50,7 +50,7 @@ function SearchOverlay({ go, upcoming = [], onClose }) {
   };
   const ql = q.trim().toLowerCase();
   const matches = ql ? SEARCH_DESTS.filter(d => d.city.toLowerCase().includes(ql) || d.code.toLowerCase().includes(ql) || d.country.toLowerCase().includes(ql)).slice(0, 6) : [];
-  const popular = SEARCH_DESTS.filter(d => ["BCN", "LHR", "CDG", "FCO", "MAD", "AMS"].includes(d.code));
+  const popular = SEARCH_DESTS.filter(d => ["MCO", "LHR", "CDG", "FCO", "MAD", "AMS"].includes(d.code));
   const Row = ({ d, sub }) => (
     <button onClick={() => pick(d)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-mute text-left">
       <span className="w-9 h-9 rounded-lg bg-lime-tint text-tap-greenDeep inline-flex items-center justify-center shrink-0"><Icon name="plane" size={16} /></span>
@@ -64,7 +64,7 @@ function SearchOverlay({ go, upcoming = [], onClose }) {
       <div className="relative mx-auto mt-[8vh] w-[92%] max-w-[640px] bg-surface rounded-2xl shadow-pop border border-line overflow-hidden" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
           <Icon name="search" size={18} className="text-ink-muted shrink-0" />
-          <input ref={overlayInputRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Search destinations, e.g. Barcelona" className="flex-1 bg-transparent outline-none text-[15px] text-ink placeholder:text-ink-faint" />
+          <input ref={overlayInputRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Search destinations, e.g. Orlando" className="flex-1 bg-transparent outline-none text-[15px] text-ink placeholder:text-ink-faint" />
           <button onClick={onClose} className="text-[11px] font-semibold text-ink-muted border border-line rounded px-2 py-1 hover:bg-surface-mute shrink-0">Esc</button>
         </div>
         <div className="max-h-[62vh] overflow-y-auto p-2">
@@ -100,7 +100,7 @@ export function TopNav({ route, go, profile, loggedIn, onLogin, onLogout }) {
     window.addEventListener("tap:booking-changed", onChange);
     return () => { alive = false; window.removeEventListener("tap:booking-changed", onChange); };
   }, [loggedIn]);
-  const CITY = { OPO: "Porto", LIS: "Lisbon", MAD: "Madrid", LHR: "London", CDG: "Paris", FNC: "Funchal", BCN: "Barcelona", FCO: "Rome", GIG: "Rio de Janeiro", GRU: "São Paulo", JFK: "New York", EWR: "Newark", BRU: "Brussels", AMS: "Amsterdam", ORY: "Paris" };
+  const CITY = { MIA: "Miami", JFK: "New York", MAD: "Madrid", LHR: "London", CDG: "Paris", CUN: "Cancún", MCO: "Orlando", FCO: "Rome", GIG: "Rio de Janeiro", GRU: "São Paulo", JFK: "New York", EWR: "Newark", BRU: "Brussels", AMS: "Amsterdam", ORY: "Paris" };
   const cityOf = (c) => CITY[c] || c || "";
   const upcomingTrips = (trips || []).filter(b => (b.days_to_go ?? 0) >= 0 && b.status !== "cancelled");
   const nextTrip = upcomingTrips.slice().sort((a, b) => (a.days_to_go ?? 99) - (b.days_to_go ?? 99))[0];
@@ -145,7 +145,7 @@ export function TopNav({ route, go, profile, loggedIn, onLogin, onLogout }) {
           <div className="relative hidden lg:block">
             <button onClick={() => setCurMenu(m => !m)} className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[12px] font-semibold text-ink hover:bg-surface-mute"><Icon name="globe" size={15} /> {cur} <Icon name="chevron" size={13} /></button>
             {curMenu && <div className="absolute right-0 mt-2 w-44 bg-surface rounded-xl border border-line shadow-pop py-1 text-[13px] z-50">
-              {[["PT · EUR", "EUR", "pt-PT"], ["EN · EUR", "EUR", "en"], ["EN · USD", "USD", "en"], ["EN · GBP", "GBP", "en"], ["BR · BRL", "BRL", "pt-BR"]].map(([c, code, lang]) => <button key={c} onClick={() => pickCur(c, code, lang)} className={cx("w-full text-left px-3 py-2 hover:bg-surface-mute flex items-center justify-between", c === cur && "font-semibold text-tap-greenDeep")}>{c}{c === cur && <Icon name="check" size={13} />}</button>)}
+              {[["US · USD", "USD", "en"], ["EU · EUR", "EUR", "en"], ["EN · GBP", "GBP", "en"], ["BR · BRL", "BRL", "pt-BR"], ["PT · EUR", "EUR", "pt-PT"]].map(([c, code, lang]) => <button key={c} onClick={() => pickCur(c, code, lang)} className={cx("w-full text-left px-3 py-2 hover:bg-surface-mute flex items-center justify-between", c === cur && "font-semibold text-tap-greenDeep")}>{c}{c === cur && <Icon name="check" size={13} />}</button>)}
             </div>}
           </div>
           <button onClick={() => go("wishlist")} className="hidden lg:inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[13px] font-medium text-ink-muted hover:text-ink hover:bg-surface-mute" title="Wishlist"><Icon name="heart" size={16} /> Wishlist</button>

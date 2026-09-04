@@ -210,7 +210,7 @@ function DatePicker({ value, onChange, min, placeholder = "Select date", buttonC
 function SearchWidget({ airports = [], onSearch, defaults = {} }) {
   const [tab, setTab] = useState("Flights");
   const [type, setType] = useState("round");
-  const [from, setFrom] = useState(defaults.origin || "OPO");
+  const [from, setFrom] = useState(defaults.origin || "MIA");
   const [to, setTo] = useState(defaults.dest || "");
   const [date, setDate] = useState(defaults.date || "");
   const [ret, setRet] = useState(defaults.ret || "");
@@ -354,12 +354,12 @@ function QuickActions({ go }) {
 // 2 · Portugal Stopover
 function StopoverSection({ go }) {
   const bullets = [
-    "Free stopover in Lisbon or Porto for up to 10 days",
+    "Free stopover in New York or Miami for up to 10 days",
     "25% off domestic flights when you go beyond your stopover city",
     "Special offers at 150+ hotels, restaurants, tours and museums",
   ];
   const steps = [
-    ["Choose your route", "Any Xperion flight via Lisbon or Porto"],
+    ["Choose your route", "Any Xperion flight via New York or Miami"],
     ["Add a free stopover", "One click during booking — no fare difference"],
     ["Pick hotels & experiences", "Save with 150+ partner offers"],
   ];
@@ -368,7 +368,7 @@ function StopoverSection({ go }) {
       <div>
         <Eyebrow>Portugal Stopover · Included</Eyebrow>
         <h2 className="text-[30px] sm:text-[34px] font-black tracking-tight leading-[1.06] mt-2">Turn your layover into a mini vacation.</h2>
-        <p className="text-[14px] text-ink-muted mt-3 max-w-md">Stop in Lisbon or Porto for up to 10 days at no extra airfare. Explore the country, then continue to your final destination.</p>
+        <p className="text-[14px] text-ink-muted mt-3 max-w-md">Stop in New York or Miami for up to 10 days at no extra airfare. Explore the country, then continue to your final destination.</p>
         <ul className="mt-5 space-y-2.5">
           {bullets.map((b) => (
             <li key={b} className="flex items-start gap-2.5 text-[13px]"><span className="mt-0.5 shrink-0 text-tap-green"><Icon name="check" size={16} /></span><span>{b}</span></li>
@@ -381,7 +381,7 @@ function StopoverSection({ go }) {
       </div>
       <div className="relative">
         <div className="relative rounded-3xl overflow-hidden h-[280px] sm:h-[320px]">
-          <Img seed="lisbon-stopover" src={ASSET + "book-lisbon-porto.jpg"} alt="Lisbon" className="absolute inset-0 w-full h-full" />
+          <Img seed="lisbon-stopover" src={ASSET + "book-lisbon-porto.jpg"} alt="New York" className="absolute inset-0 w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
           <span className="absolute top-4 right-4 flex flex-col items-center justify-center w-16 h-16 rounded-full bg-lime text-ink shadow-pop">
             <span className="text-[20px] font-black leading-none v2-num">10</span><span className="text-[9px] font-bold uppercase tracking-wide">days</span>
@@ -405,7 +405,7 @@ function TripExtrasSection({ go }) {
   const cards = [
     { icon: "home", title: "Hotels with miles built-in", body: "Book partner hotels worldwide. Earn voa.miles every night and redeem them on future stays.", cta: "Find hotels" },
     { icon: "swap", title: "Cars, transfers & parking", body: "Airport pickups, daily rentals and parking, with loyalty perks on every Hertz, Sixt and Europcar booking.", cta: "Book a ride" },
-    { icon: "star", title: "Experiences & insurance", body: "Skip-the-line tours, food trails and wine country, plus travel insurance from €4/day.", cta: "Browse experiences" },
+    { icon: "star", title: "Experiences & insurance", body: "Skip-the-line tours, food trails and wine country, plus travel insurance from $4/day.", cta: "Browse experiences" },
   ];
   return (
     <section className="mt-16">
@@ -434,17 +434,17 @@ function TripExtrasSection({ go }) {
   );
 }
 
-// 4 · Xperion Xperion Miles loyalty
+// 4 · Xperion Miles loyalty
 function LoyaltySection({ go }) {
   const bullets = [
     "Earn and redeem across voa and 26 Star Alliance partners worldwide",
     "Silver, Gold and Navigator tiers with lounge access, priority everything and bonus miles",
-    "Club Xperion Xperion Miles — monthly miles and benefits, even if you don't fly often",
+    "Club Xperion Miles — monthly miles and benefits, even if you don't fly often",
   ];
   return (
     <section className="mt-16 grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
       <div>
-        <Eyebrow>Xperion Xperion Miles · Loyalty Program</Eyebrow>
+        <Eyebrow>Xperion Miles · Loyalty Program</Eyebrow>
         <h2 className="text-[30px] sm:text-[34px] font-black tracking-tight leading-[1.06] mt-2">Fly more. Earn more. <span className="text-ink-faint">Experience more.</span></h2>
         <ul className="mt-5 space-y-2.5">
           {bullets.map((b) => (
@@ -452,7 +452,7 @@ function LoyaltySection({ go }) {
           ))}
         </ul>
         <div className="flex flex-wrap items-center gap-4 mt-6">
-          <Btn variant="primary" onClick={() => go("miles")}>Join Xperion Xperion Miles <Icon name="arrow" size={14} /></Btn>
+          <Btn variant="primary" onClick={() => go("miles")}>Join Xperion Miles <Icon name="arrow" size={14} /></Btn>
           <button onClick={() => go("miles")} className="text-[13px] font-semibold text-tap-greenDeep hover:underline inline-flex items-center gap-1">See all benefits <Icon name="arrow" size={14} /></button>
         </div>
       </div>
@@ -471,7 +471,7 @@ function LoyaltySection({ go }) {
         </div>
         <div className="relative mt-5 rounded-2xl bg-black/15 p-3.5">
           <div className="text-[10px] uppercase tracking-wide text-white/50">Ways to use your miles</div>
-          <div className="flex items-center justify-between mt-1"><div className="text-[13px] font-bold">Redeem 8,000 mi → €80 off any stay</div><span className="text-[11px] text-lime font-bold">Apply</span></div>
+          <div className="flex items-center justify-between mt-1"><div className="text-[13px] font-bold">Redeem 8,000 mi → $80 off any stay</div><span className="text-[11px] text-lime font-bold">Apply</span></div>
         </div>
       </div>
     </section>
@@ -482,7 +482,7 @@ function LoyaltySection({ go }) {
 function LocalizationSection() {
   const markets = [
     { key: "BR", label: "Brasil", cur: "BRL", sym: "R$", rate: 5.6 },
-    { key: "PT", label: "Portugal", cur: "EUR", sym: "€", rate: 1 },
+    { key: "PT", label: "Portugal", cur: "USD", sym: "$", rate: 1 },
     { key: "US", label: "United States", cur: "USD", sym: "$", rate: 1.08 },
   ];
   const [m, setM] = useState(markets[0]);
@@ -504,11 +504,11 @@ function LocalizationSection() {
         </div>
       </div>
       <div>
-        <div className="text-[10px] font-bold uppercase tracking-wide text-ink-faint mb-2">Popular from Porto</div>
+        <div className="text-[10px] font-bold uppercase tracking-wide text-ink-faint mb-2">Popular from Miami</div>
         <div className="rounded-2xl border border-line bg-surface divide-y divide-line overflow-hidden">
           {base.map((eur, i) => (
             <div key={i} className="flex items-center justify-between px-4 py-3 hover:bg-surface-mute">
-              <div className="flex items-center gap-3"><span className="text-[11px] font-bold text-ink-faint v2-num">0{i + 1}</span><span className="text-[13px] font-semibold">Lisbon → Porto</span></div>
+              <div className="flex items-center gap-3"><span className="text-[11px] font-bold text-ink-faint v2-num">0{i + 1}</span><span className="text-[13px] font-semibold">New York → Miami</span></div>
               <span className="text-[13px] font-bold v2-num">from {fmt(eur)}</span>
             </div>
           ))}
@@ -521,9 +521,9 @@ function LocalizationSection() {
 // 6 · Testimonials
 function TestimonialsSection() {
   const reviews = [
-    { name: "Carla M.", loc: "Porto, PT", tag: "Stopover", initials: "CM", text: "Did a 6-day stopover in Porto on the way to Italy — wine tours, the Douro Valley, and zero extra airfare. Booking the bundle took 90 seconds." },
-    { name: "Tomás A.", loc: "Lisbon, PT", tag: "Gold tier", initials: "TA", text: "The crew on the Lisbon overnight is genuinely friendly. Boarded with priority as Gold, slept the whole way, woke up to a Lisbon sunrise." },
-    { name: "Erin J.", loc: "Porto, PT", tag: "Trip Extras", initials: "EJ", text: "Brought my whole trip into one app — flight, Hertz pickup at LIS, a hotel in Alfama, a wine class. Earned miles on every leg." },
+    { name: "Carla M.", loc: "Miami, PT", tag: "Stopover", initials: "CM", text: "Did a 6-day stopover in Miami on the way to Italy — wine tours, the Napa Valley, and zero extra airfare. Booking the bundle took 90 seconds." },
+    { name: "Tomás A.", loc: "New York, PT", tag: "Gold tier", initials: "TA", text: "The crew on the New York overnight is genuinely friendly. Boarded with priority as Gold, slept the whole way, woke up to a New York sunrise." },
+    { name: "Erin J.", loc: "Miami, PT", tag: "Trip Extras", initials: "EJ", text: "Brought my whole trip into one app — flight, Hertz pickup at JFK, a hotel in Wynwood, a wine class. Earned miles on every leg." },
   ];
   return (
     <section className="mt-16">
@@ -553,7 +553,7 @@ function TestimonialsSection() {
 // 7 · App download
 function AppSection() {
   const stats = [["4.8", "App Store rating"], ["2.1M+", "Active travelers"], ["90s", "Avg booking time"]];
-  const timeline = [["plane", "Flight VO 084", "On time"], ["swap", "Hertz pickup at LIS", "Confirmed"], ["home", "Hotel Avenida, Alfama", "Check-in 14:00"]];
+  const timeline = [["plane", "Flight VO 084", "On time"], ["swap", "Hertz pickup at JFK", "Confirmed"], ["home", "Hotel Avenida, Wynwood", "Check-in 14:00"]];
   return (
     <section className="mt-16 mb-4 rounded-3xl bg-surface-navy text-white overflow-hidden">
       <div className="grid lg:grid-cols-2 gap-8 items-center p-8 sm:p-10">
@@ -574,8 +574,8 @@ function AppSection() {
             <div className="rounded-[26px] bg-surface overflow-hidden">
               <div className="bg-surface-navy text-white px-4 pt-4 pb-5">
                 <div className="text-[10px] text-white/50">Boarding pass</div>
-                <div className="flex items-center justify-between mt-1"><div className="text-[18px] font-black">GRU</div><span className="text-white/50"><Icon name="plane" size={16} /></span><div className="text-[18px] font-black">LIS</div></div>
-                <div className="flex items-center justify-between text-[10px] text-white/60 mt-1"><span>São Paulo</span><span>Lisbon</span></div>
+                <div className="flex items-center justify-between mt-1"><div className="text-[18px] font-black">GRU</div><span className="text-white/50"><Icon name="plane" size={16} /></span><div className="text-[18px] font-black">JFK</div></div>
+                <div className="flex items-center justify-between text-[10px] text-white/60 mt-1"><span>São Paulo</span><span>New York</span></div>
                 <div className="flex items-center justify-between mt-3 text-[10px]"><span className="text-white/50">Gate <b className="text-white">B14</b></span><span className="text-white/50">Seat <b className="text-white">4A</b></span><span className="text-white/50">Boards <b className="text-white">22:30</b></span></div>
               </div>
               <div className="p-3 space-y-2">
@@ -633,8 +633,8 @@ function HomeAIPanel({ go, aiOn, onToggle, shared }) {
 function HeroSearch({ u, pat, cityOf, airports, go }) {
   const retDefault = (() => { if (!pat.recommendedDate) return ""; const d = new Date(pat.recommendedDate); d.setDate(d.getDate() + 5); return d.toISOString().slice(0, 10); })();
   const [type, setType] = useState("round");
-  const [from, setFrom] = useState(pat.origin || u.home_airport || "OPO");
-  const [to, setTo] = useState(pat.dest || "LIS");
+  const [from, setFrom] = useState(pat.origin || u.home_airport || "MIA");
+  const [to, setTo] = useState(pat.dest || "JFK");
   const [date, setDate] = useState(pat.recommendedDate || "");
   const [ret, setRet] = useState(retDefault);
   const [pax, setPax] = useState(1);
@@ -645,7 +645,7 @@ function HeroSearch({ u, pat, cityOf, airports, go }) {
   // Multi-city, airline-standard: an ordered list of legs (flight 1 is the main row above;
   // these are legs 2…5). Each leg chains from the previous arrival, has its own date, and
   // there is NO return date — a return is just another leg.
-  const [xLegs, setXLegs] = useState([{ from: pat.dest || "LIS", to: "", date: "" }]);
+  const [xLegs, setXLegs] = useState([{ from: pat.dest || "JFK", to: "", date: "" }]);
   const setXLeg = (i, patch) => setXLegs(a => a.map((l, n) => n === i ? { ...l, ...patch } : l));
   const lastStop = (i) => (i === 0 ? to : (xLegs[i - 1]?.to || to));            // where the previous leg landed
   const addLeg = () => setXLegs(a => a.length >= 4 ? a : [...a, { from: (a[a.length - 1]?.to || to), to: "", date: "" }]);
@@ -798,7 +798,7 @@ export function Home({ shared, go }) {
   const cityOf = (c) => airports.find(a => a.code === c)?.city || c;
   const resumable = journey && journey.stage && journey.stage !== "search" && journey.dest;
   const upcoming = bookings.filter(b => b.status === "confirmed" && b.days_to_go >= 0).sort((a, b) => a.days_to_go - b.days_to_go)[0] || bookings.find(b => b.status === "confirmed");
-  const search = () => go("results", { origin: pat.origin || u.home_airport, dest: pat.dest || "LIS", date: pat.recommendedDate, type: "round", pax: 1, cabin: "Economy" });
+  const search = () => go("results", { origin: pat.origin || u.home_airport, dest: pat.dest || "JFK", date: pat.recommendedDate, type: "round", pax: 1, cabin: "Economy" });
 
 
   // Offer tiles: "Resume" on a held fare must rebuild the basket first. The hold lives in the
@@ -880,16 +880,16 @@ export function Home({ shared, go }) {
         <div className="mx-auto max-w-content px-6 py-20 text-center">
           <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase px-3 py-1 rounded-full bg-gradient-to-br from-[#E8C75A] to-[#C9A227] text-ink"><Icon name="spark" size={11} /> Your Xperion Miles journey · {u.tier} member</span>
           <h2 className="text-[44px] font-black leading-tight mt-5">{prog.next ? <>You're {miles(prog.toGo)} miles<br />from {prog.next}, {u.first_name}.</> : <>You're at the top tier, {u.first_name}.</>}</h2>
-          <p className="text-white/60 text-[14px] mt-3 max-w-2xl mx-auto">One Lisbon stopover + one European return gets you there — and unlocks free upgrades and lounge access for two.</p>
+          <p className="text-white/60 text-[14px] mt-3 max-w-2xl mx-auto">One New York stopover + one European return gets you there — and unlocks free upgrades and lounge access for two.</p>
           <div className="mt-8 rounded-[24px] p-9 text-left" style={{ background: "rgba(13,13,13,0.2)", border: "1px solid rgba(255,255,255,0.06)" }}>
             <div className="flex flex-wrap items-center justify-center gap-8 text-center">
-              <div><div className="text-[10px] uppercase tracking-wide text-white/50">Current balance</div><div className="text-[34px] font-black v2-num">{miles(u.miles)} <span className="text-[14px] font-medium text-white/50">tap.miles</span></div><div className="text-[11px] mt-1"><TierBadge tier={u.tier} /> {prog.next && <span className="text-white/50 ml-1">You · {miles(prog.toGo)} mi to <span className="text-lime font-bold uppercase">{prog.next}</span></span>}</div></div>
+              <div><div className="text-[10px] uppercase tracking-wide text-white/50">Current balance</div><div className="text-[34px] font-black v2-num">{miles(u.miles)} <span className="text-[14px] font-medium text-white/50">miles</span></div><div className="text-[11px] mt-1"><TierBadge tier={u.tier} /> {prog.next && <span className="text-white/50 ml-1">You · {miles(prog.toGo)} mi to <span className="text-lime font-bold uppercase">{prog.next}</span></span>}</div></div>
               {prog.next && <div className="rounded-[18px] p-3.5 min-w-[280px] text-center" style={{ background: "rgba(15,26,17,1)", border: "1px solid rgba(46,77,52,1)" }}><div className="text-[40px] font-black text-lime leading-none v2-num">{prog.pct}%</div><div className="text-[10px] uppercase tracking-wide text-white/50 mt-1">Progress to {prog.next}</div><div className="h-2 rounded-full bg-white/15 mt-2 overflow-hidden"><div className="h-full rounded-full" style={{ width: prog.pct + "%", background: "linear-gradient(90deg,#9efd38,#8b5cf6)" }} /></div></div>}
             </div>
             <div className="grid sm:grid-cols-3 gap-3 mt-5">
               {(offerTiles && offerTiles.length ? offerTiles : [
-                { icon: "home", img: ASSET + "because-you-are-gold.png", badge: "Because you're " + u.tier, title: "Use miles to discount your Lisbon hotel", detail: "Apply 8,000 mi to any 3-night stay · save up to €80 instantly.", value: "8,000 mi", cta: "Apply", reason: `${u.tier} member · ${miles(u.miles)} tap.miles available (users)` },
-                { icon: "plane", img: ASSET + "limited-next-trip.png", badge: "Limited · next trip", title: "Upgrade " + cityOf(pat.origin || "LIS") + "–" + cityOf(pat.dest || "OPO") + " to Business with miles", detail: "20% mileage discount when upgrading on your existing booking.", value: "42,000 mi", cta: "Upgrade", reason: `${cityOf(pat.origin || "LIS")}–${cityOf(pat.dest || "OPO")} is your most-flown route (travel_history)` },
+                { icon: "home", img: ASSET + "because-you-are-gold.png", badge: "Because you're " + u.tier, title: "Use miles to discount your New York hotel", detail: "Apply 8,000 mi to any 3-night stay · save up to $80 instantly.", value: "8,000 mi", cta: "Apply", reason: `${u.tier} member · ${miles(u.miles)} miles available (users)` },
+                { icon: "plane", img: ASSET + "limited-next-trip.png", badge: "Limited · next trip", title: "Upgrade " + cityOf(pat.origin || "JFK") + "–" + cityOf(pat.dest || "MIA") + " to Business with miles", detail: "20% mileage discount when upgrading on your existing booking.", value: "42,000 mi", cta: "Upgrade", reason: `${cityOf(pat.origin || "JFK")}–${cityOf(pat.dest || "MIA")} is your most-flown route (travel_history)` },
                 { icon: "star", img: ASSET + "partner-offer.png", badge: "Partner offer · Nov", title: "Earn 3× miles at Memmo Príncipe Real", detail: "Triple miles when booking your favourite hotel through voa stay.", value: "3× MI", cta: "Activate", reason: "Memmo Príncipe Real is in your recent stays (bookings)" },
               ]).slice(0, 3).map((o, i) => (
                 <div key={o.id || i} className="rounded-[14px] p-[18px] flex flex-col text-left" style={{ background: "rgba(15,26,17,1)", border: "1px solid rgba(46,77,52,1)" }}>
@@ -906,7 +906,7 @@ export function Home({ shared, go }) {
               ))}
             </div>
           </div>
-          <div className="mt-6 flex items-center justify-center gap-2 pt-2"><span className="text-[14px]" style={{ color: "rgba(158,253,56,1)" }}>✦</span><span className="text-[14px] font-medium leading-none text-white" style={{ opacity: 0.8 }}>Earn up to {miles(Math.round((rec?.package?.total || pat.usualPrice || 250) * 12))} voa.miles on your Lisbon stopover hotel and experiences this trip.</span></div>
+          <div className="mt-6 flex items-center justify-center gap-2 pt-2"><span className="text-[14px]" style={{ color: "rgba(158,253,56,1)" }}>✦</span><span className="text-[14px] font-medium leading-none text-white" style={{ opacity: 0.8 }}>Earn up to {miles(Math.round((rec?.package?.total || pat.usualPrice || 250) * 12))} voa.miles on your New York stopover hotel and experiences this trip.</span></div>
         </div>
       </section>
 
@@ -917,24 +917,24 @@ export function Home({ shared, go }) {
           <div className="grid md:grid-cols-3 gap-4">
             {/* usual trip */}
             <Card className="overflow-hidden flex flex-col">
-              <div className="h-40 relative overflow-hidden"><Img seed={"dest-" + (pat.dest || "LIS")} src={ASSET + "book-lisbon-porto.jpg"} className="absolute inset-0 w-full h-full" /><span className={cx(overlayBadge, "text-tap-greenDeep")}><Icon name="home" size={11} /> Usual trip</span></div>
+              <div className="h-40 relative overflow-hidden"><Img seed={"dest-" + (pat.dest || "JFK")} src={ASSET + "book-lisbon-porto.jpg"} className="absolute inset-0 w-full h-full" /><span className={cx(overlayBadge, "text-tap-greenDeep")}><Icon name="home" size={11} /> Usual trip</span></div>
               <div className="p-4 flex flex-col flex-1">
-                <div className="font-bold text-[15px]">Book {cityOf(pat.origin || "OPO")} → {cityOf(pat.dest || "LIS")}</div>
+                <div className="font-bold text-[15px]">Book {cityOf(pat.origin || "MIA")} → {cityOf(pat.dest || "JFK")}</div>
                 <div className="text-[12px] text-ink-muted mt-1">{pat.recommendedLabel} {pat.usualDep} · fare from {EUR(pat.usualPrice)} · hand bag only.</div>
                 <div className="flex flex-wrap gap-1.5 mt-2"><Pill tone="slate">2 taps</Pill><Pill tone="slate">Default card</Pill><Pill tone="slate">{miles(u.miles)} mi avail.</Pill></div>
                 <div className="mt-auto"><div className="h-px bg-line my-3" />
-                <div className="flex items-center justify-between"><div><div className="text-[9px] uppercase tracking-wide text-ink-faint">from ({rec?.package?.hotelNights || 3} night{(rec?.package?.hotelNights || 3) !== 1 ? "s" : ""} · 1 pax)</div><div className="text-[18px] font-black v2-num">€{Number(rec?.package?.total || pat.usualPrice || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div><Btn size="sm" variant="outline" onClick={() => go("express")}>Book Now →</Btn></div></div>
+                <div className="flex items-center justify-between"><div><div className="text-[9px] uppercase tracking-wide text-ink-faint">from ({rec?.package?.hotelNights || 3} night{(rec?.package?.hotelNights || 3) !== 1 ? "s" : ""} · 1 pax)</div><div className="text-[18px] font-black v2-num">${Number(rec?.package?.total || pat.usualPrice || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div><Btn size="sm" variant="outline" onClick={() => go("express")}>Book Now →</Btn></div></div>
               </div>
             </Card>
             {/* resume */}
             <Card className="overflow-hidden flex flex-col">
-              <div className="h-40 relative overflow-hidden"><Img seed={"resume-" + (journey?.dest || "OPO")} src={ASSET + "continue-booking.jpg"} className="absolute inset-0 w-full h-full" /><span className="absolute inset-0 bg-black/15" /><span className={cx(overlayBadge, resumable ? "text-tap-greenDeep" : "text-ink-muted")}><Icon name="clock" size={11} /> {resumable ? "In-progress" : "No draft"}</span></div>
+              <div className="h-40 relative overflow-hidden"><Img seed={"resume-" + (journey?.dest || "MIA")} src={ASSET + "continue-booking.jpg"} className="absolute inset-0 w-full h-full" /><span className="absolute inset-0 bg-black/15" /><span className={cx(overlayBadge, resumable ? "text-tap-greenDeep" : "text-ink-muted")}><Icon name="clock" size={11} /> {resumable ? "In-progress" : "No draft"}</span></div>
               <div className="p-4 flex flex-col flex-1">
                 {resumable ? <>
                   <div className="font-bold text-[15px]">Resume booking</div>
                   <div className="text-[12px] text-ink-muted mt-1">{journey.origin} → {journey.dest} · stopped at {({ results: "flight selection", seat: "flight selection", cart: "cart", extras: "cart", basket: "basket", passenger: "passenger details", review: "passenger details", payment: "payment" }[journey.stage] || journey.stage)}.{journey.seat ? ` Seat ${journey.seat} held.` : ""}</div>
                   <div className="flex flex-wrap gap-1.5 mt-2"><Pill tone="green">{({ search: 1, results: 1, seat: 1, cart: 2, extras: 2, basket: 3, passenger: 4, review: 4, payment: 5 }[journey.stage] || 1)} of 5 done</Pill><Pill tone="slate">Fare held</Pill></div>
-                  <div className="mt-auto"><div className="h-px bg-line my-3" /><div className="flex justify-end"><Btn size="sm" variant="outline" onClick={() => { if (typeof window !== "undefined") window.__tapForceReval = true; api.post("/journey/resume", {}).catch(() => {}); const _sr = { search: "results", results: "results", seat: "results", cart: "cart", extras: "cart", basket: "basket", passenger: "passenger", review: "passenger", payment: "payment" }; go(_sr[journey.stage] || "results", { origin: journey.origin || pat.origin || u.home_airport, dest: journey.dest || pat.dest || "LIS", date: journey.date || journey.travel_date || pat.recommendedDate, type: "round", pax: 1, cabin: journey.cabin || "Economy" }); }}>Continue →</Btn></div></div>
+                  <div className="mt-auto"><div className="h-px bg-line my-3" /><div className="flex justify-end"><Btn size="sm" variant="outline" onClick={() => { if (typeof window !== "undefined") window.__tapForceReval = true; api.post("/journey/resume", {}).catch(() => {}); const _sr = { search: "results", results: "results", seat: "results", cart: "cart", extras: "cart", basket: "basket", passenger: "passenger", review: "passenger", payment: "payment" }; go(_sr[journey.stage] || "results", { origin: journey.origin || pat.origin || u.home_airport, dest: journey.dest || pat.dest || "JFK", date: journey.date || journey.travel_date || pat.recommendedDate, type: "round", pax: 1, cabin: journey.cabin || "Economy" }); }}>Continue →</Btn></div></div>
                 </> : <>
                   <div className="font-bold text-[15px]">Nothing in progress</div>
                   <div className="text-[12px] text-ink-muted mt-1">Start a new search to begin a booking.</div>
@@ -944,7 +944,7 @@ export function Home({ shared, go }) {
             </Card>
             {/* tomorrow / boarding */}
             <Card className="overflow-hidden flex flex-col">
-              <div className="h-40 relative overflow-hidden"><Img seed={"trip-" + (upcoming?.flight?.dest || "OPO")} src={imageFor("trip-" + (upcoming?.flight?.dest || "OPO"), cityOf(upcoming?.flight?.dest || "OPO"))} className="absolute inset-0 w-full h-full" /><span className="absolute inset-0 bg-black/15" /><span className={cx(overlayBadge, upcoming ? "text-tap-greenDeep" : "text-ink-muted")}><Icon name="clock" size={11} /> {upcoming ? "Upcoming" : "No trips"}</span></div>
+              <div className="h-40 relative overflow-hidden"><Img seed={"trip-" + (upcoming?.flight?.dest || "MIA")} src={imageFor("trip-" + (upcoming?.flight?.dest || "MIA"), cityOf(upcoming?.flight?.dest || "MIA"))} className="absolute inset-0 w-full h-full" /><span className="absolute inset-0 bg-black/15" /><span className={cx(overlayBadge, upcoming ? "text-tap-greenDeep" : "text-ink-muted")}><Icon name="clock" size={11} /> {upcoming ? "Upcoming" : "No trips"}</span></div>
               <div className="p-4 flex flex-col flex-1">
                 {upcoming ? <>
                   <div className="font-bold text-[15px]">{upcoming.flight_no} · {upcoming.flight?.origin} → {upcoming.flight?.dest}</div>
@@ -1081,7 +1081,7 @@ function buildTemplates(profile, cityOf) {
     const sameDayTime = deps.length >= 2 ? `${deps[0]} / ${deps[deps.length - 1]}` : (deps[0] || "");
     out.push({ label: "Same-day", route: third[0].replace("→", " ↔ "), time: sameDayTime, detail: `Out & back · flex fare`, used: third[1] });
   }
-  out.push({ label: "Weekly shuttle", route: `${pat.origin || "OPO"} ↔ ${pat.dest || "LIS"}`, time: "", detail: "Auto-rebook each week · pause anytime", shuttle: true });
+  out.push({ label: "Weekly shuttle", route: `${pat.origin || "MIA"} ↔ ${pat.dest || "JFK"}`, time: "", detail: "Auto-rebook each week · pause anytime", shuttle: true });
   return out.slice(0, 4);
 }
 
@@ -1129,7 +1129,7 @@ export const ROUTES = {
   disruption: { title: "Disruption / IROPS", comp: DisruptionCenter },
   stopover: { title: "Portugal Stopover", comp: StopoverBuilder },
   extras: { title: "Trip Extras", comp: AddExtras },
-  miles: { title: "Xperion Xperion Miles", comp: MilesShop },
+  miles: { title: "Xperion Miles", comp: MilesShop },
   wishlist: { title: "Wishlist", phase: 3, plan: "Saved routes & destinations.", reuses: "(new)" },
   ai: { title: "Xperion AI · Travel concierge", comp: AIConcierge },
   console: { title: "Demo Console", comp: DemoConsole },

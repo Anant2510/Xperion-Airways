@@ -43,7 +43,7 @@ const registry = new Map();
 const DEFAULT_CONFIG = {
   name: "Airline",
   shortName: null,     // used inside tool descriptions ("Search <shortName> flights"); defaults to name
-  homeAirport: "LIS",
+  homeAirport: "MIA",
   currency: "EUR",
   locale: "en",
   brandLine: null,     // one-line description injected into the agent's situational context

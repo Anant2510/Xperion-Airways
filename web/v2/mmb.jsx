@@ -49,7 +49,7 @@ const cityOf = (airports, code) => (airports || []).find(a => a.code === code)?.
 const eur2 = (n) => money(n, { dp: 2 });
 const lastName = (u) => u.last_name || (u.full_name ? u.full_name.split(" ").slice(-1)[0] : "");
 // Friendly labels for the seeded extra codes stored on a booking's items_json.
-const EXTRA_LABEL = { seat: "Seat", bag: "Checked bag", meal: "Meal", wifi: "Wi-Fi", transfer: "Transfer", car: "Transfer", lounge: "Lounge", upgrade: "Cabin upgrade", carbon: "Carbon offset", "checked-bag": "Checked bag", "bag-extra": "Extra checked bag", insurance: "Insurance", "ins-plus": "Insurance", priority: "Priority boarding", "xsell-sintra": "Sintra day trip", "xsell-douro": "Douro wine tour", "xsell-xfer-return": "Return transfer", "xsell-late-checkout": "Late checkout" };
+const EXTRA_LABEL = { seat: "Seat", bag: "Checked bag", meal: "Meal", wifi: "Wi-Fi", transfer: "Transfer", car: "Transfer", lounge: "Lounge", upgrade: "Cabin upgrade", carbon: "Carbon offset", "checked-bag": "Checked bag", "bag-extra": "Extra checked bag", insurance: "Insurance", "ins-plus": "Insurance", priority: "Priority boarding", "xsell-sintra": "Key West day trip", "xsell-douro": "Napa wine tour", "xsell-xfer-return": "Return transfer", "xsell-late-checkout": "Late checkout" };
 const extraLabel = (c) => EXTRA_LABEL[c] || String(c).replace(/^(xsell|cabin)-/i, "").replace(/-/g, " ").replace(/\b\w/g, m => m.toUpperCase());
 
 const Loading = ({ label = "Retrieving your booking…" }) => (
@@ -185,7 +185,7 @@ export function ManageBooking({ shared, go }) {
   ];
   // v35 My Trip #1: the trip's price is what was actually PAID (booking-flow total: fare x pax +
   // extras + taxes), which the server returns as b.payment.total. The old fallback showed the
-  // single-leg base fare (e.g. €276 against a €1,285 booking). Base fare remains only for
+  // single-leg base fare (e.g. $276 against a $1,285 booking). Base fare remains only for
   // bookings created before payment data was persisted.
   const priceOf = b => Math.round(b.payment?.total ?? b.flight?.price ?? 180);
   const subtotal = list.reduce((s, b) => s + priceOf(b), 0);
@@ -233,7 +233,7 @@ export function ManageBooking({ shared, go }) {
                   <span className="w-6 h-6 rounded-md bg-lime text-ink inline-flex items-center justify-center shrink-0 mt-0.5"><Icon name="check" size={13} /></span>
                   <div className="flex-1 min-w-[220px]">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[16px] font-black">{f.origin || "OPO"} <span className="text-ink-faint">→</span> {f.dest || "LIS"}</span>
+                      <span className="text-[16px] font-black">{f.origin || "MIA"} <span className="text-ink-faint">→</span> {f.dest || "JFK"}</span>
                       <span className="text-[10px] font-bold uppercase tracking-wide bg-lime-tint text-tap-greenDeep rounded px-2 py-0.5">{fareName}</span>
                       <span className="text-[15px] font-bold v2-num ml-1">{f.dep || "—"} <span className="text-ink-faint">→</span> {f.arr || "—"}</span>
                     </div>
@@ -355,7 +355,7 @@ export function Retrieve({ shared, go }) {
   // already resolves the matching record; the old trip/demo values stay only as a fallback for
   // the state before anything has been retrieved.
   const fb = foundBooking, fbf = fb?.flight || null, fbPax = (fb?.meta?.passengers || []);
-  const foundRoute = fbf ? `${cityOf(fbf.origin)}–${cityOf(fbf.dest)}` : (hasTrip ? `${cityOf(trip.outbound.flight.origin)}–${cityOf(trip.outbound.flight.dest)}` : "Porto–Lisbon");
+  const foundRoute = fbf ? `${cityOf(fbf.origin)}–${cityOf(fbf.dest)}` : (hasTrip ? `${cityOf(trip.outbound.flight.origin)}–${cityOf(trip.outbound.flight.dest)}` : "Miami–New York");
   const foundFirst = fbPax[0]?.first || tPax[0]?.first || u.first_name || "Traveller";
   const foundLast = fbPax[0]?.last || last || tPax[0]?.last || (u.full_name ? u.full_name.split(" ").slice(-1)[0] : "Traveller");
   const foundCount = Math.max(1, fbPax.length || Number(fb?.meta?.pax) || tPax.length || Number(trip.pax) || 1);
@@ -499,8 +499,8 @@ export function CabinUpgrade({ shared, go, params }) {
   if (loading) return <Loading label="Loading upgrade options…" />;
   if (err || !booking) return <Empty go={go} />;
   // Upgrade prices derived from the booking's own fare so the demo numbers track the real
-  // booking. Executive ≈60% of fare (min €60); Premium Economy ≈55% of the Executive step.
-  // v33 Cabin Upgrade #2 — never show placeholder floors (€40/€60) while the fare loads;
+  // booking. Executive ≈60% of fare (min $60); Premium Economy ≈55% of the Executive step.
+  // v33 Cabin Upgrade #2 — never show placeholder floors ($40/$60) while the fare loads;
   // prices derive strictly from the booked fare and render only once it's known.
   const baseFare = booking.flight?.price ?? null;
   const fareReady = baseFare != null && baseFare > 0;
@@ -765,7 +765,7 @@ export function SeatChange({ shared, go, params }) {
             </div>
           </div>
           <div className="flex items-center justify-center flex-wrap gap-3 mt-5 text-[10px] text-ink-faint">
-            {[["bg-white border border-line-strong", "Available", null], ["bg-surface-mute", "Taken", null], ["bg-[#F4B740]", "Extra €18", null], ["", "Your seat", "#F5FCD9"], ["", "Selected", "#D4F25E"]].map(([c, t, bg]) => (
+            {[["bg-white border border-line-strong", "Available", null], ["bg-surface-mute", "Taken", null], ["bg-[#F4B740]", "Extra $18", null], ["", "Your seat", "#F5FCD9"], ["", "Selected", "#D4F25E"]].map(([c, t, bg]) => (
               <span key={t} className="inline-flex items-center gap-1"><span className={cx("w-3.5 h-3.5 rounded inline-block", c)} style={bg ? { background: bg, border: "1px solid #E0E3E8" } : undefined} /> {t}</span>
             ))}
           </div>
@@ -1094,7 +1094,7 @@ export function Rebook({ shared, params, go }) {
                         <img src="/v2/assets/homepage/tap-logo.png" alt="Xperion Airways" className="shrink-0 object-contain" style={{ height: "16px", width: "auto" }} /><span className="text-[12px] font-semibold v2-num">{o.id}</span>
                         <span className="text-[11px] text-ink-muted">· {o.detail || o.label}</span>
                         {o.tag && <span className={cx("text-[9px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5", o.tag === "COMP HOTEL" ? "bg-[#fff4d6] text-[#8C590D]" : o.tag === "SAME DAY" ? "bg-ink text-white" : "bg-tap-greenDeep text-white")}>{o.tag}</span>}
-                        <span className={cx("ml-auto text-[13px] font-bold", (o.fareDelta || 0) < 0 ? "text-tap-greenDeep" : "text-ink")}>{(o.fareDelta || 0) < 0 ? "−€" + Math.abs(o.fareDelta) : "+€" + (o.fareDelta || 0)}</span>
+                        <span className={cx("ml-auto text-[13px] font-bold", (o.fareDelta || 0) < 0 ? "text-tap-greenDeep" : "text-ink")}>{(o.fareDelta || 0) < 0 ? "−$" + Math.abs(o.fareDelta) : "+$" + (o.fareDelta || 0)}</span>
                       </div>
                       {hasTimes && (
                         <div className="flex items-center gap-3 mt-3 pl-6">
@@ -1130,7 +1130,7 @@ export function Rebook({ shared, params, go }) {
             <div className="divide-y divide-line">
               {[
                 ["seat", `Seats ${active?.seat || "22A"} · 22B · 22C`, `Available on ${sel || curFlight} — auto-assign equiv row`, "Transferred"],
-                ["bag", "Hot meal × 3", `${sel || curFlight} catering not loaded — refunded €42`, "Refunded"],
+                ["bag", "Hot meal × 3", `${sel || curFlight} catering not loaded — refunded $42`, "Refunded"],
                 ["bag", "Carry-on × 3", "Auto-transferred", "Transferred"],
                 ["star", "1 240 status miles", "Recredited at original tier", "Transferred"],
               ].map(([ic, nm, sub, st], n) => (
@@ -1149,12 +1149,12 @@ export function Rebook({ shared, params, go }) {
           <Card className="p-5">
             <div className="font-bold text-[16px] mb-3">Cost impact</div>
             <div className="space-y-2 text-[13px]">
-              <div className="flex justify-between"><span className="text-ink-muted">{sel || curFlight} fare diff</span><span className="font-semibold v2-num">€0,00</span></div>
-              <div className="flex justify-between"><span className="text-ink-muted">Meal refund</span><span className="font-semibold v2-num text-tap-greenDeep">−€42,00</span></div>
-              <div className="flex justify-between"><span className="text-ink-muted">Goodwill voucher</span><span className="font-semibold v2-num text-tap-greenDeep">€50,00</span></div>
+              <div className="flex justify-between"><span className="text-ink-muted">{sel || curFlight} fare diff</span><span className="font-semibold v2-num">$0,00</span></div>
+              <div className="flex justify-between"><span className="text-ink-muted">Meal refund</span><span className="font-semibold v2-num text-tap-greenDeep">−$42,00</span></div>
+              <div className="flex justify-between"><span className="text-ink-muted">Goodwill voucher</span><span className="font-semibold v2-num text-tap-greenDeep">$50,00</span></div>
             </div>
             <Divider className="my-3" />
-            <div className="flex justify-between items-center"><span className="font-bold">Net to passenger</span><span className="font-black v2-num text-tap-greenDeep text-[16px]">+€92,00</span></div>
+            <div className="flex justify-between items-center"><span className="font-bold">Net to passenger</span><span className="font-black v2-num text-tap-greenDeep text-[16px]">+$92,00</span></div>
             <Btn size="lg" className="w-full mt-4" disabled={busy || !shownAlts.length} onClick={confirm}>{busy ? "Rebooking…" : `Confirm rebook ${sel || ""} →`}</Btn>
             <button onClick={() => go("results", { origin: cur.origin, dest: cur.dest })} className="w-full mt-2 rounded-full border border-line bg-surface py-2.5 text-[13px] font-semibold text-ink hover:bg-surface-mute transition-colors">Find more options</button>
           </Card>
@@ -1273,7 +1273,7 @@ export function CheckInIndirect({ shared, go, params }) {
           <div className="p-[18px]" style={{ borderRadius: "12px", border: "1px solid #C7F21F", background: "#F2FCD9" }}>
             <div className="font-bold text-[14px] mb-2">Travel documents (APIS)</div>
             <div className="text-[12px] flex items-start gap-1.5"><Icon name="check" size={13} className="text-tap-green mt-0.5 shrink-0" /> Passport PT2438211 · expires 2029-08-12 · all pax verified</div>
-            <div className="text-[12px] text-[#b45309] font-semibold flex items-start gap-1.5 mt-1.5"><Icon name="info" size={13} className="mt-0.5 shrink-0" /> US ESTA pending — required for stopover OPO → re-check before boarding</div>
+            <div className="text-[12px] text-[#b45309] font-semibold flex items-start gap-1.5 mt-1.5"><Icon name="info" size={13} className="mt-0.5 shrink-0" /> US ESTA pending — required for stopover MIA → re-check before boarding</div>
             <button className="hover:underline mt-2" style={{ color: "#E00A0A", fontSize: "13px", fontWeight: 700 }}>Update documents →</button>
           </div>
         </div>
@@ -1290,7 +1290,7 @@ export function CheckInIndirect({ shared, go, params }) {
               <div className="flex justify-between gap-3"><span className="text-ink-muted">Boarding</span><span className="font-bold v2-num">16:00 · Gate B12</span></div>
             </div>
             <div className="h-px w-full mt-3" style={{ background: "#E0E3E8" }} />
-            <div className="mt-3 text-[12px]" style={{ padding: "14px 18px", borderRadius: "12px", border: "1px solid #C7F21F", background: "#F2FCD9" }}><div className="font-bold">Add to your trip</div><div className="text-ink-muted mt-0.5">+ Extra bag €38 · + Lounge access €42</div><div className="text-[11px] text-ink-faint mt-0.5">Restricted by fare rule: cabin upgrade</div></div>
+            <div className="mt-3 text-[12px]" style={{ padding: "14px 18px", borderRadius: "12px", border: "1px solid #C7F21F", background: "#F2FCD9" }}><div className="font-bold">Add to your trip</div><div className="text-ink-muted mt-0.5">+ Extra bag $38 · + Lounge access $42</div><div className="text-[11px] text-ink-faint mt-0.5">Restricted by fare rule: cabin upgrade</div></div>
             <Btn size="lg" className="w-full mt-4" style={{ height: "42px", borderRadius: "9999px", fontSize: "15px", fontWeight: 700 }} disabled={busy} onClick={checkin}>{busy ? "Checking in…" : "Upload & check in all →"}</Btn>
             <button onClick={checkin} disabled={busy} className="w-full mt-2 bg-surface text-[13px] font-semibold text-ink hover:bg-surface-mute transition-colors inline-flex items-center justify-center" style={{ height: "42px", borderRadius: "9999px", border: "1px solid #E8E8E5" }}>Check in {selCount} of {total} now (resolve Tomás later)</button>
           </Card>
@@ -1606,7 +1606,7 @@ export function AddExtras({ shared, go, params }) {
         <aside>
           <Card className="p-5 lg:sticky lg:top-20">
             <div className="flex items-start justify-between">
-              <div><h2 className="text-[16px] font-bold">My add-ons</h2><div className="text-[11px] text-ink-muted">All amounts in EUR (€)</div></div>
+              <div><h2 className="text-[16px] font-bold">My add-ons</h2><div className="text-[11px] text-ink-muted">All amounts in EUR ($)</div></div>
               <span className="text-[10px] font-bold uppercase tracking-wide bg-tap-red text-white rounded px-2 py-1">PNR {sel.pnr}</span>
             </div>
             <div className="rounded-lg bg-surface-soft px-3 py-2 mt-3">
@@ -1871,8 +1871,8 @@ export function Refund({ shared, go, params }) {
   // #7 — when the refund method is Xperion Miles, express the refund value in miles
   // (with the euro equivalent shown alongside), so the summary matches the selection.
   const isMiles = dest === "miles";
-  const milesFor = (e) => Math.round(e / MILES_RATE);            // €→miles via the shared rate
-  const eurC = (n) => eur2(n);                 // Cancel&Refund #2 — decimal points (€592.00) across the refund flow
+  const milesFor = (e) => Math.round(e / MILES_RATE);            // $→miles via the shared rate
+  const eurC = (n) => eur2(n);                 // Cancel&Refund #2 — decimal points ($592.00) across the refund flow
   const fmtRefund = (e) => isMiles ? `${miles(milesFor(e))} mi` : eurC(e);  // miles when miles is selected
   const refundTotalMi = milesFor(refundTotal);
   return (

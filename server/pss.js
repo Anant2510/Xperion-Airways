@@ -120,7 +120,7 @@ function resolveUser(env) {
 
 // Resolve any DB-registered identity from an inbound mobile number (WhatsApp `From`, SMS…).
 // Tolerant of channel prefixes/spacing: matches users.phone / members.phone on the trailing
-// 9 digits, so "whatsapp:+351 91 442 7781" still finds "+351 91 442 7781".
+// 9 digits, so "whatsapp:+1 305 442 7781" still finds "+1 305 442 7781".
 function resolveByPhone(raw) {
   if (!raw) return null;
   const tail = String(raw).replace(/[^0-9]/g, "").slice(-9);
@@ -353,7 +353,7 @@ function evaluateOffer(env, user) {
         subject: `Earn 3× miles on your ${destCity || "trip"} extras`,
         title: `Triple miles on your booking, ${first}.`,
         preheader: `Your partner extras qualify for bonus miles.`,
-        body_html: `Your recent booking includes partner services — activate <b>3× tap.miles</b> on them${aff ? `, plus a ${aff.toLowerCase()} offer picked for you` : ""}. One tap to activate.`,
+        body_html: `Your recent booking includes partner services — activate <b>3× miles</b> on them${aff ? `, plus a ${aff.toLowerCase()} offer picked for you` : ""}. One tap to activate.`,
         cta: "Activate 3× miles",
       },
     };

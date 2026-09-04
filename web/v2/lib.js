@@ -44,12 +44,12 @@ export const api = {
 // billing/source-of-truth on the server. Selecting a currency re-prices the
 // whole UI (components subscribe via onCurrencyChange).
 export const CURRENCIES = {
-  EUR: { code: "EUR", symbol: "€", rate: 1, locale: "en-IE", label: "EUR" },
+  EUR: { code: "USD", symbol: "$", rate: 1, locale: "en-IE", label: "USD" },
   USD: { code: "USD", symbol: "$", rate: 1.08, locale: "en-US", label: "USD" },
   GBP: { code: "GBP", symbol: "£", rate: 0.85, locale: "en-GB", label: "GBP" },
   BRL: { code: "BRL", symbol: "R$ ", rate: 5.39, locale: "pt-BR", label: "BRL" },
 };
-let _cur = (() => { try { return CURRENCIES[localStorage.getItem("flyxperion_cur")] ? localStorage.getItem("flyxperion_cur") : "EUR"; } catch { return "EUR"; } })();
+let _cur = (() => { try { return CURRENCIES[localStorage.getItem("flyxperion_cur")] ? localStorage.getItem("flyxperion_cur") : "USD"; } catch { return "USD"; } })();
 const _curListeners = new Set();
 export function onCurrencyChange(fn) { _curListeners.add(fn); return () => _curListeners.delete(fn); }
 export function setCurrency(code) { if (!CURRENCIES[code]) return; _cur = code; try { localStorage.setItem("flyxperion_cur", code); } catch {} _curListeners.forEach(f => { try { f(); } catch {} }); }
@@ -63,8 +63,8 @@ export function money(eurAmount, opts = {}) {
 }
 // EUR() now honours the active currency so every existing call site re-prices.
 export const EUR = (n) => money(n);
-// Show the EUR reference alongside a non-EUR primary (e.g. "≈ €212"). Empty when EUR is active.
-export const eurRef = (n) => getCurrency().code === "EUR" ? "" : `≈ €${Number(n || 0).toLocaleString("en-IE", { minimumFractionDigits: Number(n) % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })}`;
+// Show the EUR reference alongside a non-EUR primary (e.g. "≈ $212"). Empty when EUR is active.
+export const eurRef = (n) => getCurrency().code === "USD" ? "" : `≈ $${Number(n || 0).toLocaleString("en-IE", { minimumFractionDigits: Number(n) % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })}`;
 export const miles = (n) => Number(n || 0).toLocaleString("en-GB");
 
 // ── B2 · Regional localization (European vs Brazilian Portuguese) ────────────
@@ -106,7 +106,7 @@ const I18N = {
 };
 export function t(key) { const e = I18N[key]; if (!e) return key; const idx = _lang === "pt-PT" ? 1 : _lang === "pt-BR" ? 2 : 0; return e[idx] || e[0]; }
 export const I18N_TABLE = I18N;
-export const MILES_RATE = 0.003; // ~1,000 mi ≈ €3 (matches server)
+export const MILES_RATE = 0.003; // ~1,000 mi ≈ $3 (matches server)
 
 // Trigger a real client-side file download from in-memory content (used by the booking-
 // confirmed quick actions: e-ticket, boarding pass, calendar — #13).

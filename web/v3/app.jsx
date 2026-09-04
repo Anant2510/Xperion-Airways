@@ -165,7 +165,7 @@ const GhostBtn = ({ children, onClick, className = "" }) => (
     className={`dxp-ghost-btn inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm border transition-colors ${className}`}
     style={{ borderColor: "var(--tap-line)", color: "var(--tap-ink)", background: "#fff" }}>{children}</button>
 );
-const RouteRibbon = ({ from = "OPO", to = "LIS", dep, arr, small = false }) => (
+const RouteRibbon = ({ from = "MIA", to = "JFK", dep, arr, small = false }) => (
   <div className={`flex items-center ${small ? "gap-2" : "gap-3"}`}>
     <div className="text-right">
       <div className={`font-display font-extrabold ${small ? "text-base" : "text-2xl"}`} style={{ color: "var(--tap-ink)" }}>{from}</div>
@@ -217,12 +217,12 @@ function Toasts({ list, dismiss }) {
 const PORTO_IMG = "https://images.unsplash.com/photo-1683606095922-cda452e83878?auto=format&fit=crop&w=1200&q=80";
 // Famous-location photos for destination cards (Unsplash, keyed by IATA).
 const CITY_PHOTOS = {
-  LIS: "https://images.unsplash.com/photo-1753236431862-cd7cbf87d1f4?auto=format&fit=crop&w=800&q=80",
-  OPO: "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=800&q=80",
+  JFK: "https://images.unsplash.com/photo-1753236431862-cd7cbf87d1f4?auto=format&fit=crop&w=800&q=80",
+  MIA: "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=800&q=80",
   MAD: "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?auto=format&fit=crop&w=800&q=80",
   CDG: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80",
-  FNC: "https://images.unsplash.com/photo-1591017403286-fd8493524e1e?auto=format&fit=crop&w=800&q=80",
-  BCN: "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=800&q=80",
+  CUN: "https://images.unsplash.com/photo-1591017403286-fd8493524e1e?auto=format&fit=crop&w=800&q=80",
+  MCO: "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=800&q=80",
   LHR: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80",
   FCO: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80",
   FRA: "https://images.unsplash.com/photo-1577462281852-279d3e1c66e7?auto=format&fit=crop&w=800&q=80",
@@ -230,7 +230,7 @@ const CITY_PHOTOS = {
   JFK: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=800&q=80",
   GRU: "https://images.unsplash.com/photo-1543059080-f9b1272213d5?auto=format&fit=crop&w=800&q=80",
   MIA: "https://images.unsplash.com/photo-1506966953602-c20cc11f75e3?auto=format&fit=crop&w=800&q=80",
-  FAO: "https://images.unsplash.com/photo-1591194854667-3d0b9b0a8b1f?auto=format&fit=crop&w=800&q=80",
+  LAS: "https://images.unsplash.com/photo-1591194854667-3d0b9b0a8b1f?auto=format&fit=crop&w=800&q=80",
 };
 const FALLBACK_PHOTO = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=800&q=80"; // aircraft wing/sky — generic travel
 const cityPhoto = (code) => CITY_PHOTOS[code] || FALLBACK_PHOTO;
@@ -283,9 +283,9 @@ function Login({ profile, onLogin }) {
 
   return (
     <div className="min-h-screen flex dxp-dark">
-      {/* Left — Porto hero */}
+      {/* Left — Miami hero */}
       <div className="hidden lg:block w-[42%] relative overflow-hidden">
-        <img src={PORTO_IMG} alt="Porto, Portugal" className="absolute inset-0 w-full h-full object-cover"/>
+        <img src={PORTO_IMG} alt="Miami, Portugal" className="absolute inset-0 w-full h-full object-cover"/>
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(11,10,10,.15) 0%, rgba(11,10,10,.75) 100%)" }}/>
         <div className="relative h-full flex flex-col justify-between p-12">
           <span className="self-start text-[11px] font-bold tracking-[0.22em] uppercase px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,.14)", color: "#fff", backdropFilter: "blur(6px)" }}>Qantas DXP · Persona prototype</span>
@@ -405,7 +405,7 @@ function LoginUnused({ profile, onLogin }) {
 function QuickBook({ go, bookDestination }) {
   const [tab, setTab] = useState("book");
   const [routes, setRoutes] = useState([]);
-  const [origin, setOrigin] = useState("OPO");
+  const [origin, setOrigin] = useState("MIA");
   const [dest, setDest] = useState("");
   const [pax, setPax] = useState(1);
 
@@ -424,7 +424,7 @@ function QuickBook({ go, bookDestination }) {
   // All origins that actually have outbound routes, with the persona's home first
   const origins = [...new Set(routes.map(r => r.origin))]
     .map(c => [c, cityName(c)])
-    .sort((a, b) => a[0] === "OPO" ? -1 : b[0] === "OPO" ? 1 : a[1].localeCompare(b[1]));
+    .sort((a, b) => a[0] === "MIA" ? -1 : b[0] === "MIA" ? 1 : a[1].localeCompare(b[1]));
   // Destinations reachable from the selected origin (real routes only)
   const dests = routes
     .filter(r => r.origin === origin)
@@ -505,8 +505,8 @@ function Home({ profile, destinations, go, openAssistant, toast, bookDestination
   } catch {} })(); }, []);
 
   const u = profile.user, pat = profile.pattern, ss = profile.syncedSearch;
-  const home = pat.origin || u.home_airport || "OPO";
-  const dest = pat.dest || "LIS";
+  const home = pat.origin || u.home_airport || "MIA";
+  const dest = pat.dest || "JFK";
   const tripDest = (ss && ss.dest) || dest;
   const sOrigin = (ss && ss.origin) || home;          // profiled search origin (upcoming trip → usual route)
   const sDest = tripDest;                               // profiled search destination
@@ -893,8 +893,8 @@ function Home({ profile, destinations, go, openAssistant, toast, bookDestination
 /* ── FLIGHTS — recommendations + fare lock (persisted to DB) ── */
 function Flights({ flights, pattern, selectFlight, toast }) {
   const [locked, setLocked] = useState(null);
-  const dest = flights[0]?.dest || "LIS";
-  const origin = flights[0]?.origin || "OPO";
+  const dest = flights[0]?.dest || "JFK";
+  const origin = flights[0]?.origin || "MIA";
   const toggleLock = async (f) => {
     const active = locked !== f.flight_no;
     setLocked(active ? f.flight_no : null);
@@ -1522,7 +1522,7 @@ function Confirmed({ profile, flight, receipt, go }) {
   const base = Math.round(total * 0.79), taxes = total - base;
   const useful = [
     { tag: "EXPERIENCE", title: `${f.dest ? cityName(f.dest) : "Your destination"} food & wine tour`, sub: "3h · 5 stops · tastings included", price: 65 },
-    { tag: "DAY TRIP", title: `Sintra full-day from ${f.origin ? cityName(f.origin) : "the city"}`, sub: "Pena Palace, Regaleira & Cabo da Roca", price: 89 },
+    { tag: "DAY TRIP", title: `Key West full-day from ${f.origin ? cityName(f.origin) : "the city"}`, sub: "Pena Palace, Regaleira & Cabo da Roca", price: 89 },
     { tag: "TRANSFER", title: `Return transfer hotel → ${f.origin || ""}`, sub: "Private sedan · save 10% when paired", price: 25 },
   ];
   return (
@@ -1707,7 +1707,7 @@ function Manage({ profile, flight, openAssistant, toast, go }) {
                 <span className="pulse-dot">●</span> {delayed ? `Delayed · new dep ${f.new_dep || f.dep}` : (b.status === "rebooked" ? "Rebooked" : "On time")}
               </Chip>
             </div>
-            <RouteRibbon from={`${f.origin || "OPO"} ${delayed ? (f.new_dep || f.dep) : f.dep}`} to={`${f.dest || "LIS"} ${delayed ? (f.new_arr || f.arr) : f.arr}`}/>
+            <RouteRibbon from={`${f.origin || "MIA"} ${delayed ? (f.new_dep || f.dep) : f.dep}`} to={`${f.dest || "JFK"} ${delayed ? (f.new_arr || f.arr) : f.arr}`}/>
             <div className="text-xs text-gray-500 mt-2">Seat {b.seat} · {(b.items || []).join(" · ") || "no extras"} · {b.checked_in ? "Checked in ✓" : "Auto check-in 24h before"}</div>
             <div className="h-px my-4" style={{background:"var(--tap-line)"}}/>
             <div className="grid sm:grid-cols-3 gap-2">
@@ -1773,9 +1773,9 @@ function Manage({ profile, flight, openAssistant, toast, go }) {
             <div className="rounded-t-2xl p-5 text-white" style={{background:"var(--tap-deep)"}}>
               <div className="flex items-center justify-between mb-4"><TapLogo light size="text-base"/><button onClick={()=>setShowPass(false)} aria-label="Close"><X size={18}/></button></div>
               <div className="flex items-center justify-between">
-                <div><div className="text-3xl font-display font-black">{passBooking.flight?.origin || "OPO"}</div><div className="text-xs text-white/60">{cityName(passBooking.flight?.origin || "OPO")}</div></div>
+                <div><div className="text-3xl font-display font-black">{passBooking.flight?.origin || "MIA"}</div><div className="text-xs text-white/60">{cityName(passBooking.flight?.origin || "MIA")}</div></div>
                 <Plane size={20} className="text-white/60"/>
-                <div className="text-right"><div className="text-3xl font-display font-black">{passBooking.flight?.dest || "LIS"}</div><div className="text-xs text-white/60">{cityName(passBooking.flight?.dest || "LIS")}</div></div>
+                <div className="text-right"><div className="text-3xl font-display font-black">{passBooking.flight?.dest || "JFK"}</div><div className="text-xs text-white/60">{cityName(passBooking.flight?.dest || "JFK")}</div></div>
               </div>
             </div>
             <div className="bg-white rounded-b-2xl p-5 ticket-edge">
@@ -2357,15 +2357,15 @@ function ChatCards({ cards, onSelectFlight, cardBrand = "card" }) {
 
 function Assistant({ open, onClose, screen, profile, onCommand, onSelectFlight }) {
   const firstName = profile?.user?.first_name || "there";
-  const d1 = cityName(profile?.pattern?.dest || profile?.user?.home_airport || "LIS");
-  const d2 = cityName((profile?.pattern?.searchedDests && profile.pattern.searchedDests[0]?.code) || profile?.user?.home_airport || "OPO");
+  const d1 = cityName(profile?.pattern?.dest || profile?.user?.home_airport || "JFK");
+  const d2 = cityName((profile?.pattern?.searchedDests && profile.pattern.searchedDests[0]?.code) || profile?.user?.home_airport || "MIA");
   const pat = profile?.pattern || {};
-  const usualRoute = `${cityName(pat.origin || profile?.user?.home_airport || "OPO")} → ${cityName(pat.dest || "LIS")}`;
+  const usualRoute = `${cityName(pat.origin || profile?.user?.home_airport || "MIA")} → ${cityName(pat.dest || "JFK")}`;
   const recLabel = pat.recommendedLabel || "";
   const tier = profile?.user?.tier || "";
   // The in-progress search is read LIVE from the server each time the chat opens, so the
   // greeting + "Resume your search" always reflect the latest route — never a stale
-  // mount-time snapshot (it must not keep showing OPO→LIS after another route was searched).
+  // mount-time snapshot (it must not keep showing MIA→JFK after another route was searched).
   const normJourney = (j) => (j && j.dest) ? { origin: j.origin, dest: j.dest, travel_date: j.date || j.travel_date, stage: j.stage, flight_no: j.flight_no, seat: j.seat, items: j.items, cabin: j.cabin } : null;
   const [journey, setJourney] = useState(null);
   const ss = journey || profile?.syncedSearch;
@@ -2902,7 +2902,7 @@ function MilesGo({ profile, go }) {
     Gold: [
       "Priority check-in, boarding (Group A) and baggage",
       "Two free checked bags on every Qantas flight",
-      "Lounge access at Lisbon, Porto and partner lounges",
+      "Lounge access at New York, Miami and partner lounges",
       "Free 24h fare lock and seat selection",
       "Double miles on your weekly commute routes",
     ],
@@ -3014,12 +3014,12 @@ function App() {
   const [receipt, setReceipt] = useState(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
-  const [activeDest, setActiveDest] = useState("LIS");
+  const [activeDest, setActiveDest] = useState("JFK");
   // Flight search
   const [routes, setRoutes] = useState([]);
   const [suggested, setSuggested] = useState(null);
-  const [searchOrigin, setSearchOrigin] = useState("OPO");
-  const [searchDest, setSearchDest] = useState("LIS");
+  const [searchOrigin, setSearchOrigin] = useState("MIA");
+  const [searchDest, setSearchDest] = useState("JFK");
   const [searchDate, setSearchDate] = useState(() => { const r = new Date().toISOString().slice(0, 10); return r > "2026-06-15" ? r : "2026-06-15"; });
   const [searchResults, setSearchResults] = useState(null);
   const [searching, setSearching] = useState(false);
@@ -3035,13 +3035,13 @@ function App() {
     (async () => {
       try {
         const [p, f, a, d, b, ap, rt, sug] = await Promise.all([
-          api.get("/profile"), api.get("/flights?dest=LIS"), api.get("/ancillaries"), api.get("/destinations"), api.get("/basket"),
+          api.get("/profile"), api.get("/flights?dest=JFK"), api.get("/ancillaries"), api.get("/destinations"), api.get("/basket"),
           api.get("/airports"), api.get("/routes"), api.get("/routes/suggested"),
         ]);
         (ap || []).forEach(x => { AIRPORT_MAP[x.code] = x; });   // populate city-name lookup
         setRoutes(rt || []); setSuggested(sug || []);
         setProfile(p); setFlights(f || []); setAncillaries(a || []); setDestinations(d || []);
-        setSearchOrigin((p?.syncedSearch?.origin) || (p?.pattern?.origin) || p?.user?.home_airport || "OPO");
+        setSearchOrigin((p?.syncedSearch?.origin) || (p?.pattern?.origin) || p?.user?.home_airport || "MIA");
         setSearchDest((p?.syncedSearch?.dest) || (p?.pattern?.dest) || "");
         if (p?.syncedSearch?.travel_date) setSearchDate(p.syncedSearch.travel_date);
         const rec = (f || []).find(x => x.recommended) || (f || [])[0];
@@ -3062,10 +3062,10 @@ function App() {
     if (!u?.member_no) return;
     if (lastPersona.current && lastPersona.current !== u.member_no) {
       const ss = profile?.syncedSearch, pat = profile?.pattern;
-      setSearchOrigin((ss && ss.origin) || (pat && pat.origin) || u.home_airport || "OPO");
+      setSearchOrigin((ss && ss.origin) || (pat && pat.origin) || u.home_airport || "MIA");
       setSearchDest((ss && ss.dest) || (pat && pat.dest) || "");
       if (ss && ss.travel_date) setSearchDate(ss.travel_date);
-      setActiveDest((pat && pat.dest) || u.home_airport || "OPO");
+      setActiveDest((pat && pat.dest) || u.home_airport || "MIA");
     }
     lastPersona.current = u.member_no;
   }, [profile]);
@@ -3157,8 +3157,8 @@ function App() {
   // Card tap → pre-fill the route + reason, jump to search, AND run the search
   // so flight options appear immediately (route already selected, ready to book).
   const bookDestination = (d) => {
-    const code = d?.code || "LIS";
-    const origin = d?.origin || profile?.user?.home_airport || "OPO";
+    const code = d?.code || "JFK";
+    const origin = d?.origin || profile?.user?.home_airport || "MIA";
     const date = d?.date || searchDate;
     setSearchOrigin(origin);
     setSearchDest(code);
@@ -3169,8 +3169,8 @@ function App() {
     runSearch(origin, code, true, date);   // keepReason=true; explicit date avoids stale state
   };
   const bookUsual = async () => {
-    const o = profile?.pattern?.origin || profile?.user?.home_airport || "OPO";
-    const dst = profile?.pattern?.dest || "LIS";
+    const o = profile?.pattern?.origin || profile?.user?.home_airport || "MIA";
+    const dst = profile?.pattern?.dest || "JFK";
     const f = await api.get(`/flights?dest=${dst}&origin=${o}`);
     setFlights(f);
     const usual = f.find(x => x.flight_no === (profile?.pattern?.topFlight)) || f.find(x => x.recommended) || f[0];
@@ -3182,8 +3182,8 @@ function App() {
   // trip to add extras to, and land directly on extras.
   const openExtras = async () => {
     if (flight) { go("basket"); return; }
-    const o = profile?.pattern?.origin || profile?.user?.home_airport || "OPO";
-    const dst = profile?.pattern?.dest || "LIS";
+    const o = profile?.pattern?.origin || profile?.user?.home_airport || "MIA";
+    const dst = profile?.pattern?.dest || "JFK";
     const f = await api.get(`/flights?dest=${dst}&origin=${o}`);
     setFlights(f);
     const usual = f.find(x => x.flight_no === (profile?.pattern?.topFlight)) || f.find(x => x.recommended) || f[0];
@@ -3194,8 +3194,8 @@ function App() {
   };
   // "Book your usual flight" → Express checkout (review & pay), everything pre-filled.
   const openExpress = async () => {
-    const o = profile?.pattern?.origin || profile?.user?.home_airport || "OPO";
-    const dst = profile?.pattern?.dest || "LIS";
+    const o = profile?.pattern?.origin || profile?.user?.home_airport || "MIA";
+    const dst = profile?.pattern?.dest || "JFK";
     const recDate = profile?.pattern?.recommendedDate;
     let f = [];
     try { f = await api.get(`/flights?dest=${dst}&origin=${o}${recDate ? `&date=${recDate}` : ""}`); } catch { f = []; }

@@ -28,8 +28,8 @@ function OpsPanel() {
   const [mode, setMode] = useState("booking");         // "booking" | "route"
   const [booked, setBooked] = useState([]);
   const [sel, setSel] = useState("");
-  const [origin, setOrigin] = useState("OPO");
-  const [dest, setDest] = useState("LIS");
+  const [origin, setOrigin] = useState("MIA");
+  const [dest, setDest] = useState("JFK");
   const [date, setDate] = useState("");
   const [action, setAction] = useState("delay");
   const [delay, setDelay] = useState(120);
@@ -91,9 +91,9 @@ function OpsPanel() {
       )}
       {action === "reprice" && (
         <div className="grid grid-cols-3 gap-2 mb-3">
-          <label className="block"><span className="block text-[10px] font-bold uppercase tracking-wide text-ink-slate mb-1">Economy €</span><input type="number" value={eco} onChange={e => setEco(e.target.value)} placeholder="129" className={inp} /></label>
-          <label className="block"><span className="block text-[10px] font-bold uppercase tracking-wide text-ink-slate mb-1">Premium €</span><input type="number" value={prem} onChange={e => setPrem(e.target.value)} placeholder="349" className={inp} /></label>
-          <label className="block"><span className="block text-[10px] font-bold uppercase tracking-wide text-ink-slate mb-1">Business €</span><input type="number" value={bus} onChange={e => setBus(e.target.value)} placeholder="899" className={inp} /></label>
+          <label className="block"><span className="block text-[10px] font-bold uppercase tracking-wide text-ink-slate mb-1">Economy $</span><input type="number" value={eco} onChange={e => setEco(e.target.value)} placeholder="129" className={inp} /></label>
+          <label className="block"><span className="block text-[10px] font-bold uppercase tracking-wide text-ink-slate mb-1">Premium $</span><input type="number" value={prem} onChange={e => setPrem(e.target.value)} placeholder="349" className={inp} /></label>
+          <label className="block"><span className="block text-[10px] font-bold uppercase tracking-wide text-ink-slate mb-1">Business $</span><input type="number" value={bus} onChange={e => setBus(e.target.value)} placeholder="899" className={inp} /></label>
         </div>
       )}
 

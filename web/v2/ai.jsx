@@ -1,18 +1,18 @@
 // FlyTAP v2 — Xperion AI concierge, mapped to behave like v1's "Xperion AI Assistant":
 // same dynamic greeting (name · usual route · recommended date · Adobe RT-CDP source),
-// same suggestion chips (Express + Best-time / under €500 / in October), and the same
+// same suggestion chips (Express + Best-time / under $500 / in October), and the same
 // LIVE agent backend (/api/ai/agent). Embedded mode replaces the hero search; full mode
 // is the /ai route with a context rail.
 import React, { useState, useRef, useEffect } from "react";
 import { api, EUR, miles, tierProgress } from "./lib.js";
 
 // ── currency ────────────────────────────────────────────────────────────────
-// The chat renders money for whichever airline is answering, so it can't hardcode €.
+// The chat renders money for whichever airline is answering, so it can't hardcode $.
 // EUR() (the host app's formatter) is kept for the EUR case so Xperion output is unchanged.
 const CURRENCY_SYM = { EUR: "\u20ac", GBP: "\u00a3", USD: "$", CHF: "CHF", NOK: "kr", SEK: "kr", DKK: "kr", PLN: "z\u0142" };
-let ACTIVE_CURRENCY = "EUR";   // set from the resolved tenant's brand on each reply
+let ACTIVE_CURRENCY = "USD";   // set from the resolved tenant's brand on each reply
 function money(n) {
-  if (!ACTIVE_CURRENCY || ACTIVE_CURRENCY === "EUR") return EUR(n);
+  if (!ACTIVE_CURRENCY || ACTIVE_CURRENCY === "USD") return EUR(n);
   const sym = CURRENCY_SYM[ACTIVE_CURRENCY] || ACTIVE_CURRENCY;
   const v = Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
   return sym.length > 1 ? `${v} ${sym}` : `${sym}${v}`;
@@ -378,8 +378,8 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
   const pat = profile.pattern || {};
   const airports = shared?.airports || [];
   const cityOf = (c) => airports.find(a => a.code === c)?.city || c;
-  const origin = pat.origin || u.home_airport || "OPO";
-  const dest = pat.dest || "LIS";
+  const origin = pat.origin || u.home_airport || "MIA";
+  const dest = pat.dest || "JFK";
   const destCity = cityOf(dest);
   const dateLabel = pat.recommendedLabel || pat.usualOut || "your usual date";
   const sourceLabel = (profile.cdp || /cdp|adobe/i.test(String(profile.source || ""))) ? "Adobe Real-Time CDP" : "Xperion";
@@ -387,7 +387,7 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
   const SUGS = [
     { label: `⚡ Express · your usual · ${dateLabel}`, send: "Book my usual flight with Express checkout", express: true },
     { label: `Best time to visit ${destCity}`, send: `When is the best time to visit ${destCity}?` },
-    { label: `Flights under €500 to ${destCity}`, send: `Show me flights under €500 to ${destCity}` },
+    { label: `Flights under $500 to ${destCity}`, send: `Show me flights under $500 to ${destCity}` },
     { label: `${destCity} in October?`, send: `What are my options for ${destCity} in October?` },
   ];
 

@@ -50,7 +50,7 @@ const waAddr = (n) => {
 };
 const bareNumber = (n) => String(n || "").replace(/^whatsapp:/, "");
 
-// Trailing-9-digits of a number — tolerates "whatsapp:+351 …" prefixes/spacing. Used to
+// Trailing-9-digits of a number — tolerates "whatsapp:+1 …" prefixes/spacing. Used to
 // resolve phone→uid (session.userByPhone) and to key the wa:<tail> session binding.
 // (The old personaForPhone/activePersonaId helpers are gone: identity is now resolved by
 //  phone→uid at handleIncoming entry and threaded via the wa:<tail> session binding.)
@@ -333,7 +333,7 @@ async function startExtrasStep(to, note) {
     map[n] = `XTOG_${a.code}`;
     const on = d.items.includes(a.code);
     const tag = a.recommended ? `  ⭐ ${a.reason}` : (a.reason ? `  · ${a.reason}` : "");
-    lines.push(`${n}️⃣  ${on ? "✅" : "➕"} ${a.name} — €${a.price}${tag}`);
+    lines.push(`${n}️⃣  ${on ? "✅" : "➕"} ${a.name} — $${a.price}${tag}`);
   });
   map["9"] = "XDONE";
   setMenu(to, map);
@@ -362,10 +362,10 @@ async function startCheckoutReview(to) {
 ${f.flight_no} ${cityName(f.origin)} → ${cityName(f.dest)} · ${f.flight_date} · ${f.dep}–${f.arr}
 Seat ${d.seat} · cabin bag${extraNames.length ? " + " + extraNames.join(", ") : ""}
 
-Total €${priced.gross.toFixed(2)}
- • Voucher −€${priced.voucher}
- • ${priced.miles_used.toLocaleString()} miles −€${priced.miles_amt}
- • Saved card €${priced.card.toFixed(2)}`,
+Total $${priced.gross.toFixed(2)}
+ • Voucher −$${priced.voucher}
+ • ${priced.miles_used.toLocaleString()} miles −$${priced.miles_amt}
+ • Saved card $${priced.card.toFixed(2)}`,
     [{ id: "DO_PAY", title: "Pay now" }, { id: "DO_HOLD", title: "Hold 48h free" }, { id: "MENU", title: "Back to menu" }],
     { "1": "DO_PAY", "2": "DO_HOLD", "3": "MENU", "0": "MENU" });
 }
@@ -391,8 +391,8 @@ ${f.flight_no} ${cityName(f.origin)} → ${cityName(f.dest)}
 🎟️ Lounge + priority boarding FREE · ${tier}
 💳 Saved card · •••• ••••
 
-*Total €${priced.gross.toFixed(2)}* · earn ${miles.toLocaleString()} miles
- • Voucher −€${priced.voucher} · ${priced.miles_used.toLocaleString()} mi −€${priced.miles_amt} · card €${priced.card.toFixed(2)}
+*Total $${priced.gross.toFixed(2)}* · earn ${miles.toLocaleString()} miles
+ • Voucher −$${priced.voucher} · ${priced.miles_used.toLocaleString()} mi −$${priced.miles_amt} · card $${priced.card.toFixed(2)}
 
 Everything's pre-filled — just confirm.`,
     [{ id: "EXPRESS_PAY", title: "Pay & confirm" }, { id: "MENU", title: "Back to menu" }],
@@ -412,7 +412,7 @@ async function handleAction(to, id) {
     d.items = ["seat", ...(j.items || [])];
     if (j.stage === "results" || !f) {
       // Only a route was chosen → re-run the route search so they can pick a flight.
-      const home = j.origin || "OPO";
+      const home = j.origin || "MIA";
       return searchRoute(to, home, j.dest, j.date || searchToday(), "resume");
     }
     await sendText(to, `↩️ Picking up where you left off — ${cityName(f.origin)} → ${cityName(f.dest)}, ${({seat:"choosing your seat",extras:"adding extras",review:"reviewing & payment"})[j.stage] || "your booking"}.`);
@@ -430,8 +430,8 @@ async function handleAction(to, id) {
   if (id === "BOOK_USUAL") {
     const prof = await apiCall("GET", "/profile", null, to);
     const pat = prof?.pattern || {};
-    const origin = pat.origin || prof?.user?.home_airport || "OPO";
-    const dest = pat.dest || "LIS";
+    const origin = pat.origin || prof?.user?.home_airport || "MIA";
+    const dest = pat.dest || "JFK";
     const dateQ = pat.recommendedDate ? `&date=${pat.recommendedDate}` : "";
     const flights = await apiCall("GET", `/flights?dest=${dest}&origin=${origin}${dateQ}`, null, to);
     const f = flights.find(x => x.flight_no === pat.topFlight) || flights[0];
@@ -481,7 +481,7 @@ async function handleAction(to, id) {
     const cardStr = "your saved card";
     const facts = { action: "checkout", state: "booked", pnr: r.pnr, flight_no: f.flight_no, route: `${cityName(f.origin)}→${cityName(f.dest)}`, date: f.flight_date, seat: d.seat, card: cardStr, extras: d.items.filter(c=>!["seat","bag","meal"].includes(c)), split: { voucher: priced.voucher, miles: priced.miles_used, miles_eur: priced.miles_amt, card: priced.card } };
     await sendText(to, await phraseFromFacts(facts, { channel: "whatsapp",
-      fallback: `✅ Booked! ${r.pnr} — ${f.flight_no} ${cityName(f.origin)}→${cityName(f.dest)}, ${f.flight_date}, seat ${d.seat}.\nPayment: voucher −€${priced.voucher} · ${priced.miles_used.toLocaleString()} miles −€${priced.miles_amt} · ${cardStr} €${priced.card.toFixed(2)}.\nConfirmation emailed. Auto check-in is ON.` }));
+      fallback: `✅ Booked! ${r.pnr} — ${f.flight_no} ${cityName(f.origin)}→${cityName(f.dest)}, ${f.flight_date}, seat ${d.seat}.\nPayment: voucher −$${priced.voucher} · ${priced.miles_used.toLocaleString()} miles −$${priced.miles_amt} · ${cardStr} $${priced.card.toFixed(2)}.\nConfirmation emailed. Auto check-in is ON.` }));
     clearDraft(to);
     await sendMainMenu(to);
     return;
@@ -547,7 +547,7 @@ Reply:  1 to Check in now   ·   2 to Add extras   ·   0 for menu`);
   if (id === "EXTRAS") {
     const anc = db.prepare("SELECT * FROM ancillaries WHERE price > 0").all();
     const map = { "0": "MENU" }; const lines = [];
-    anc.forEach((a, i) => { const n = String(i + 1); map[n] = `ANC_${a.code}`; lines.push(`${n}️⃣  ${a.name} — €${a.price}`); });
+    anc.forEach((a, i) => { const n = String(i + 1); map[n] = `ANC_${a.code}`; lines.push(`${n}️⃣  ${a.name} — $${a.price}`); });
     setMenu(to, map);
     const card = "your saved card";
     await sendText(to, `Add to your trip — charged to your saved ${card}, instantly on your booking:\n\n${lines.join("\n")}\n\n0 for menu`);
@@ -560,7 +560,7 @@ Reply:  1 to Check in now   ·   2 to Add extras   ·   0 for menu`);
       const cardRow = db.prepare("SELECT card_brand, card_last4 FROM users WHERE id=?").get(waUid(to)) || {};
       const card = "your saved card";
       const facts = { action: "add_extra", state: "added", item: r.name, price: r.price, pnr: r.pnr, card };
-      await sendText(to, await phraseFromFacts(facts, { channel: "whatsapp", fallback: `✅ Added ${r.name} (€${r.price}) to ${r.pnr} — charged to ${card}. Updated itinerary emailed.` }));
+      await sendText(to, await phraseFromFacts(facts, { channel: "whatsapp", fallback: `✅ Added ${r.name} ($${r.price}) to ${r.pnr} — charged to ${card}. Updated itinerary emailed.` }));
     } else {
       const facts = { action: "add_extra", state: "no_booking", message: "There's no active booking to add extras to yet." };
       await sendText(to, await phraseFromFacts(facts, { channel: "whatsapp", fallback: facts.message + " Reply 1 to book your usual flight." }));
@@ -582,11 +582,11 @@ _${cat ? "From your card: " + cat : "From your card spend"}_
 📍 ${p.venue}
 🗓️ ${new Date(p.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}
 
-🎟️ Event ticket — €${p.eventPrice}
-🏨 ${p.hotel} · ${p.hotelNights}n — €${p.hotelPrice}
-✈️ ${p.flightDesc} — €${p.flightPrice}`;
-    if (p.addon) body += `\n🧳 ${p.addon.label} — €${p.addon.price} (was €${p.addon.normal})`;
-    body += `\n\n*Bundle total: €${p.total}*`;
+🎟️ Event ticket — $${p.eventPrice}
+🏨 ${p.hotel} · ${p.hotelNights}n — $${p.hotelPrice}
+✈️ ${p.flightDesc} — $${p.flightPrice}`;
+    if (p.addon) body += `\n🧳 ${p.addon.label} — $${p.addon.price} (was $${p.addon.normal})`;
+    body += `\n\n*Bundle total: $${p.total}*`;
     await sendButtons(to, body,
       [{ id: "PKG_BOOK", title: "Book package" }, { id: `SEARCHTO_${p.code}`, title: "Just the flight" }, { id: "MENU", title: "Back to menu" }],
       { "1": "PKG_BOOK", "2": `SEARCHTO_${p.code}`, "3": "MENU", "0": "MENU" });
@@ -595,12 +595,12 @@ _${cat ? "From your card: " + cat : "From your card spend"}_
   if (id === "PKG_BOOK") {
     const rec = await apiCall("GET", "/recommendation", null, to);
     const p = rec?.package;
-    if (p) await sendText(to, `🎉 Nice one! Your *${p.event}* package (€${p.total}) is held — event ticket, ${p.hotelNights} nights at ${p.hotel}, and your return flight. Our team will email the confirmation to complete payment.${p.addon ? ` Your ${p.addon.label} is included at €${p.addon.price}.` : ""}`);
+    if (p) await sendText(to, `🎉 Nice one! Your *${p.event}* package ($${p.total}) is held — event ticket, ${p.hotelNights} nights at ${p.hotel}, and your return flight. Our team will email the confirmation to complete payment.${p.addon ? ` Your ${p.addon.label} is included at $${p.addon.price}.` : ""}`);
     return sendMainMenu(to);
   }
   if (id.startsWith("SEARCHTO_")) {
     const code = id.slice(9);
-    const home = db.prepare("SELECT home_airport FROM users WHERE id=?").get(waUid(to))?.home_airport || "OPO";
+    const home = db.prepare("SELECT home_airport FROM users WHERE id=?").get(waUid(to))?.home_airport || "MIA";
     return searchRoute(to, home, code, searchToday(), "package flight");   // was `from` (undefined in this scope) — pre-existing bug
   }
 
@@ -609,14 +609,14 @@ _${cat ? "From your card: " + cat : "From your card spend"}_
     const b = db.prepare("SELECT seat FROM bookings WHERE user_id=? AND status='confirmed' ORDER BY flight_date LIMIT 1").get(waUid(to));
     const cur = b?.seat || "22C";
     const tier = u?.tier || "Gold";
-    const biz = tier === "Platinum" ? "included" : "€90";
-    const prem = (tier === "Platinum" || tier === "Gold") ? "included" : "€18";
+    const biz = tier === "Platinum" ? "included" : "$90";
+    const prem = (tier === "Platinum" || tier === "Gold") ? "included" : "$18";
     await sendText(to,
 `🪑 Seating on your flight — you're in ${cur}.
 
 ✈️ Business (rows 1–3) — ${biz} for ${tier}
 ⭐ Premium Economy (rows 4–7) — ${prem} for ${tier}
-💺 Economy (rows 8–30) — free · front rows 8–10 €8
+💺 Economy (rows 8–30) — free · front rows 8–10 $8
 
 Just tell me a seat (e.g. "change my seat to 12A") or a preference ("window in business") and I'll move you right here.
 
@@ -630,9 +630,9 @@ Just tell me a seat (e.g. "change my seat to 12A") or a preference ("window in b
     const v = db.prepare("SELECT code, amount, status, expiry FROM vouchers WHERE user_id=? ORDER BY id DESC LIMIT 1").get(waUid(to));
     const milesVal = (u.miles * 0.003).toFixed(2);
     const facts = { action: "wallet", miles: u.miles, miles_value_eur: +milesVal, voucher: v ? { code: v.code, amount: v.amount, available: v.status === "active", expiry: v.expiry } : null, card: "Saved card" };
-    const vLine = v && v.status === "active" ? `🎟️ Voucher ${v.code}: €${v.amount} (expires ${v.expiry})` : "🎟️ No active voucher";
+    const vLine = v && v.status === "active" ? `🎟️ Voucher ${v.code}: $${v.amount} (expires ${v.expiry})` : "🎟️ No active voucher";
     await sendText(to, await phraseFromFacts(facts, { channel: "whatsapp",
-      fallback: `💳 Your wallet\n✈️ Xperion Miles: ${u.miles.toLocaleString()} miles (≈ €${milesVal})\n${vLine}\n💳 Saved card · •••• ••••\n\nYou can pay any trip with a mix of voucher, miles and card. Reply 1 to book your usual flight.` }));
+      fallback: `💳 Your wallet\n✈️ Xperion Miles: ${u.miles.toLocaleString()} miles (≈ $${milesVal})\n${vLine}\n💳 Saved card · •••• ••••\n\nYou can pay any trip with a mix of voucher, miles and card. Reply 1 to book your usual flight.` }));
     setMenu(to, { "1": "BOOK_USUAL", "0": "MENU" });
     return;
   }
@@ -725,7 +725,7 @@ async function showOffer(to) {
   setMenu(to, { "1": `OFFERBOOK_${o.origin}_${o.dest}`, "0": "MENU" });
   await sendText(to,
 `💎 *${o.badge}* — for you
-*${o.destCity} from €${o.price}*  (was €${o.was}, −${o.discountPct}%)
+*${o.destCity} from $${o.price}*  (was $${o.was}, −${o.discountPct}%)
 ${o.originCity} → ${o.destCity}
 ✨ ${o.perk}
 ${o.reason}
@@ -783,7 +783,7 @@ async function handleIncoming({ from, text }) {
     const toM = t.match(/\bto\s+([a-zà-ÿ]+(?:\s+[a-zà-ÿ]+)?)/);
     const destFromText = toM ? detectDest(toM[1].trim()) : null;
     if (destFromText) {
-      const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "OPO";
+      const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "MIA";
       const parsed = parseDate(t);
       if (destFromText === home) {
         // "to <home>" — can't fly home→home; just acknowledge and show the menu.
@@ -852,9 +852,9 @@ async function handleIncoming({ from, text }) {
   }
 
   // 2b) Fast deterministic search for an explicit route the user typed, e.g.
-  //     "flights to Madrid", "fly to Paris", "options to London from Lisbon",
-  //     "Lisbon to Amsterdam". We parse BOTH a destination ("to X") and an
-  //     optional origin ("from Y"), so "to London from Lisbon" → LIS→LHR, not
+  //     "flights to Madrid", "fly to Paris", "options to London from New York",
+  //     "New York to Amsterdam". We parse BOTH a destination ("to X") and an
+  //     optional origin ("from Y"), so "to London from New York" → JFK→LHR, not
   //     a mangled home-airport guess. Questions go to the AI agent instead.
   const isQuestion = /\?|^(do|does|can|is|are|why|what|which|where|how)\b/.test(t);
   if (!isQuestion) {
@@ -862,7 +862,7 @@ async function handleIncoming({ from, text }) {
     const toMatch = t.match(/\bto\s+([a-zà-ÿ]+(?:\s+[a-zà-ÿ]+)?)\b/);
     // Capture the city right after "from"
     const fromMatch = t.match(/\bfrom\s+([a-zà-ÿ]+(?:\s+[a-zà-ÿ]+)?)\b/);
-    // Also handle "X to Y" without the word "from" (e.g. "Lisbon to Amsterdam")
+    // Also handle "X to Y" without the word "from" (e.g. "New York to Amsterdam")
     const pairMatch = t.match(/\b([a-zà-ÿ]+(?:\s+[a-zà-ÿ]+)?)\s+to\s+([a-zà-ÿ]+(?:\s+[a-zà-ÿ]+)?)\b/);
 
     let originCode = null, destCode = null;
@@ -876,7 +876,7 @@ async function handleIncoming({ from, text }) {
 
     // Only fire the deterministic search when we have a real destination.
     if (destCode && destCode !== originCode) {
-      const home = db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid)?.home_airport || "OPO";
+      const home = db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid)?.home_airport || "MIA";
       return searchRoute(from, originCode || home, destCode, parsedDate || searchToday(), text);
     }
   }
@@ -903,14 +903,14 @@ async function runAgent(to, text) {
     if (flightsCard && flightsCard.flights?.length) {
       const flights = flightsCard.flights.slice(0, 5);
       const map = { "0": "MENU" }; const lines = [];
-      flights.forEach((f, i) => { const n = String(i + 1); map[n] = `PICK_${f.flight_no}`; lines.push(`${n}️⃣  ${f.flight_no} · ${f.dep}–${f.arr} · €${f.price}${f.recommended ? " ⭐" : ""}`); });
+      flights.forEach((f, i) => { const n = String(i + 1); map[n] = `PICK_${f.flight_no}`; lines.push(`${n}️⃣  ${f.flight_no} · ${f.dep}–${f.arr} · $${f.price}${f.recommended ? " ⭐" : ""}`); });
       setMenu(to, map);
       setCtx(to, { origin: flightsCard.origin, dest: flightsCard.dest, date: flightsCard.date, flights: flights.map(f => ({ flight_no: f.flight_no, dep: f.dep, arr: f.arr, price: f.price })) });
       const head = r.reply ? r.reply + "\n\n" : "";
       const body = `${head}✈️ ${cityName(flightsCard.origin)} → ${cityName(flightsCard.dest)} · ${flightsCard.date}\nReply with a number:\n\n${lines.join("\n")}\n\n0 for menu`;
       // Record an assistant turn that names the flights, so a follow-up like
       // "does XP1481 have availability?" can be resolved from context.
-      pushConvo(to, "assistant", `${r.reply ? r.reply + " " : ""}Showed ${cityName(flightsCard.origin)}→${cityName(flightsCard.dest)} on ${flightsCard.date}: ` + flights.map(f => `${f.flight_no} ${f.dep}-${f.arr} €${f.price}`).join("; "));
+      pushConvo(to, "assistant", `${r.reply ? r.reply + " " : ""}Showed ${cityName(flightsCard.origin)}→${cityName(flightsCard.dest)} on ${flightsCard.date}: ` + flights.map(f => `${f.flight_no} ${f.dep}-${f.arr} $${f.price}`).join("; "));
       await sendText(to, body);
       return;
     }
@@ -936,10 +936,10 @@ async function runAgent(to, text) {
 function detectDest(t) {
   t = (t || "").toLowerCase().trim();
   // direct IATA code mention
-  const codeMatch = t.toUpperCase().match(/\b(LIS|OPO|MAD|CDG|FNC|BCN|LON|LHR|FCO|FRA|BRU|AMS|GVA|ZRH|MUC|MXP|ORY|JFK|GRU|MIA|FAO|EWR)\b/);
+  const codeMatch = t.toUpperCase().match(/\b(JFK|MIA|MAD|CDG|CUN|MCO|LON|LHR|FCO|FRA|BRU|AMS|GVA|ZRH|MUC|MXP|ORY|JFK|GRU|MIA|LAS|EWR)\b/);
   if (codeMatch && AIRPORTS[codeMatch[1]]) return codeMatch[1];
   // curated aliases first (incl. multi-word + persona cities) — most reliable
-  const alias = { lisbon: "LIS", porto: "OPO", oporto: "OPO", madrid: "MAD", paris: "CDG", funchal: "FNC", barcelona: "BCN", london: "LHR", rome: "FCO", frankfurt: "FRA", brussels: "BRU", amsterdam: "AMS", geneva: "GVA", zurich: "ZRH", munich: "MUC", milan: "MXP", "new york": "JFK", "newyork": "JFK", nyc: "JFK", "sao paulo": "GRU", "são paulo": "GRU", saopaulo: "GRU", miami: "MIA", faro: "FAO", dublin: "DUB", "ponta delgada": "PDL" };
+  const alias = { lisbon: "JFK", porto: "MIA", oporto: "MIA", madrid: "MAD", paris: "CDG", funchal: "CUN", barcelona: "MCO", london: "LHR", rome: "FCO", frankfurt: "FRA", brussels: "BRU", amsterdam: "AMS", geneva: "GVA", zurich: "ZRH", munich: "MUC", milan: "MXP", "new york": "JFK", "newyork": "JFK", nyc: "JFK", "sao paulo": "GRU", "são paulo": "GRU", saopaulo: "GRU", miami: "MIA", faro: "LAS", dublin: "DUB", "ponta delgada": "SJU" };
   for (const [name, code] of Object.entries(alias)) {
     if (new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(t) && AIRPORTS[code]) return code;
   }
@@ -1040,14 +1040,14 @@ async function searchRoute(to, origin, dest, date = searchToday(), userText) {
   flights.forEach((f, i) => {
     const n = String(i + 1);
     map[n] = `PICK_${f.flight_no}`;
-    lines.push(`${n}️⃣  ${f.flight_no} · ${f.dep}–${f.arr} · €${f.price}${f.recommended ? " ⭐" : ""}`);
+    lines.push(`${n}️⃣  ${f.flight_no} · ${f.dep}–${f.arr} · $${f.price}${f.recommended ? " ⭐" : ""}`);
   });
   setMenu(to, map);
   // Remember the active route + date AND the shown flights, so a follow-up can pick by
   // position/attribute ("the second one", "cheapest") or a date-only follow-up re-runs the route.
   setCtx(to, { origin, dest, date, flights: flights.map(f => ({ flight_no: f.flight_no, dep: f.dep, arr: f.arr, price: f.price })) });
   // Record it in the conversation so the AI agent has context on any follow-up.
-  pushConvo(to, "assistant", `Showed ${cityName(origin)}→${cityName(dest)} on ${date}: ` + flights.map(f => `${f.flight_no} ${f.dep}-${f.arr} €${f.price}`).join("; "));
+  pushConvo(to, "assistant", `Showed ${cityName(origin)}→${cityName(dest)} on ${date}: ` + flights.map(f => `${f.flight_no} ${f.dep}-${f.arr} $${f.price}`).join("; "));
   await sendText(to,
 `✈️ ${cityName(origin)} → ${cityName(dest)} · ${date}
 Found ${flights.length} flights — reply with a number to pick:

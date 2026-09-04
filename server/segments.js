@@ -59,7 +59,7 @@ const SEGMENTS = [
   },
   {
     id: "high_value_flyer", name: "High-Value Flyer",
-    why: p => `total spend €${p.totalSpend}${p.maxTrip >= 500 ? ` · a €${p.maxTrip} trip` : ""}`,
+    why: p => `total spend $${p.totalSpend}${p.maxTrip >= 500 ? ` · a $${p.maxTrip} trip` : ""}`,
     test: p => p.totalSpend >= 1500 || p.maxTrip >= 500,
     offer: p => ({ subject: `A premium thank-you, ${p.first}`, title: "Your status just earned more.",
       preheader: "A high-value-traveller benefit.",
@@ -71,7 +71,7 @@ const SEGMENTS = [
     test: p => p.hasPartner,
     offer: p => ({ subject: "Triple miles on your extras", title: "3× miles on partner services.",
       preheader: "Bonus miles on your partner bookings.",
-      body_html: `Activate <b>3× tap.miles</b> on the hotel, car or lounge in your recent trips${p.affinityLabel ? `, plus a ${p.affinityLabel.toLowerCase()} offer picked for you` : ""}.`, cta: "Activate 3× miles" }),
+      body_html: `Activate <b>3× miles</b> on the hotel, car or lounge in your recent trips${p.affinityLabel ? `, plus a ${p.affinityLabel.toLowerCase()} offer picked for you` : ""}.`, cta: "Activate 3× miles" }),
   },
   { id: "affinity_football", name: "Football Affinity", test: p => p.affinity === "football", why: () => "card-spend affinity: football",
     offer: p => ({ subject: "Matchday in Lisbon?", title: "A football fan offer.", preheader: "Picked from your interests.", body_html: `Flights plus a matchday experience, bundled for you.`, cta: "See football trips" }) },

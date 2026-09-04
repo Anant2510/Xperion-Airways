@@ -223,102 +223,102 @@ function seedSearches(uid, persona) {
    engine adapt to genuinely different travellers. */
 const PERSONAS = {
   daniel: {
-    id: "daniel", label: "Daniel Ferreira", blurb: "Gold · Porto business commuter", archetype: "Digital Commuter",
-    user: { member_no: "PT-990001", first_name: "Daniel", full_name: "Daniel Ferreira", email: "anant.direct2links+daniel@gmail.com", phone: "+351 91 442 7781", tier: "Gold", miles: 48230, nationality: "Portuguese", dob: "12 Mar 1984", gender: "Male", passport_exp: "14 Sep 2031", doc_id: "PT •••• 3391", home_airport: "OPO", card_brand: "Visa", card_last4: "4417", card_exp: "08/28", card_product: "Xperion Miles Visa Gold", card_categories: JSON.stringify([{ name: "Sports & Stadiums", share: 34 }, { name: "Sports Streaming", share: 18 }, { name: "Dining & Bars", share: 16 }, { name: "Rideshare", share: 12 }]), affinity: "football", affinity_label: "Football fan" },
+    id: "daniel", label: "Daniel Ferreira", blurb: "Gold · Miami business commuter", archetype: "Digital Commuter",
+    user: { member_no: "PT-990001", first_name: "Daniel", full_name: "Daniel Ferreira", email: "anant.direct2links+daniel@gmail.com", phone: "+1 305 442 7781", tier: "Gold", miles: 48230, nationality: "American", dob: "12 Mar 1984", gender: "Male", passport_exp: "14 Sep 2031", doc_id: "US •••• 3391", home_airport: "MIA", card_brand: "Visa", card_last4: "4417", card_exp: "08/28", card_product: "Xperion Miles Visa Gold", card_categories: JSON.stringify([{ name: "Sports & Stadiums", share: 34 }, { name: "Sports Streaming", share: 18 }, { name: "Dining & Bars", share: 16 }, { name: "Rideshare", share: 12 }]), affinity: "football", affinity_label: "Football fan" },
     prefs: { seat: "4C — front aisle", seat_note: "Chosen on 11 of your last 12 flights", bag: "Cabin bag only", meal: "Espresso + pastel de nata", auto_checkin: 1 },
     voucher: { code: "2291", amount: 35, reason: "Service recovery", expiry: "30 Sep 2026" },
-    synced: { origin: "OPO", dest: "LIS", date: "2026-06-15", device: "MacBook Pro", stage: "seat", flight_no: "XP1927", seat: null, items: ["bag"], cabin: "Economy" },
+    synced: { origin: "MIA", dest: "JFK", date: "2026-06-15", device: "MacBook Pro", stage: "seat", flight_no: "XP1927", seat: null, items: ["bag"], cabin: "Economy" },
     ancillaries: [
       ["seat","Seat 4C — front aisle","Your usual seat. Free for Gold.",0,9,1,"seat"],
       ["bag","Cabin bag 10kg","Included in your fare.",0,null,1,"bag"],
       ["meal","Espresso + pastel de nata","Pre-ordered to seat. Your usual.",4.5,null,1,"meal"],
       ["wifi","Wi-Fi messaging pass","Stay reachable in the air.",3,null,0,"wifi"],
-      ["transfer","Lisbon airport transfer","Driver to Av. da Liberdade, 09:30.",18,null,0,"car"],
-      ["lounge","Xperion Premium Lounge OPO","Complimentary — Gold benefit.",0,null,0,"lounge"],
+      ["transfer","New York airport transfer","Driver to Brickell Avenue, 09:30.",18,null,0,"car"],
+      ["lounge","Xperion Premium Lounge MIA","Complimentary — Gold benefit.",0,null,0,"lounge"],
     ],
     destinations: [
-      ["Lisbon","LIS","Your weekly route",62,null,"🌉"],
+      ["New York","JFK","Your weekly route",62,null,"🌉"],
       ["Madrid","MAD","Clients you visited in March",89,null,"🏛️"],
       ["Paris","CDG","Searched 3× this month",121,null,"🗼"],
-      ["Funchal","FNC","Weekend escape · miles eligible",54,15000,"🌴"],
+      ["Cancún","CUN","Weekend escape · miles eligible",54,15000,"🌴"],
     ],
     history: [
-      ["XP1927","OPO→LIS","2026-02-23","07:05","Business"],["XP1943","LIS→OPO","2026-02-26","18:35","Business"],
-      ["XP1927","OPO→LIS","2026-03-02","07:05","Business"],["XP1943","LIS→OPO","2026-03-05","18:35","Business"],
-      ["XP1921","OPO→LIS","2026-03-09","06:35","Business"],["XP1943","LIS→OPO","2026-03-12","18:35","Business"],
-      ["XP1927","OPO→LIS","2026-03-16","07:05","Business"],["XP1943","LIS→OPO","2026-03-19","18:35","Business"],
-      ["XP1927","OPO→LIS","2026-03-23","07:05","Business"],["XP1943","LIS→OPO","2026-03-26","18:35","Business"],
-      ["XP1927","OPO→LIS","2026-04-06","07:05","Business"],["XP1943","LIS→OPO","2026-04-09","18:35","Business"],
-      ["XP1931","OPO→LIS","2026-04-13","09:10","Business"],["XP1927","OPO→LIS","2026-04-20","07:05","Business"],
-      ["XP1927","OPO→LIS","2026-05-04","07:05","Business"],["XP1927","OPO→LIS","2026-05-11","07:05","Business"],
-      ["XP1937","OPO→LIS","2026-05-18","12:40","Business"],["XP1927","OPO→LIS","2026-06-01","07:05","Business"],
-      ["XP1080","OPO→MAD","2026-03-11","07:40","Business"],["XP1081","MAD→OPO","2026-03-13","19:30","Business"],
-      ["XP1080","OPO→MAD","2026-04-15","07:40","Business"],["XP1081","MAD→OPO","2026-04-17","19:30","Business"],
-      ["XP1080","OPO→MAD","2026-05-20","07:40","Business"],["XP1081","MAD→OPO","2026-05-22","19:30","Business"],
-      ["XP440","OPO→CDG","2026-02-10","08:20","Business"],["XP441","CDG→OPO","2026-02-12","20:10","Business"],
-      ["XP1690","OPO→FNC","2026-04-25","09:15","Leisure"],["XP1691","FNC→OPO","2026-04-27","17:00","Leisure"],
+      ["XP1927","MIA→JFK","2026-02-23","07:05","Business"],["XP1943","JFK→MIA","2026-02-26","18:35","Business"],
+      ["XP1927","MIA→JFK","2026-03-02","07:05","Business"],["XP1943","JFK→MIA","2026-03-05","18:35","Business"],
+      ["XP1921","MIA→JFK","2026-03-09","06:35","Business"],["XP1943","JFK→MIA","2026-03-12","18:35","Business"],
+      ["XP1927","MIA→JFK","2026-03-16","07:05","Business"],["XP1943","JFK→MIA","2026-03-19","18:35","Business"],
+      ["XP1927","MIA→JFK","2026-03-23","07:05","Business"],["XP1943","JFK→MIA","2026-03-26","18:35","Business"],
+      ["XP1927","MIA→JFK","2026-04-06","07:05","Business"],["XP1943","JFK→MIA","2026-04-09","18:35","Business"],
+      ["XP1931","MIA→JFK","2026-04-13","09:10","Business"],["XP1927","MIA→JFK","2026-04-20","07:05","Business"],
+      ["XP1927","MIA→JFK","2026-05-04","07:05","Business"],["XP1927","MIA→JFK","2026-05-11","07:05","Business"],
+      ["XP1937","MIA→JFK","2026-05-18","12:40","Business"],["XP1927","MIA→JFK","2026-06-01","07:05","Business"],
+      ["XP1080","MIA→MAD","2026-03-11","07:40","Business"],["XP1081","MAD→MIA","2026-03-13","19:30","Business"],
+      ["XP1080","MIA→MAD","2026-04-15","07:40","Business"],["XP1081","MAD→MIA","2026-04-17","19:30","Business"],
+      ["XP1080","MIA→MAD","2026-05-20","07:40","Business"],["XP1081","MAD→MIA","2026-05-22","19:30","Business"],
+      ["XP440","MIA→CDG","2026-02-10","08:20","Business"],["XP441","CDG→MIA","2026-02-12","20:10","Business"],
+      ["XP1690","MIA→CUN","2026-04-25","09:15","Leisure"],["XP1691","CUN→MIA","2026-04-27","17:00","Leisure"],
     ],
     bookings: [
-      ["XPQ4K2","XP1927","OPO","LIS","07:05","08:00",86,"2026-03-02","22C","completed",1,["seat","bag","meal"]],
-      ["XPM8R1","XP1943","LIS","OPO","18:35","19:30",84,"2026-03-05","22C","completed",1,["seat","bag","meal","wifi"]],
-      ["XPW2N7","XP1080","OPO","MAD","07:40","09:55",97,"2026-03-11","22C","completed",1,["seat","bag","meal","lounge"]],
-      ["XPL9V3","XP1927","OPO","LIS","07:05","08:00",86,"2026-03-23","22C","completed",1,["seat","bag","meal","wifi"]],
-      ["XPF5J8","XP1080","OPO","MAD","07:40","09:55",92,"2026-04-15","22C","completed",1,["seat","bag","meal","wifi","lounge"]],
-      ["XPB7H4","XP1690","OPO","FNC","09:15","10:45",54,"2026-04-25","11A","completed",1,["seat","bag","meal"]],
-      ["XPX1C9","XP1927","OPO","LIS","07:05","08:00",79,"2026-05-04","22C","completed",1,["seat","bag","meal","wifi","transfer"]],
-      ["XPK6D2","XP1080","OPO","MAD","07:40","09:55",95,"2026-05-20","22C","completed",1,["seat","bag","meal","wifi","lounge"]],
-      ["XPN3T5","XP1927","OPO","LIS","07:05","08:00",86,"2026-06-15","22C","confirmed",0,["seat","bag","meal"]],
-      ["XPG8Y1","XP1080","OPO","MAD","07:40","09:55",98,"2026-06-22","22C","confirmed",0,["seat","bag","meal"]],
+      ["XPQ4K2","XP1927","MIA","JFK","07:05","08:00",86,"2026-03-02","22C","completed",1,["seat","bag","meal"]],
+      ["XPM8R1","XP1943","JFK","MIA","18:35","19:30",84,"2026-03-05","22C","completed",1,["seat","bag","meal","wifi"]],
+      ["XPW2N7","XP1080","MIA","MAD","07:40","09:55",97,"2026-03-11","22C","completed",1,["seat","bag","meal","lounge"]],
+      ["XPL9V3","XP1927","MIA","JFK","07:05","08:00",86,"2026-03-23","22C","completed",1,["seat","bag","meal","wifi"]],
+      ["XPF5J8","XP1080","MIA","MAD","07:40","09:55",92,"2026-04-15","22C","completed",1,["seat","bag","meal","wifi","lounge"]],
+      ["XPB7H4","XP1690","MIA","CUN","09:15","10:45",54,"2026-04-25","11A","completed",1,["seat","bag","meal"]],
+      ["XPX1C9","XP1927","MIA","JFK","07:05","08:00",79,"2026-05-04","22C","completed",1,["seat","bag","meal","wifi","transfer"]],
+      ["XPK6D2","XP1080","MIA","MAD","07:40","09:55",95,"2026-05-20","22C","completed",1,["seat","bag","meal","wifi","lounge"]],
+      ["XPN3T5","XP1927","MIA","JFK","07:05","08:00",86,"2026-06-15","22C","confirmed",0,["seat","bag","meal"]],
+      ["XPG8Y1","XP1080","MIA","MAD","07:40","09:55",98,"2026-06-22","22C","confirmed",0,["seat","bag","meal"]],
     ],
     searches: [
-      ["OPO","CDG","2026-06-19",1,3,"MacBook Pro",2],
-      ["OPO","CDG","2026-07-03",1,3,"MacBook Pro",1],
-      ["LIS","FNC","2026-08-01",3,2,"MacBook Pro",6],
+      ["MIA","CDG","2026-06-19",1,3,"MacBook Pro",2],
+      ["MIA","CDG","2026-07-03",1,3,"MacBook Pro",1],
+      ["JFK","CUN","2026-08-01",3,2,"MacBook Pro",6],
     ],
   },
 
   sofia: {
-    id: "sofia", label: "Sofia Marques", blurb: "Silver · Lisbon leisure & family", archetype: "Family Explorer",
-    user: { member_no: "PT-990002", first_name: "Sofia", full_name: "Sofia Marques", email: "anant.direct2links+sofia@gmail.com", phone: "+351 96 220 1184", tier: "Silver", miles: 21450, nationality: "Portuguese", dob: "27 Jul 1990", gender: "Female", passport_exp: "03 Jun 2029", doc_id: "PT •••• 7720", home_airport: "LIS", card_brand: "Mastercard", card_last4: "8852", card_exp: "05/27", card_product: "Xperion Miles Mastercard", card_categories: JSON.stringify([{ name: "Golf & Country Clubs", share: 29 }, { name: "Sporting Goods", share: 21 }, { name: "Resorts & Spas", share: 17 }, { name: "Family Dining", share: 14 }]), affinity: "golf", affinity_label: "Golf enthusiast" },
+    id: "sofia", label: "Sofia Marques", blurb: "Silver · New York leisure & family", archetype: "Family Explorer",
+    user: { member_no: "PT-990002", first_name: "Sofia", full_name: "Sofia Marques", email: "anant.direct2links+sofia@gmail.com", phone: "+1 917 220 1184", tier: "Silver", miles: 21450, nationality: "American", dob: "27 Jul 1990", gender: "Female", passport_exp: "03 Jun 2029", doc_id: "US •••• 7720", home_airport: "JFK", card_brand: "Mastercard", card_last4: "8852", card_exp: "05/27", card_product: "Xperion Miles Mastercard", card_categories: JSON.stringify([{ name: "Golf & Country Clubs", share: 29 }, { name: "Sporting Goods", share: 21 }, { name: "Resorts & Spas", share: 17 }, { name: "Family Dining", share: 14 }]), affinity: "golf", affinity_label: "Golf enthusiast" },
     prefs: { seat: "14F — window", seat_note: "Window seat on 7 of your last 9 family trips", bag: "2 checked bags", meal: "Kids meal + vegetarian", auto_checkin: 1 },
     voucher: { code: "7741", amount: 50, reason: "Flight delay goodwill", expiry: "31 Dec 2026" },
-    synced: { origin: "LIS", dest: "BCN", date: "2026-07-20", device: "iPhone", stage: "extras", flight_no: "XP1042", seat: "14F", items: ["bag","meal"], cabin: "Economy" },
+    synced: { origin: "JFK", dest: "MCO", date: "2026-07-20", device: "iPhone", stage: "extras", flight_no: "XP1042", seat: "14F", items: ["bag","meal"], cabin: "Economy" },
     ancillaries: [
       ["seat","Seat 14F — window","Window for the kids. Extra legroom row.",6,12,1,"seat"],
       ["bag","2 checked bags 23kg","You always travel with checked luggage.",0,null,1,"bag"],
       ["meal","Kids meal + vegetarian","Pre-ordered for the family.",0,null,1,"meal"],
       ["wifi","Wi-Fi full pass","Keep the kids entertained.",6,null,0,"wifi"],
-      ["transfer","Barcelona family transfer","7-seater to the hotel.",32,null,0,"car"],
-      ["lounge","Xperion Family Lounge LIS","Kids zone + snacks.",24,null,0,"lounge"],
+      ["transfer","Orlando family transfer","7-seater to the hotel.",32,null,0,"car"],
+      ["lounge","Xperion Family Lounge JFK","Kids zone + snacks.",24,null,0,"lounge"],
     ],
     destinations: [
-      ["Barcelona","BCN","Your summer favourite",78,null,"🏖️"],
-      ["Funchal","FNC","Family weekends · 4× this year",54,12000,"🌴"],
-      ["Faro","FAO","Searched 4× — beach season",39,null,"☀️"],
+      ["Orlando","MCO","Your summer favourite",78,null,"🏖️"],
+      ["Cancún","CUN","Family weekends · 4× this year",54,12000,"🌴"],
+      ["Las Vegas","LAS","Searched 4× — beach season",39,null,"☀️"],
       ["Rome","FCO","On your wishlist",132,null,"🏛️"],
     ],
     history: [
-      ["XP1696","LIS→FNC","2026-02-14","10:20","Leisure"],["XP1697","FNC→LIS","2026-02-17","18:10","Leisure"],
-      ["XP1696","LIS→FNC","2026-04-03","10:20","Leisure"],["XP1697","FNC→LIS","2026-04-06","18:10","Leisure"],
-      ["XP1030","LIS→BCN","2026-04-28","11:15","Leisure"],["XP1031","BCN→LIS","2026-05-02","19:40","Leisure"],
-      ["XP1696","LIS→FNC","2026-05-23","10:20","Leisure"],["XP1697","FNC→LIS","2026-05-26","18:10","Leisure"],
-      ["XP1240","LIS→FAO","2026-03-15","09:30","Leisure"],["XP1241","FAO→LIS","2026-03-17","20:00","Leisure"],
-      ["XP1696","LIS→FNC","2026-06-06","10:20","Leisure"],["XP1697","FNC→LIS","2026-06-08","18:10","Leisure"],
+      ["XP1696","JFK→CUN","2026-02-14","10:20","Leisure"],["XP1697","CUN→JFK","2026-02-17","18:10","Leisure"],
+      ["XP1696","JFK→CUN","2026-04-03","10:20","Leisure"],["XP1697","CUN→JFK","2026-04-06","18:10","Leisure"],
+      ["XP1030","JFK→MCO","2026-04-28","11:15","Leisure"],["XP1031","MCO→JFK","2026-05-02","19:40","Leisure"],
+      ["XP1696","JFK→CUN","2026-05-23","10:20","Leisure"],["XP1697","CUN→JFK","2026-05-26","18:10","Leisure"],
+      ["XP1240","JFK→LAS","2026-03-15","09:30","Leisure"],["XP1241","LAS→JFK","2026-03-17","20:00","Leisure"],
+      ["XP1696","JFK→CUN","2026-06-06","10:20","Leisure"],["XP1697","CUN→JFK","2026-06-08","18:10","Leisure"],
     ],
     bookings: [
-      ["XPS1A2","XP1696","LIS","FNC","10:20","11:50",58,"2026-02-14","14F","completed",1,["seat","bag","meal"]],
-      ["XPS2B3","XP1030","LIS","BCN","11:15","13:35",82,"2026-04-28","14F","completed",1,["seat","bag","meal","wifi"]],
-      ["XPS3C4","XP1696","LIS","FNC","10:20","11:50",61,"2026-04-03","14F","completed",1,["seat","bag","meal"]],
-      ["XPS4D5","XP1240","LIS","FAO","09:30","10:25",42,"2026-03-15","14F","completed",1,["seat","bag","meal","wifi"]],
-      ["XPS5E6","XP1696","LIS","FNC","10:20","11:50",58,"2026-05-23","14F","completed",1,["seat","bag","meal","transfer"]],
-      ["XPS6F7","XP1696","LIS","FNC","10:20","11:50",55,"2026-06-06","14F","completed",1,["seat","bag","meal","wifi"]],
-      ["XPS7G8","XP1030","LIS","BCN","11:15","13:35",79,"2026-07-20","14F","confirmed",0,["seat","bag","meal","wifi"]],
-      ["XPS8H9","XP1696","LIS","FNC","10:20","11:50",60,"2026-08-15","14F","confirmed",0,["seat","bag","meal"]],
+      ["XPS1A2","XP1696","JFK","CUN","10:20","11:50",58,"2026-02-14","14F","completed",1,["seat","bag","meal"]],
+      ["XPS2B3","XP1030","JFK","MCO","11:15","13:35",82,"2026-04-28","14F","completed",1,["seat","bag","meal","wifi"]],
+      ["XPS3C4","XP1696","JFK","CUN","10:20","11:50",61,"2026-04-03","14F","completed",1,["seat","bag","meal"]],
+      ["XPS4D5","XP1240","JFK","LAS","09:30","10:25",42,"2026-03-15","14F","completed",1,["seat","bag","meal","wifi"]],
+      ["XPS5E6","XP1696","JFK","CUN","10:20","11:50",58,"2026-05-23","14F","completed",1,["seat","bag","meal","transfer"]],
+      ["XPS6F7","XP1696","JFK","CUN","10:20","11:50",55,"2026-06-06","14F","completed",1,["seat","bag","meal","wifi"]],
+      ["XPS7G8","XP1030","JFK","MCO","11:15","13:35",79,"2026-07-20","14F","confirmed",0,["seat","bag","meal","wifi"]],
+      ["XPS8H9","XP1696","JFK","CUN","10:20","11:50",60,"2026-08-15","14F","confirmed",0,["seat","bag","meal"]],
     ],
     searches: [
-      ["LIS","FAO","2026-07-10",4,4,"iPhone",1],
-      ["LIS","BCN","2026-07-20",4,2,"iPhone",2],
-      ["LIS","FCO","2026-09-05",2,1,"iPhone",4],
+      ["JFK","LAS","2026-07-10",4,4,"iPhone",1],
+      ["JFK","MCO","2026-07-20",4,2,"iPhone",2],
+      ["JFK","FCO","2026-09-05",2,1,"iPhone",4],
     ],
   },
 
@@ -339,7 +339,7 @@ const PERSONAS = {
     destinations: [
       ["New York","JFK","Your most-flown route",612,null,"🗽"],
       ["São Paulo","GRU","Quarterly client visits",740,null,"🌆"],
-      ["Lisbon","LIS","Frequent connection hub",148,null,"🌉"],
+      ["New York","JFK","Frequent connection hub",148,null,"🌉"],
       ["Miami","MIA","Searched 2× this month",588,null,"🌴"],
     ],
     history: [
@@ -370,52 +370,52 @@ const PERSONAS = {
 
   // ── New Goal-B sample users (§6) — uids 4 & 5, wired into seed() in step 7b ──
   // Maria: low-tier, low-miles, foodie (affinity 'food' → no package, degrades to null
-  // gracefully). NO voucher (exercises the no-voucher checkout path). LIS-based leisure.
+  // gracefully). NO voucher (exercises the no-voucher checkout path). JFK-based leisure.
   // marketing-CONSENTED per §6 — note: consent is a CDP-layer concept (cdp.js), there is
   // no users-table/persona field for it, so it is not encoded here.
   maria: {
-    id: "maria", label: "Maria Costa", blurb: "Bronze · Lisbon foodie & weekend traveller", archetype: "Culinary Explorer",
-    user: { member_no: "PT-990004", first_name: "Maria", full_name: "Maria Costa", email: "anant.direct2links+maria@gmail.com", phone: "+351 92 558 3360", tier: "Bronze", miles: 3200, nationality: "Portuguese", dob: "09 May 1995", gender: "Female", passport_exp: "18 Apr 2030", doc_id: "PT •••• 5512", home_airport: "LIS", card_brand: "Mastercard", card_last4: "6634", card_exp: "02/28", card_product: "Xperion Miles Mastercard", card_categories: JSON.stringify([{ name: "Dining & Restaurants", share: 38 }, { name: "Food Markets & Delis", share: 22 }, { name: "Cafés & Bakeries", share: 15 }, { name: "Grocery", share: 11 }]), affinity: "food", affinity_label: "Foodie" },
+    id: "maria", label: "Maria Costa", blurb: "Bronze · New York foodie & weekend traveller", archetype: "Culinary Explorer",
+    user: { member_no: "PT-990004", first_name: "Maria", full_name: "Maria Costa", email: "anant.direct2links+maria@gmail.com", phone: "+1 407 558 3360", tier: "Bronze", miles: 3200, nationality: "American", dob: "09 May 1995", gender: "Female", passport_exp: "18 Apr 2030", doc_id: "US •••• 5512", home_airport: "JFK", card_brand: "Mastercard", card_last4: "6634", card_exp: "02/28", card_product: "Xperion Miles Mastercard", card_categories: JSON.stringify([{ name: "Dining & Restaurants", share: 38 }, { name: "Food Markets & Delis", share: 22 }, { name: "Cafés & Bakeries", share: 15 }, { name: "Grocery", share: 11 }]), affinity: "food", affinity_label: "Foodie" },
     prefs: { seat: "16C — aisle", seat_note: "Aisle on 5 of your last 6 trips", bag: "1 checked bag", meal: "Vegetarian", auto_checkin: 1 },
     // no voucher — entry-tier; exercises the no-voucher checkout path (§6)
-    synced: { origin: "LIS", dest: "FCO", date: "2026-07-12", device: "iPhone", stage: "results", flight_no: "XP838", seat: null, items: ["bag"], cabin: "Economy" },
+    synced: { origin: "JFK", dest: "FCO", date: "2026-07-12", device: "iPhone", stage: "results", flight_no: "XP838", seat: null, items: ["bag"], cabin: "Economy" },
     ancillaries: [
       ["seat","Seat 16C — aisle","Your usual aisle seat.",6,12,1,"seat"],
       ["bag","1 checked bag 23kg","You usually check one bag.",0,null,1,"bag"],
       ["meal","Vegetarian meal","Pre-ordered to seat. Your usual.",0,null,1,"meal"],
       ["wifi","Wi-Fi messaging pass","Stay reachable in the air.",3,null,0,"wifi"],
       ["transfer","Rome airport transfer","Driver to the city centre.",26,null,0,"car"],
-      ["lounge","Xperion Lounge LIS","Relax before your flight.",28,null,0,"lounge"],
+      ["lounge","Xperion Lounge JFK","Relax before your flight.",28,null,0,"lounge"],
     ],
     destinations: [
       ["Rome","FCO","Foodie city · searched 3×",149,null,"🍝"],
       ["Madrid","MAD","Tapas weekend",74,null,"🥘"],
-      ["Barcelona","BCN","On your wishlist",84,null,"🥘"],
-      ["Faro","FAO","Seafood by the coast",59,8000,"🦐"],
+      ["Orlando","MCO","On your wishlist",84,null,"🥘"],
+      ["Las Vegas","LAS","Seafood by the coast",59,8000,"🦐"],
     ],
     history: [
-      ["XP838","LIS→FCO","2026-03-06","11:30","Leisure"],["XP839","FCO→LIS","2026-03-09","15:10","Leisure"],
-      ["XP1018","LIS→MAD","2026-04-11","08:45","Leisure"],["XP1019","MAD→LIS","2026-04-13","20:05","Leisure"],
-      ["XP1244","LIS→FAO","2026-05-02","09:30","Leisure"],["XP1245","FAO→LIS","2026-05-04","19:40","Leisure"],
-      ["XP838","LIS→FCO","2026-05-29","11:30","Leisure"],["XP839","FCO→LIS","2026-06-01","15:10","Leisure"],
-      ["XP1032","LIS→BCN","2026-06-13","12:15","Leisure"],["XP1033","BCN→LIS","2026-06-15","21:00","Leisure"],
+      ["XP838","JFK→FCO","2026-03-06","11:30","Leisure"],["XP839","FCO→JFK","2026-03-09","15:10","Leisure"],
+      ["XP1018","JFK→MAD","2026-04-11","08:45","Leisure"],["XP1019","MAD→JFK","2026-04-13","20:05","Leisure"],
+      ["XP1244","JFK→LAS","2026-05-02","09:30","Leisure"],["XP1245","LAS→JFK","2026-05-04","19:40","Leisure"],
+      ["XP838","JFK→FCO","2026-05-29","11:30","Leisure"],["XP839","FCO→JFK","2026-06-01","15:10","Leisure"],
+      ["XP1032","JFK→MCO","2026-06-13","12:15","Leisure"],["XP1033","MCO→JFK","2026-06-15","21:00","Leisure"],
     ],
     bookings: [
-      ["XPMA12","XP838","LIS","FCO","11:30","14:25",149,"2026-03-06","16C","completed",1,["seat","bag","meal"]],
-      ["XPMB34","XP1018","LIS","MAD","08:45","10:05",74,"2026-04-11","16C","completed",1,["seat","bag","meal"]],
-      ["XPMC56","XP1244","LIS","FAO","09:30","10:20",59,"2026-05-02","16C","completed",1,["seat","bag"]],
-      ["XPMD78","XP838","LIS","FCO","11:30","14:25",152,"2026-05-29","16C","completed",1,["seat","bag","meal","wifi"]],
-      ["XPME90","XP838","LIS","FCO","11:30","14:25",149,"2026-07-12","16C","confirmed",0,["seat","bag"]],
+      ["XPMA12","XP838","JFK","FCO","11:30","14:25",149,"2026-03-06","16C","completed",1,["seat","bag","meal"]],
+      ["XPMB34","XP1018","JFK","MAD","08:45","10:05",74,"2026-04-11","16C","completed",1,["seat","bag","meal"]],
+      ["XPMC56","XP1244","JFK","LAS","09:30","10:20",59,"2026-05-02","16C","completed",1,["seat","bag"]],
+      ["XPMD78","XP838","JFK","FCO","11:30","14:25",152,"2026-05-29","16C","completed",1,["seat","bag","meal","wifi"]],
+      ["XPME90","XP838","JFK","FCO","11:30","14:25",149,"2026-07-12","16C","confirmed",0,["seat","bag"]],
     ],
     searches: [
-      ["LIS","FCO","2026-07-12",1,3,"iPhone",2],
-      ["LIS","MAD","2026-08-08",2,2,"iPhone",3],
-      ["LIS","BCN","2026-09-02",2,1,"iPhone",5],
+      ["JFK","FCO","2026-07-12",1,3,"iPhone",2],
+      ["JFK","MAD","2026-08-08",2,2,"iPhone",3],
+      ["JFK","MCO","2026-09-02",2,1,"iPhone",5],
     ],
   },
 
-  // James: non-Portugal home (LHR) + high miles → Miles-Rich INCLUDES him, Frequent-OPO/LIS
-  // audiences EXCLUDE him; UK-corridor (LHR↔LIS/OPO) journey. affinity 'business' → no package
+  // James: non-Portugal home (LHR) + high miles → Miles-Rich INCLUDES him, Frequent-MIA/JFK
+  // audiences EXCLUDE him; UK-corridor (LHR↔JFK/MIA) journey. affinity 'business' → no package
   // (degrades to null gracefully). marketing-NOT-consented per §6 — again a CDP-layer concept,
   // no persona/users field exists for it, so not encoded here.
   james: {
@@ -423,83 +423,83 @@ const PERSONAS = {
     user: { member_no: "GB-990005", first_name: "James", full_name: "James Bennett", email: "anant.direct2links+james@gmail.com", phone: "+44 7700 900812", tier: "Gold", miles: 61000, nationality: "British", dob: "22 Oct 1981", gender: "Male", passport_exp: "07 Mar 2031", doc_id: "GB •••• 4480", home_airport: "LHR", card_brand: "Amex", card_last4: "2207", card_exp: "09/28", card_product: "Xperion Miles Amex Gold", card_categories: JSON.stringify([{ name: "Hotels & Lodging", share: 33 }, { name: "Car Rental", share: 24 }, { name: "Business Services", share: 16 }, { name: "Airport Dining", share: 12 }]), affinity: "business", affinity_label: "Business traveller" },
     prefs: { seat: "3C — front aisle", seat_note: "Front aisle on 10 of your last 12 trips", bag: "2 bags + priority", meal: "Standard — no shellfish", auto_checkin: 1 },
     voucher: { code: "5530", amount: 60, reason: "Gold loyalty bonus", expiry: "31 Mar 2027" },
-    synced: { origin: "LHR", dest: "LIS", date: "2026-07-06", device: "iPad", stage: "seat", flight_no: "XP1358", seat: null, items: ["bag"], cabin: "Economy" },
+    synced: { origin: "LHR", dest: "JFK", date: "2026-07-06", device: "iPad", stage: "seat", flight_no: "XP1358", seat: null, items: ["bag"], cabin: "Economy" },
     ancillaries: [
       ["seat","Seat 3C — front aisle","Your usual front aisle. Free for Gold.",0,12,1,"seat"],
       ["bag","2 bags + priority","Included with Gold.",0,null,1,"bag"],
       ["meal","Standard — no shellfish","Pre-set dietary preference.",4.5,null,1,"meal"],
       ["wifi","Full-flight Wi-Fi","You buy this most trips.",6,null,1,"wifi"],
-      ["transfer","Lisbon city transfer","Black car to the hotel.",30,null,0,"car"],
+      ["transfer","New York city transfer","Black car to the hotel.",30,null,0,"car"],
       ["lounge","Xperion Premium Lounge LHR","Complimentary — Gold benefit.",0,null,0,"lounge"],
     ],
     destinations: [
-      ["Lisbon","LIS","Your weekly corridor",134,null,"🌉"],
-      ["Porto","OPO","Client visits",139,null,"🍷"],
+      ["New York","JFK","Your weekly corridor",134,null,"🌉"],
+      ["Miami","MIA","Client visits",139,null,"🍷"],
       ["New York","JFK","Quarterly long-haul",499,null,"🗽"],
       ["Dublin","DUB","Searched 2× this month",74,null,"☘️"],
     ],
     history: [
-      ["XP1358","LHR→LIS","2026-02-17","07:50","Business"],["XP1359","LIS→LHR","2026-02-20","19:25","Business"],
-      ["XP1358","LHR→LIS","2026-03-10","07:50","Business"],["XP1359","LIS→LHR","2026-03-13","19:25","Business"],
-      ["XP1366","LHR→OPO","2026-03-31","08:15","Business"],["XP1367","OPO→LHR","2026-04-02","20:10","Business"],
-      ["XP1358","LHR→LIS","2026-04-21","07:50","Business"],["XP1359","LIS→LHR","2026-04-24","19:25","Business"],
+      ["XP1358","LHR→JFK","2026-02-17","07:50","Business"],["XP1359","JFK→LHR","2026-02-20","19:25","Business"],
+      ["XP1358","LHR→JFK","2026-03-10","07:50","Business"],["XP1359","JFK→LHR","2026-03-13","19:25","Business"],
+      ["XP1366","LHR→MIA","2026-03-31","08:15","Business"],["XP1367","MIA→LHR","2026-04-02","20:10","Business"],
+      ["XP1358","LHR→JFK","2026-04-21","07:50","Business"],["XP1359","JFK→LHR","2026-04-24","19:25","Business"],
       ["XP1374","LHR→JFK","2026-05-05","10:25","Business"],["XP1375","JFK→LHR","2026-05-12","18:40","Business"],
-      ["XP1358","LHR→LIS","2026-05-26","07:50","Business"],["XP1359","LIS→LHR","2026-05-29","19:25","Business"],
-      ["XP1358","LHR→LIS","2026-06-16","07:50","Business"],["XP1359","LIS→LHR","2026-06-19","19:25","Business"],
+      ["XP1358","LHR→JFK","2026-05-26","07:50","Business"],["XP1359","JFK→LHR","2026-05-29","19:25","Business"],
+      ["XP1358","LHR→JFK","2026-06-16","07:50","Business"],["XP1359","JFK→LHR","2026-06-19","19:25","Business"],
     ],
     bookings: [
-      ["XPJA12","XP1358","LHR","LIS","07:50","10:35",139,"2026-02-17","3C","completed",1,["seat","bag","meal","wifi"]],
-      ["XPJB34","XP1366","LHR","OPO","08:15","10:55",142,"2026-03-31","3C","completed",1,["seat","bag","meal","wifi"]],
-      ["XPJC56","XP1358","LHR","LIS","07:50","10:35",134,"2026-04-21","3C","completed",1,["seat","bag","meal","wifi","lounge"]],
+      ["XPJA12","XP1358","LHR","JFK","07:50","10:35",139,"2026-02-17","3C","completed",1,["seat","bag","meal","wifi"]],
+      ["XPJB34","XP1366","LHR","MIA","08:15","10:55",142,"2026-03-31","3C","completed",1,["seat","bag","meal","wifi"]],
+      ["XPJC56","XP1358","LHR","JFK","07:50","10:35",134,"2026-04-21","3C","completed",1,["seat","bag","meal","wifi","lounge"]],
       ["XPJD78","XP1374","LHR","JFK","10:25","13:55",499,"2026-05-05","3C","completed",1,["seat","bag","meal","wifi","lounge","transfer"]],
-      ["XPJE90","XP1358","LHR","LIS","07:50","10:35",136,"2026-05-26","3C","completed",1,["seat","bag","meal","wifi"]],
-      ["XPJF12","XP1358","LHR","LIS","07:50","10:35",134,"2026-07-06","3C","confirmed",0,["seat","bag","meal"]],
-      ["XPJG34","XP1366","LHR","OPO","08:15","10:55",139,"2026-07-20","3C","confirmed",0,["seat","bag","meal"]],
+      ["XPJE90","XP1358","LHR","JFK","07:50","10:35",136,"2026-05-26","3C","completed",1,["seat","bag","meal","wifi"]],
+      ["XPJF12","XP1358","LHR","JFK","07:50","10:35",134,"2026-07-06","3C","confirmed",0,["seat","bag","meal"]],
+      ["XPJG34","XP1366","LHR","MIA","08:15","10:55",139,"2026-07-20","3C","confirmed",0,["seat","bag","meal"]],
     ],
     searches: [
       ["LHR","DUB","2026-07-15",1,2,"iPad",1],
-      ["LHR","LIS","2026-07-06",1,3,"iPad",2],
-      ["LHR","OPO","2026-07-20",1,2,"iPad",4],
+      ["LHR","JFK","2026-07-06",1,3,"iPad",2],
+      ["LHR","MIA","2026-07-20",1,2,"iPad",4],
     ],
   },
 
   // ── Doc persona: Luís — Comfort seeker (Chapters 2 & 4) ──────────────
   luis: {
     id: "luis", label: "Luís Carvalho", blurb: "Gold · transatlantic Business", archetype: "Comfort Seeker",
-    user: { member_no: "PT-990006", first_name: "Luís", full_name: "Luís Carvalho", email: "anant.direct2links+luis@gmail.com", phone: "+351 91 776 5540", tier: "Gold", miles: 96540, nationality: "Portuguese", dob: "18 Feb 1971", gender: "Male", passport_exp: "22 Nov 2030", doc_id: "PT •••• 8841", home_airport: "LIS", card_brand: "Amex", card_last4: "1007", card_exp: "11/29", card_product: "Xperion Miles Amex Platinum", card_categories: JSON.stringify([{ name: "Fine Dining", share: 31 }, { name: "Luxury Hotels", share: 24 }, { name: "Business Travel", share: 19 }, { name: "Wine & Spirits", share: 12 }]), affinity: "wine", affinity_label: "Fine dining & wine" },
+    user: { member_no: "PT-990006", first_name: "Luís", full_name: "Luís Carvalho", email: "anant.direct2links+luis@gmail.com", phone: "+1 415 776 5540", tier: "Gold", miles: 96540, nationality: "American", dob: "18 Feb 1971", gender: "Male", passport_exp: "22 Nov 2030", doc_id: "US •••• 8841", home_airport: "JFK", card_brand: "Amex", card_last4: "1007", card_exp: "11/29", card_product: "Xperion Miles Amex Platinum", card_categories: JSON.stringify([{ name: "Fine Dining", share: 31 }, { name: "Luxury Hotels", share: 24 }, { name: "Business Travel", share: 19 }, { name: "Wine & Spirits", share: 12 }]), affinity: "wine", affinity_label: "Fine dining & wine" },
     prefs: { seat: "1A — Business, lie-flat window", seat_note: "Business window on 9 of your last 10 flights", bag: "2 checked bags · 32kg", meal: "Premium dining + wine pairing", auto_checkin: 1 },
     voucher: { code: "6120", amount: 120, reason: "Business service recovery", expiry: "31 Dec 2026" },
-    synced: { origin: "LIS", dest: "JFK", date: "2026-06-18", device: "iPad Pro", stage: "seat", flight_no: "XP205", seat: "1A", items: ["seat", "lounge"], cabin: "Business" },
+    synced: { origin: "JFK", dest: "JFK", date: "2026-06-18", device: "iPad Pro", stage: "seat", flight_no: "XP205", seat: "1A", items: ["seat", "lounge"], cabin: "Business" },
     ancillaries: [
       ["seat", "Seat 1A — Business suite", "Lie-flat window. Included in Business.", 0, null, 1, "seat"],
-      ["lounge", "Xperion Premium Lounge — LIS", "Complimentary — Gold + Business.", 0, null, 1, "lounge"],
+      ["lounge", "Xperion Premium Lounge — JFK", "Complimentary — Gold + Business.", 0, null, 1, "lounge"],
       ["bag", "2 checked bags · 32kg", "Included in Business fare.", 0, null, 1, "bag"],
       ["meal", "Premium dining + wine pairing", "Chef menu, pre-ordered to your seat.", 0, null, 1, "meal"],
-      ["transfer", "Chauffeur to LIS airport", "Door-to-door — Business benefit.", 0, null, 0, "car"],
+      ["transfer", "Chauffeur to JFK airport", "Door-to-door — Business benefit.", 0, null, 0, "car"],
       ["wifi", "Wi-Fi Full Pass", "Full internet, whole flight.", 0, null, 0, "wifi"],
     ],
     destinations: [
       ["New York", "JFK", "Your quarterly board meeting", 449, null, "🗽"],
       ["São Paulo", "GRU", "Family + business", 529, null, "🌆"],
       ["London", "LHR", "Weekend with your wife", 134, null, "🎩"],
-      ["Funchal", "FNC", "Anniversary escape · miles eligible", 89, 20000, "🌴"],
+      ["Cancún", "CUN", "Anniversary escape · miles eligible", 89, 20000, "🌴"],
     ],
     history: [
-      ["XP205", "LIS→JFK", "2026-02-14", "10:30", "Business"], ["XP206", "JFK→LIS", "2026-02-20", "19:45", "Business"],
-      ["XP205", "LIS→JFK", "2026-03-18", "10:30", "Business"], ["XP206", "JFK→LIS", "2026-03-24", "19:45", "Business"],
-      ["XP1360", "LIS→LHR", "2026-04-05", "08:40", "Business"], ["XP1361", "LHR→LIS", "2026-04-08", "20:10", "Business"],
-      ["XP205", "LIS→JFK", "2026-05-12", "10:30", "Business"], ["XP206", "JFK→LIS", "2026-05-18", "19:45", "Business"],
+      ["XP205", "JFK→JFK", "2026-02-14", "10:30", "Business"], ["XP206", "JFK→JFK", "2026-02-20", "19:45", "Business"],
+      ["XP205", "JFK→JFK", "2026-03-18", "10:30", "Business"], ["XP206", "JFK→JFK", "2026-03-24", "19:45", "Business"],
+      ["XP1360", "JFK→LHR", "2026-04-05", "08:40", "Business"], ["XP1361", "LHR→JFK", "2026-04-08", "20:10", "Business"],
+      ["XP205", "JFK→JFK", "2026-05-12", "10:30", "Business"], ["XP206", "JFK→JFK", "2026-05-18", "19:45", "Business"],
     ],
     bookings: [
-      ["XPLUI01", "XP205", "LIS", "JFK", "10:30", "13:50", 1180, "2026-02-14", "1A", "completed", 1, ["seat", "bag", "meal", "lounge"], "Business", "Executive Flex"],
-      ["XPLUI02", "XP1360", "LIS", "LHR", "08:40", "11:20", 640, "2026-04-05", "2A", "completed", 1, ["seat", "bag", "meal", "lounge"], "Business", "Executive Flex"],
-      ["XPLUI03", "XP205", "LIS", "JFK", "10:30", "13:50", 1240, "2026-06-18", "1A", "confirmed", 0, ["seat", "bag", "meal", "lounge"], "Business", "Executive Flex", "web", [{ first: "Luís", last: "Carvalho" }, { first: "Inês", last: "Carvalho" }]],
-      ["XPLUI04", "XP1690", "LIS", "FNC", "09:15", "10:45", 320, "2026-07-12", "6A", "confirmed", 0, ["seat", "bag", "meal"], "Premium", "Premium Flex"],
+      ["XPLUI01", "XP205", "JFK", "JFK", "10:30", "13:50", 1180, "2026-02-14", "1A", "completed", 1, ["seat", "bag", "meal", "lounge"], "Business", "Executive Flex"],
+      ["XPLUI02", "XP1360", "JFK", "LHR", "08:40", "11:20", 640, "2026-04-05", "2A", "completed", 1, ["seat", "bag", "meal", "lounge"], "Business", "Executive Flex"],
+      ["XPLUI03", "XP205", "JFK", "JFK", "10:30", "13:50", 1240, "2026-06-18", "1A", "confirmed", 0, ["seat", "bag", "meal", "lounge"], "Business", "Executive Flex", "web", [{ first: "Luís", last: "Carvalho" }, { first: "Inês", last: "Carvalho" }]],
+      ["XPLUI04", "XP1690", "JFK", "CUN", "09:15", "10:45", 320, "2026-07-12", "6A", "confirmed", 0, ["seat", "bag", "meal"], "Premium", "Premium Flex"],
     ],
     searches: [
-      ["LIS", "JFK", "2026-06-18", 2, 4, "iPad Pro", 2],
-      ["LIS", "GRU", "2026-09-02", 2, 4, "iPad Pro", 5],
-      ["LIS", "LHR", "2026-08-15", 2, 4, "iPad Pro", 8],
+      ["JFK", "JFK", "2026-06-18", 2, 4, "iPad Pro", 2],
+      ["JFK", "GRU", "2026-09-02", 2, 4, "iPad Pro", 5],
+      ["JFK", "LHR", "2026-08-15", 2, 4, "iPad Pro", 8],
     ],
   },
 
@@ -509,7 +509,7 @@ const PERSONAS = {
     user: { member_no: "BR-990007", first_name: "Marcela", full_name: "Marcela Rocha", email: "anant.direct2links+marcela@gmail.com", phone: "+55 11 98422 6610", tier: "Member", miles: 4120, nationality: "Brazilian", dob: "03 Sep 1989", gender: "Female", passport_exp: "09 Jul 2029", doc_id: "BR •••• 2245", home_airport: "GRU", card_brand: "Visa", card_last4: "3390", card_exp: "04/27", card_product: "Visa Crédito", card_categories: JSON.stringify([{ name: "Family Dining", share: 33 }, { name: "Supermarkets", share: 26 }, { name: "Kids & Toys", share: 18 }, { name: "Pharmacy", share: 11 }]), affinity: "family", affinity_label: "Family traveller" },
     prefs: { seat: "22A — window, seated together", seat_note: "Window for the kids on your last 3 trips", bag: "2 checked bags", meal: "Kids meals + vegetarian", auto_checkin: 0 },
     voucher: { code: "3080", amount: 40, reason: "Schedule change goodwill", expiry: "31 Oct 2026" },
-    synced: { origin: "GRU", dest: "LIS", date: "2026-07-05", device: "Android phone", stage: "review", flight_no: "XP073", seat: "22A", items: ["seat", "bag", "meal"], cabin: "Economy" },
+    synced: { origin: "GRU", dest: "JFK", date: "2026-07-05", device: "Android phone", stage: "review", flight_no: "XP073", seat: "22A", items: ["seat", "bag", "meal"], cabin: "Economy" },
     ancillaries: [
       ["seat", "Seats 22A/22B/22C — together", "Family block, one row.", 24, null, 1, "seat"],
       ["bag", "2 checked bags · 23kg", "For the family's luggage.", 25, null, 1, "bag"],
@@ -519,22 +519,22 @@ const PERSONAS = {
       ["insurance", "Family travel insurance", "Covers all 3 travellers.", 29, null, 0, "shield"],
     ],
     destinations: [
-      ["Lisbon", "LIS", "Visiting the grandparents", 529, null, "👵"],
-      ["Porto", "OPO", "Family holiday", 545, null, "🌉"],
-      ["Faro", "FAO", "Beach with the kids", 560, null, "🏖️"],
+      ["New York", "JFK", "Visiting the grandparents", 529, null, "👵"],
+      ["Miami", "MIA", "Family holiday", 545, null, "🌉"],
+      ["Las Vegas", "LAS", "Beach with the kids", 560, null, "🏖️"],
       ["Madrid", "MAD", "Short family break", 118, null, "🏛️"],
     ],
     history: [
-      ["XP073", "GRU→LIS", "2025-12-20", "22:10", "Leisure"], ["XP074", "LIS→GRU", "2026-01-08", "12:30", "Leisure"],
-      ["XP073", "GRU→LIS", "2026-06-28", "22:10", "Leisure"],
+      ["XP073", "GRU→JFK", "2025-12-20", "22:10", "Leisure"], ["XP074", "JFK→GRU", "2026-01-08", "12:30", "Leisure"],
+      ["XP073", "GRU→JFK", "2026-06-28", "22:10", "Leisure"],
     ],
     bookings: [
-      ["XPMAR01", "XP073", "GRU", "LIS", "22:10", "13:05", 1587, "2025-12-20", "22A", "completed", 1, ["seat", "bag", "meal"], "Economy", "Classic", "web", [{ first: "Marcela", last: "Rocha" }, { first: "Beatriz", last: "Rocha" }, { first: "Tomás", last: "Rocha" }]],
-      ["XPMAR02", "XP073", "GRU", "LIS", "22:10", "13:05", 1629, "2026-07-05", "22A", "confirmed", 0, ["seat", "bag", "meal"], "Economy", "Classic", "web", [{ first: "Marcela", last: "Rocha" }, { first: "Beatriz", last: "Rocha" }, { first: "Tomás", last: "Rocha" }]],
+      ["XPMAR01", "XP073", "GRU", "JFK", "22:10", "13:05", 1587, "2025-12-20", "22A", "completed", 1, ["seat", "bag", "meal"], "Economy", "Classic", "web", [{ first: "Marcela", last: "Rocha" }, { first: "Beatriz", last: "Rocha" }, { first: "Tomás", last: "Rocha" }]],
+      ["XPMAR02", "XP073", "GRU", "JFK", "22:10", "13:05", 1629, "2026-07-05", "22A", "confirmed", 0, ["seat", "bag", "meal"], "Economy", "Classic", "web", [{ first: "Marcela", last: "Rocha" }, { first: "Beatriz", last: "Rocha" }, { first: "Tomás", last: "Rocha" }]],
     ],
     searches: [
-      ["GRU", "LIS", "2026-07-05", 3, 2, "Android phone", 3],
-      ["GRU", "OPO", "2026-12-18", 3, 2, "Android phone", 9],
+      ["GRU", "JFK", "2026-07-05", 3, 2, "Android phone", 3],
+      ["GRU", "MIA", "2026-12-18", 3, 2, "Android phone", 9],
     ],
   },
 
@@ -544,34 +544,34 @@ const PERSONAS = {
     user: { member_no: "US-990008", first_name: "Peter", full_name: "Peter Nowak", email: "anant.direct2links+peter@gmail.com", phone: "+1 617 555 0142", tier: "Member", miles: 1850, nationality: "American", dob: "14 Jan 2003", gender: "Male", passport_exp: "28 Feb 2032", doc_id: "US •••• 7013", home_airport: "BOS", card_brand: "Visa", card_last4: "5521", card_exp: "09/28", card_product: "Student Debit", card_categories: JSON.stringify([{ name: "Fast Food", share: 34 }, { name: "Transit & Rideshare", share: 22 }, { name: "Streaming", share: 16 }, { name: "Hostels", share: 12 }]), affinity: "backpacking", affinity_label: "Budget backpacker" },
     prefs: { seat: "Any available — cheapest", seat_note: "You skip paid seats to save", bag: "Cabin bag only", meal: "No meal — bring own", auto_checkin: 0 },
     voucher: { code: "1015", amount: 15, reason: "Cashback promo", expiry: "31 Dec 2026" },
-    synced: { origin: "BOS", dest: "LIS", date: "2026-08-22", device: "Android phone", stage: "results", flight_no: "XP217", seat: null, items: [], cabin: "Economy" },
+    synced: { origin: "BOS", dest: "JFK", date: "2026-08-22", device: "Android phone", stage: "results", flight_no: "XP217", seat: null, items: [], cabin: "Economy" },
     ancillaries: [
-      ["seat", "Any available seat", "Free auto-assign — saves €.", 0, null, 1, "seat"],
+      ["seat", "Any available seat", "Free auto-assign — saves $.", 0, null, 1, "seat"],
       ["bag", "Cabin bag 10kg", "Included — no checked bag.", 0, null, 1, "bag"],
       ["meal", "Skip meal", "No meal — you bring your own.", 0, null, 1, "meal"],
       ["wifi", "Wi-Fi messaging pass", "Cheapest connectivity option.", 3, null, 0, "wifi"],
-      ["transfer", "Hostel shuttle — Lisbon", "Shared budget transfer.", 9, null, 0, "car"],
+      ["transfer", "Hostel shuttle — New York", "Shared budget transfer.", 9, null, 0, "car"],
       ["insurance", "Basic travel insurance", "Low-cost student cover.", 12, null, 0, "shield"],
     ],
     destinations: [
-      ["Lisbon", "LIS", "Backpacking Europe", 429, null, "🎒"],
-      ["Barcelona", "BCN", "Cheap onward hop", 84, null, "🏖️"],
-      ["Porto", "OPO", "Hostels + port wine", 445, null, "🍷"],
+      ["New York", "JFK", "Backpacking Europe", 429, null, "🎒"],
+      ["Orlando", "MCO", "Cheap onward hop", 84, null, "🏖️"],
+      ["Miami", "MIA", "Hostels + port wine", 445, null, "🍷"],
       ["Madrid", "MAD", "Budget city break", 74, null, "🏛️"],
     ],
     history: [
-      ["XP217", "BOS→LIS", "2026-01-05", "21:30", "Leisure"], ["XP1030", "LIS→BCN", "2026-01-09", "11:15", "Leisure"],
-      ["XP218", "LIS→BOS", "2026-01-22", "10:40", "Leisure"],
+      ["XP217", "BOS→JFK", "2026-01-05", "21:30", "Leisure"], ["XP1030", "JFK→MCO", "2026-01-09", "11:15", "Leisure"],
+      ["XP218", "JFK→BOS", "2026-01-22", "10:40", "Leisure"],
     ],
     bookings: [
-      ["XPPET01", "XP217", "BOS", "LIS", "21:30", "08:45", 452, "2026-01-05", "27B", "completed", 1, ["seat", "bag"], "Economy", "Basic"],
-      ["XPPET02", "XP1030", "LIS", "BCN", "11:15", "13:35", 84, "2026-01-09", "29C", "completed", 1, ["seat", "bag"], "Economy", "Basic"],
-      ["XPPET03", "XP217", "BOS", "LIS", "21:30", "08:45", 469, "2026-08-22", "28E", "confirmed", 0, ["seat", "bag"], "Economy", "Basic"],
+      ["XPPET01", "XP217", "BOS", "JFK", "21:30", "08:45", 452, "2026-01-05", "27B", "completed", 1, ["seat", "bag"], "Economy", "Basic"],
+      ["XPPET02", "XP1030", "JFK", "MCO", "11:15", "13:35", 84, "2026-01-09", "29C", "completed", 1, ["seat", "bag"], "Economy", "Basic"],
+      ["XPPET03", "XP217", "BOS", "JFK", "21:30", "08:45", 469, "2026-08-22", "28E", "confirmed", 0, ["seat", "bag"], "Economy", "Basic"],
     ],
     searches: [
-      ["BOS", "LIS", "2026-08-22", 1, 5, "Android phone", 1],
-      ["LIS", "BCN", "2026-08-29", 1, 4, "Android phone", 1],
-      ["LIS", "MAD", "2026-09-02", 1, 5, "Android phone", 4],
+      ["BOS", "JFK", "2026-08-22", 1, 5, "Android phone", 1],
+      ["JFK", "MCO", "2026-08-29", 1, 4, "Android phone", 1],
+      ["JFK", "MAD", "2026-09-02", 1, 5, "Android phone", 4],
     ],
   },
 
@@ -581,7 +581,7 @@ const PERSONAS = {
     user: { member_no: "BR-990009", first_name: "António", full_name: "António Pinto", email: "anant.direct2links+pinto@gmail.com", phone: "+55 21 99655 4120", tier: "Member", miles: 620, nationality: "Brazilian", dob: "11 Apr 1957", gender: "Male", passport_exp: "30 Aug 2028", doc_id: "BR •••• 9930", home_airport: "GRU", card_brand: "Mastercard", card_last4: "7742", card_exp: "06/27", card_product: "Mastercard Crédito", card_categories: JSON.stringify([{ name: "Pharmacy & Health", share: 37 }, { name: "Supermarkets", share: 24 }, { name: "Travel Agency", share: 18 }, { name: "Utilities", share: 10 }]), affinity: "heritage", affinity_label: "Heritage traveller" },
     prefs: { seat: "20A/20B — front, step-free", seat_note: "Front row for step-free access", bag: "2 checked bags", meal: "Low-sodium", auto_checkin: 0 },
     voucher: null,
-    synced: { origin: "GRU", dest: "LIS", date: "2026-07-28", device: "iPad", stage: "search", flight_no: null, seat: null, items: [], cabin: "Economy" },
+    synced: { origin: "GRU", dest: "JFK", date: "2026-07-28", device: "iPad", stage: "search", flight_no: null, seat: null, items: [], cabin: "Economy" },
     ancillaries: [
       ["assist", "Wheelchair assistance (WCHR)", "Airport + boarding assistance.", 0, null, 1, "user"],
       ["seat", "Seats 20A/20B — front, step-free", "Front row, easy access.", 30, null, 1, "seat"],
@@ -590,18 +590,18 @@ const PERSONAS = {
       ["lounge", "Assistance waiting area", "Quiet area before boarding.", 0, null, 0, "lounge"],
     ],
     destinations: [
-      ["Lisbon", "LIS", "Visiting the grandchildren", 529, null, "👴"],
-      ["Porto", "OPO", "Family reunion", 545, null, "🌉"],
+      ["New York", "JFK", "Visiting the grandchildren", 529, null, "👴"],
+      ["Miami", "MIA", "Family reunion", 545, null, "🌉"],
     ],
     history: [
-      ["XP073", "GRU→LIS", "2025-11-10", "22:10", "Leisure"], ["XP074", "LIS→GRU", "2025-11-30", "12:30", "Leisure"],
+      ["XP073", "GRU→JFK", "2025-11-10", "22:10", "Leisure"], ["XP074", "JFK→GRU", "2025-11-30", "12:30", "Leisure"],
     ],
     bookings: [
-      ["XPPIN01", "XP073", "GRU", "LIS", "22:10", "13:05", 1710, "2025-11-10", "20A", "completed", 1, ["seat", "bag", "meal", "assist"], "Economy", "Classic", "agency", [{ first: "António", last: "Pinto" }, { first: "Fernanda", last: "Pinto" }]],
-      ["XPPIN02", "XP073", "GRU", "LIS", "22:10", "13:05", 1745, "2026-07-28", "20A", "confirmed", 0, ["seat", "bag", "meal", "assist"], "Economy", "Classic", "agency", [{ first: "António", last: "Pinto" }, { first: "Fernanda", last: "Pinto" }]],
+      ["XPPIN01", "XP073", "GRU", "JFK", "22:10", "13:05", 1710, "2025-11-10", "20A", "completed", 1, ["seat", "bag", "meal", "assist"], "Economy", "Classic", "agency", [{ first: "António", last: "Pinto" }, { first: "Fernanda", last: "Pinto" }]],
+      ["XPPIN02", "XP073", "GRU", "JFK", "22:10", "13:05", 1745, "2026-07-28", "20A", "confirmed", 0, ["seat", "bag", "meal", "assist"], "Economy", "Classic", "agency", [{ first: "António", last: "Pinto" }, { first: "Fernanda", last: "Pinto" }]],
     ],
     searches: [
-      ["GRU", "LIS", "2026-07-28", 2, 3, "iPad", 6],
+      ["GRU", "JFK", "2026-07-28", 2, 3, "iPad", 6],
     ],
   },
 
@@ -611,34 +611,34 @@ const PERSONAS = {
     user: { member_no: "US-990010", first_name: "Arthur", full_name: "Arthur Hayes", email: "anant.direct2links+arthur@gmail.com", phone: "+1 415 555 0193", tier: "Gold", miles: 58230, nationality: "American", dob: "27 Jun 1993", gender: "Male", passport_exp: "15 May 2031", doc_id: "US •••• 4471", home_airport: "JFK", card_brand: "Amex", card_last4: "2208", card_exp: "03/29", card_product: "Amex Gold", card_categories: JSON.stringify([{ name: "Restaurants", share: 29 }, { name: "Hotels & Resorts", share: 27 }, { name: "Experiences", share: 19 }, { name: "Flights", share: 14 }]), affinity: "honeymoon", affinity_label: "Special-occasion traveller" },
     prefs: { seat: "2A — Business, seated together", seat_note: "Seated with your fiancée every flight", bag: "2 checked bags", meal: "Premium dining", auto_checkin: 1 },
     voucher: { code: "8090", amount: 90, reason: "Anniversary goodwill", expiry: "31 Dec 2026" },
-    synced: { origin: "JFK", dest: "LIS", date: "2026-06-19", device: "iPhone", stage: "extras", flight_no: "XP206", seat: "2A", items: ["seat", "lounge", "stopover"], cabin: "Business" },
+    synced: { origin: "JFK", dest: "JFK", date: "2026-06-19", device: "iPhone", stage: "extras", flight_no: "XP206", seat: "2A", items: ["seat", "lounge", "stopover"], cabin: "Business" },
     ancillaries: [
       ["seat", "Seats 2A/2D — Business, together", "Lie-flat, side by side.", 0, null, 1, "seat"],
       ["lounge", "Xperion Premium Lounge — JFK", "Complimentary — Gold + Business.", 0, null, 1, "lounge"],
       ["meal", "Premium dining · celebration", "Champagne toast on board.", 0, null, 1, "meal"],
       ["bag", "2 checked bags · 32kg", "Included in Business.", 0, null, 1, "bag"],
-      ["stopover", "Lisbon stopover · boutique hotel", "2 nights before Rome.", 240, null, 0, "lounge"],
+      ["stopover", "New York stopover · boutique hotel", "2 nights before Rome.", 240, null, 0, "lounge"],
       ["wifi", "Wi-Fi Full Pass", "Stay reachable — eases nerves.", 0, null, 0, "wifi"],
     ],
     destinations: [
-      ["Lisbon", "LIS", "Honeymoon stopover", 449, null, "💍"],
+      ["New York", "JFK", "Honeymoon stopover", 449, null, "💍"],
       ["Rome", "FCO", "Honeymoon — main leg", 165, null, "🏛️"],
       ["Paris", "CDG", "City of love", 121, null, "🗼"],
       ["Athens", "ATH", "Island hopping", 189, null, "🏖️"],
     ],
     history: [
-      ["XP206", "JFK→LIS", "2026-03-02", "22:20", "Business"], ["XP205", "LIS→JFK", "2026-03-14", "10:30", "Business"],
-      ["XP206", "JFK→LIS", "2026-05-06", "22:20", "Business"], ["XP205", "LIS→JFK", "2026-05-16", "10:30", "Business"],
+      ["XP206", "JFK→JFK", "2026-03-02", "22:20", "Business"], ["XP205", "JFK→JFK", "2026-03-14", "10:30", "Business"],
+      ["XP206", "JFK→JFK", "2026-05-06", "22:20", "Business"], ["XP205", "JFK→JFK", "2026-05-16", "10:30", "Business"],
     ],
     bookings: [
-      ["XPART01", "XP206", "JFK", "LIS", "22:20", "09:40", 1210, "2026-03-02", "2A", "completed", 1, ["seat", "bag", "meal", "lounge"], "Business", "Executive Flex", "web", [{ first: "Arthur", last: "Hayes" }, { first: "Sophie", last: "Bennett" }]],
-      ["XPART02", "XP206", "JFK", "LIS", "22:20", "09:40", 1290, "2026-06-19", "2A", "confirmed", 1, ["seat", "bag", "meal", "lounge"], "Business", "Executive Flex", "web", [{ first: "Arthur", last: "Hayes" }, { first: "Sophie", last: "Bennett" }]],
-      ["XPART03", "XP840", "LIS", "FCO", "13:20", "17:05", 320, "2026-06-24", "6A", "confirmed", 0, ["seat", "bag", "meal"], "Premium", "Premium Flex", "web", [{ first: "Arthur", last: "Hayes" }, { first: "Sophie", last: "Bennett" }]],
+      ["XPART01", "XP206", "JFK", "JFK", "22:20", "09:40", 1210, "2026-03-02", "2A", "completed", 1, ["seat", "bag", "meal", "lounge"], "Business", "Executive Flex", "web", [{ first: "Arthur", last: "Hayes" }, { first: "Sophie", last: "Bennett" }]],
+      ["XPART02", "XP206", "JFK", "JFK", "22:20", "09:40", 1290, "2026-06-19", "2A", "confirmed", 1, ["seat", "bag", "meal", "lounge"], "Business", "Executive Flex", "web", [{ first: "Arthur", last: "Hayes" }, { first: "Sophie", last: "Bennett" }]],
+      ["XPART03", "XP840", "JFK", "FCO", "13:20", "17:05", 320, "2026-06-24", "6A", "confirmed", 0, ["seat", "bag", "meal"], "Premium", "Premium Flex", "web", [{ first: "Arthur", last: "Hayes" }, { first: "Sophie", last: "Bennett" }]],
     ],
     searches: [
-      ["JFK", "LIS", "2026-06-19", 2, 3, "iPhone", 2],
-      ["LIS", "FCO", "2026-06-24", 2, 2, "iPhone", 2],
-      ["LIS", "CDG", "2026-06-26", 2, 3, "iPhone", 5],
+      ["JFK", "JFK", "2026-06-19", 2, 3, "iPhone", 2],
+      ["JFK", "FCO", "2026-06-24", 2, 2, "iPhone", 2],
+      ["JFK", "CDG", "2026-06-26", 2, 3, "iPhone", 5],
     ],
   },
 
@@ -648,36 +648,36 @@ const PERSONAS = {
     user: { member_no: "BR-990011", first_name: "Eliane", full_name: "Eliane Moreira", email: "anant.direct2links+eliane@gmail.com", phone: "+55 11 97733 8820", tier: "Silver", miles: 71240, nationality: "Brazilian", dob: "22 Oct 1979", gender: "Female", passport_exp: "04 Mar 2030", doc_id: "BR •••• 6650", home_airport: "GRU", card_brand: "Visa", card_last4: "9914", card_exp: "12/28", card_product: "Xperion Miles Visa", card_categories: JSON.stringify([{ name: "Money Transfer", share: 30 }, { name: "Groceries", share: 23 }, { name: "Telecoms", share: 17 }, { name: "Flights", share: 15 }]), affinity: "family", affinity_label: "Keeping family close" },
     prefs: { seat: "22F — window", seat_note: "Window on 8 of your last 10 flights", bag: "2 checked bags · gifts", meal: "Vegetarian", auto_checkin: 1 },
     voucher: { code: "5044", amount: 60, reason: "Loyalty goodwill", expiry: "31 Dec 2026" },
-    synced: { origin: "GRU", dest: "LIS", date: "2026-07-02", device: "Android phone", stage: "seat", flight_no: "XP073", seat: "22F", items: ["seat", "bag"], cabin: "Economy" },
+    synced: { origin: "GRU", dest: "JFK", date: "2026-07-02", device: "Android phone", stage: "seat", flight_no: "XP073", seat: "22F", items: ["seat", "bag"], cabin: "Economy" },
     ancillaries: [
       ["seat", "Seat 22F — window", "Your usual window.", 12, null, 1, "seat"],
       ["bag", "2 checked bags · 23kg", "Gifts for the family.", 25, null, 1, "bag"],
       ["meal", "Vegetarian meal", "Pre-ordered to your seat.", 8, null, 1, "meal"],
       ["wifi", "Wi-Fi Full Pass", "Video-call the kids at home.", 6, null, 0, "wifi"],
-      ["transfer", "Airport transfer — Lisbon", "To your mother's home.", 18, null, 0, "car"],
+      ["transfer", "Airport transfer — New York", "To your mother's home.", 18, null, 0, "car"],
       ["lounge", "Xperion Lounge — GRU", "Silver rate.", 24, null, 0, "lounge"],
     ],
     destinations: [
-      ["Lisbon", "LIS", "Home — visiting family", 529, 90000, "❤️"],
-      ["Porto", "OPO", "Your sister lives here", 545, null, "🌉"],
+      ["New York", "JFK", "Home — visiting family", 529, 90000, "❤️"],
+      ["Miami", "MIA", "Your sister lives here", 545, null, "🌉"],
       ["Rio de Janeiro", "GIG", "Where you grew up", 179, null, "🏖️"],
       ["Madrid", "MAD", "Layover shopping", 118, null, "🏛️"],
     ],
     history: [
-      ["XP073", "GRU→LIS", "2026-01-14", "22:10", "Leisure"], ["XP074", "LIS→GRU", "2026-02-02", "12:30", "Leisure"],
-      ["XP073", "GRU→LIS", "2026-03-20", "22:10", "Leisure"], ["XP074", "LIS→GRU", "2026-04-06", "12:30", "Leisure"],
-      ["XP083", "LIS→GIG", "2026-05-01", "23:40", "Leisure"], ["XP084", "GIG→LIS", "2026-05-20", "18:10", "Leisure"],
+      ["XP073", "GRU→JFK", "2026-01-14", "22:10", "Leisure"], ["XP074", "JFK→GRU", "2026-02-02", "12:30", "Leisure"],
+      ["XP073", "GRU→JFK", "2026-03-20", "22:10", "Leisure"], ["XP074", "JFK→GRU", "2026-04-06", "12:30", "Leisure"],
+      ["XP083", "JFK→GIG", "2026-05-01", "23:40", "Leisure"], ["XP084", "GIG→JFK", "2026-05-20", "18:10", "Leisure"],
     ],
     bookings: [
-      ["XPELI01", "XP073", "GRU", "LIS", "22:10", "13:05", 548, "2026-01-14", "22F", "completed", 1, ["seat", "bag", "meal"], "Economy", "Classic"],
-      ["XPELI02", "XP074", "LIS", "GRU", "12:30", "20:55", 542, "2026-02-02", "22F", "completed", 1, ["seat", "bag", "meal"], "Economy", "Classic"],
-      ["XPELI03", "XP073", "GRU", "LIS", "22:10", "13:05", 561, "2026-07-02", "22F", "confirmed", 0, ["seat", "bag", "meal"], "Economy", "Classic", "web", [{ first: "Eliane", last: "Moreira" }, { first: "Rafael", last: "Moreira" }, { first: "Clara", last: "Moreira" }]],
-      ["XPELI04", "XP083", "LIS", "GIG", "23:40", "07:20", 189, "2026-08-10", "24D", "confirmed", 0, ["seat", "bag"], "Economy", "Classic"],
+      ["XPELI01", "XP073", "GRU", "JFK", "22:10", "13:05", 548, "2026-01-14", "22F", "completed", 1, ["seat", "bag", "meal"], "Economy", "Classic"],
+      ["XPELI02", "XP074", "JFK", "GRU", "12:30", "20:55", 542, "2026-02-02", "22F", "completed", 1, ["seat", "bag", "meal"], "Economy", "Classic"],
+      ["XPELI03", "XP073", "GRU", "JFK", "22:10", "13:05", 561, "2026-07-02", "22F", "confirmed", 0, ["seat", "bag", "meal"], "Economy", "Classic", "web", [{ first: "Eliane", last: "Moreira" }, { first: "Rafael", last: "Moreira" }, { first: "Clara", last: "Moreira" }]],
+      ["XPELI04", "XP083", "JFK", "GIG", "23:40", "07:20", 189, "2026-08-10", "24D", "confirmed", 0, ["seat", "bag"], "Economy", "Classic"],
     ],
     searches: [
-      ["GRU", "LIS", "2026-07-02", 3, 3, "Android phone", 1],
-      ["LIS", "GRU", "2026-07-24", 3, 3, "Android phone", 1],
-      ["GIG", "OPO", "2026-09-15", 1, 4, "Android phone", 7],
+      ["GRU", "JFK", "2026-07-02", 3, 3, "Android phone", 1],
+      ["JFK", "GRU", "2026-07-24", 3, 3, "Android phone", 1],
+      ["GIG", "MIA", "2026-09-15", 1, 4, "Android phone", 7],
     ],
   },
 };
@@ -705,7 +705,7 @@ function seedBookings(uid, persona) {
     const bdate = status === "confirmed" ? isoAdd(date, shift) : date;
     if (!seenFlights.has(fno)) {
       const dm = routeDur[o + "-" + d];
-      const dur = dm ? fmtDur(dm) : (d === "FNC" ? "1h30" : (d === "MAD" ? "2h15" : "0h55"));
+      const dur = dm ? fmtDur(dm) : (d === "CUN" ? "1h30" : (d === "MAD" ? "2h15" : "0h55"));
       const aircraft = (dm || 0) >= 360 ? "A330neo" : "A320neo";   // wide-body on long-haul
       insF.run(fno, o, d, dep, arr, dur, aircraft, price, 9, bdate, fno === "XP1927" ? 1 : 0);
       seenFlights.add(fno);
@@ -759,7 +759,7 @@ function seedSharedCatalogs(personaId = DEFAULT_PERSONA) {
     for (const [code, a] of Object.entries(AIRPORTS)) ia.run(code, a.city, a.country, a.region);
     const ir = db.prepare("INSERT INTO routes (origin,dest,duration_min,base_fare,region) VALUES (?,?,?,?,?)");
     for (const [o, d, dur, fare] of ROUTES) {
-      const region = AIRPORTS[o].region === "Europe" && AIRPORTS[d].region === "Europe" ? "Europe" : "Intercontinental";
+      const region = AIRPORTS[o].region === AIRPORTS[d].region ? "Regional" : "Intercontinental";
       ir.run(o, d, dur, fare, region);
     }
   }
@@ -769,7 +769,7 @@ function seedSharedCatalogs(personaId = DEFAULT_PERSONA) {
     const ins = db.prepare("INSERT OR IGNORE INTO routes (origin,dest,duration_min,base_fare,region) VALUES (?,?,?,?,?)");
     const upd = db.prepare("UPDATE routes SET duration_min=?, base_fare=? WHERE origin=? AND dest=?");
     for (const [o, d, dur, fare] of ROUTES) {
-      const region = AIRPORTS[o] && AIRPORTS[d] && AIRPORTS[o].region === "Europe" && AIRPORTS[d].region === "Europe" ? "Europe" : "Intercontinental";
+      const region = AIRPORTS[o] && AIRPORTS[d] && AIRPORTS[o].region === AIRPORTS[d].region ? "Regional" : "Intercontinental";
       ins.run(o, d, dur, fare, region);
       upd.run(dur, fare, o, d);
     }
@@ -884,7 +884,7 @@ seed();
   let added = 0;
   for (const [o, d, dur, fare] of ROUTES) {
     if (!(AIRPORTS[o] && AIRPORTS[d])) continue;
-    const region = AIRPORTS[o].region === "Europe" && AIRPORTS[d].region === "Europe" ? "Europe" : "Intercontinental";
+    const region = AIRPORTS[o].region === AIRPORTS[d].region ? "Regional" : "Intercontinental";
     const r = ins.run(o, d, dur, fare, region);
     if (r && r.changes) added++;
   }
@@ -977,11 +977,11 @@ function localProfile(personaId) {
     if (!u || u.member_no !== "PT-990001") return;   // only when Daniel occupies the live record
     // [pnr, flight_no, origin, dest, dep, arr, duration, price, seat, fare, cabin, dayOffset, items]
     const TRIPS = [
-      ["XPDAN02", "XP1931", "OPO", "LIS", "09:10", "10:05", "0h55", 128, "22D", "Plus", "Economy", 3, ["seat", "bag"]],
-      ["XPDAN03", "XP1937", "OPO", "LIS", "12:40", "13:35", "0h55", 214, "6A", "Premium Flex", "Premium", 6, ["seat", "bag", "meal", "lounge"]],
-      ["XPDAN04", "XP1943", "LIS", "OPO", "18:35", "19:30", "0h55", 342, "1A", "Executive Flex", "Business", 9, ["seat", "bag", "meal", "lounge"]],
-      ["XPDAN05", "XP1520", "OPO", "LHR", "20:50", "23:30", "2h40", 298, "6A", "Premium Flex", "Premium", 14, ["seat", "carbon", "ins-plus"]],
-      ["XPDAN06", "XP1080", "OPO", "MAD", "07:40", "09:55", "2h15", 156, "22C", "Classic", "Economy", 21, ["seat", "bag", "meal"]],
+      ["XPDAN02", "XP1931", "MIA", "JFK", "09:10", "10:05", "0h55", 128, "22D", "Plus", "Economy", 3, ["seat", "bag"]],
+      ["XPDAN03", "XP1937", "MIA", "JFK", "12:40", "13:35", "0h55", 214, "6A", "Premium Flex", "Premium", 6, ["seat", "bag", "meal", "lounge"]],
+      ["XPDAN04", "XP1943", "JFK", "MIA", "18:35", "19:30", "0h55", 342, "1A", "Executive Flex", "Business", 9, ["seat", "bag", "meal", "lounge"]],
+      ["XPDAN05", "XP1520", "MIA", "LHR", "20:50", "23:30", "2h40", 298, "6A", "Premium Flex", "Premium", 14, ["seat", "carbon", "ins-plus"]],
+      ["XPDAN06", "XP1080", "MIA", "MAD", "07:40", "09:55", "2h15", 156, "22C", "Classic", "Economy", 21, ["seat", "bag", "meal"]],
     ];
     const has = db.prepare("SELECT 1 c FROM bookings WHERE pnr=? AND user_id=1");
     const seenF = new Set(db.prepare("SELECT flight_no FROM flights").all().map(r => r.flight_no));
@@ -1038,14 +1038,14 @@ function localProfile(personaId) {
     }
     const bdate = isoAdd(TODAY, 2);
     const meta = {
-      fare: "Plus", cabin: "Economy", origin: "LIS", dest: "CDG",
+      fare: "Plus", cabin: "Economy", origin: "JFK", dest: "CDG",
       dep: "07:20", arr: "10:55", aircraft: "A320neo", pax: 3,
       passengers: GROUP,
     };
     const items = ["seat", "bag", "meal"];
     if (!db.prepare("SELECT 1 FROM flights WHERE flight_no=? AND flight_date=?").get(FNO, bdate)) {
       db.prepare("INSERT INTO flights (flight_no,origin,dest,dep,arr,duration,aircraft,price,seats_left,flight_date,recommended,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
-        .run(FNO, "LIS", "CDG", "07:20", "10:55", "2h35", "A320neo", 189, 6, bdate, 0, "cancelled");
+        .run(FNO, "JFK", "CDG", "07:20", "10:55", "2h35", "A320neo", 189, 6, bdate, 0, "cancelled");
     } else {
       db.prepare("UPDATE flights SET status='cancelled' WHERE flight_no=? AND flight_date=?").run(FNO, bdate);
     }
@@ -1076,13 +1076,13 @@ function localProfile(personaId) {
     }
     const bdate = isoAdd(TODAY, 4);
     const meta = {
-      fare: "Classic", cabin: "Economy", origin: "OPO", dest: "AMS",
+      fare: "Classic", cabin: "Economy", origin: "MIA", dest: "AMS",
       dep: "13:15", arr: "16:00", aircraft: "A320neo", pax: 1,
       passengers: [{ first: "Daniel", last: "Ferreira", type: "adult" }],
     };
     if (!db.prepare("SELECT 1 FROM flights WHERE flight_no=? AND flight_date=?").get(FNO, bdate)) {
       db.prepare("INSERT INTO flights (flight_no,origin,dest,dep,arr,duration,aircraft,price,seats_left,flight_date,recommended,status,new_dep,new_arr) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-        .run(FNO, "OPO", "AMS", "13:15", "16:00", "2h45", "A320neo", 164, 8, bdate, 0, "delayed", "16:45", "19:30");
+        .run(FNO, "MIA", "AMS", "13:15", "16:00", "2h45", "A320neo", 164, 8, bdate, 0, "delayed", "16:45", "19:30");
     } else {
       db.prepare("UPDATE flights SET status='delayed', new_dep='16:45', new_arr='19:30' WHERE flight_no=? AND flight_date=?").run(FNO, bdate);
     }

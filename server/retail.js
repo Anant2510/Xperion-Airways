@@ -31,7 +31,7 @@ let cdpEvents = {}; try { cdpEvents = require("./cdp-events"); } catch {}
 let cdpProfile = {}; try { cdpProfile = require("./cdp-profile"); } catch {}
 
 const OFFER_TTL_MS = Number(process.env.RETAIL_OFFER_TTL_MS) || 20 * 60e3;
-const CUR = "EUR";
+const CUR = "USD";
 const r2 = (n) => Math.round(n * 100) / 100;
 const oid = (p) => p + "-" + crypto.randomBytes(4).toString("hex").toUpperCase();
 
@@ -40,7 +40,7 @@ db.exec(`
 CREATE TABLE IF NOT EXISTS offers (
   id TEXT PRIMARY KEY, user_id INTEGER, tenant TEXT DEFAULT 'xperion',
   origin TEXT, dest TEXT, travel_date TEXT, flight_no TEXT,
-  currency TEXT DEFAULT 'EUR', base_total REAL, total REAL,
+  currency TEXT DEFAULT 'USD', base_total REAL, total REAL,
   items_json TEXT, pricing_json TEXT, bundle_json TEXT, propensity_json TEXT,
   status TEXT DEFAULT 'active', expires_at TEXT, created_at TEXT,
   superseded_by TEXT, converted_order_id TEXT
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS offers (
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY, user_id INTEGER, tenant TEXT DEFAULT 'xperion',
   offer_id TEXT, channel TEXT DEFAULT 'web', status TEXT DEFAULT 'paid',
-  currency TEXT DEFAULT 'EUR', total REAL, refunded_total REAL DEFAULT 0,
+  currency TEXT DEFAULT 'USD', total REAL, refunded_total REAL DEFAULT 0,
   idem_key TEXT UNIQUE, created_at TEXT, updated_at TEXT
 );
 CREATE TABLE IF NOT EXISTS order_items (
@@ -69,7 +69,7 @@ const CATALOG_RULES = {
     price: (u, ctx, base) => (u.tier === "Platinum" ? { price: 0, note: "included — Platinum benefit" } : { price: base }),
   },
   fast: {
-    eligible: (u, ctx) => ["LIS", "OPO", "FNC"].includes(ctx.origin) || ["LIS", "OPO"].includes(u.home_airport),
+    eligible: (u, ctx) => ["JFK", "MIA", "CUN"].includes(ctx.origin) || ["JFK", "MIA"].includes(u.home_airport),
     price: (u, ctx, base) => ({ price: base }),
   },
   xbag: {
@@ -116,8 +116,8 @@ function priceFlight(u, f, ctx = {}) {
   else if (u.tier === "Gold") adj.push({ code: "loyalty", label: "Gold loyalty fare", amount: r2(base * -0.03) });
   else if (u.tier === "Silver") adj.push({ code: "member", label: "Silver member fare", amount: r2(base * -0.02) });
   else if (u.tier === "Bronze" || !u.tier) adj.push({ code: "welcome", label: trips < 3 ? "welcome fare — new flyer" : "saver fare", amount: r2(base * (trips < 3 ? -0.06 : -0.04)) });
-  if (u.tier === "Platinum") adj.push({ code: "flex", label: "flex change included (worth €15)", amount: 0 });
-  if ((u.miles || 0) >= 100000) adj.push({ code: "miles_nudge", label: "eligible: pay fully with miles at 1,000 ≈ €3", amount: 0 });
+  if (u.tier === "Platinum") adj.push({ code: "flex", label: "flex change included (worth $15)", amount: 0 });
+  if ((u.miles || 0) >= 100000) adj.push({ code: "miles_nudge", label: "eligible: pay fully with miles at 1,000 ≈ $3", amount: 0 });
 
   const total = r2(Math.max(19, base + adj.reduce((s, a) => s + a.amount, 0)));
   return { base, adjustments: adj, total, currency: CUR, days_to_departure: daysTo };
@@ -282,7 +282,7 @@ function mount(app, deps) {
 
   app.get("/api/retail/catalog", (req, res) => {
     const u = userRow(req.uid);
-    const ctx = { origin: (req.query.origin || u.home_airport || "LIS").toUpperCase(), shortHaul: req.query.shortHaul !== "0" };
+    const ctx = { origin: (req.query.origin || u.home_airport || "JFK").toUpperCase(), shortHaul: req.query.shortHaul !== "0" };
     res.json({ ok: true, customer: { name: u.full_name, tier: u.tier }, products: catalogFor(u, ctx) });
   });
 
@@ -291,7 +291,7 @@ function mount(app, deps) {
 
   // Shop: offers for a route/date, priced for THIS customer
   app.post("/api/retail/offers", (req, res) => {
-    const origin = (req.body.origin || "LIS").toUpperCase(), dest = (req.body.dest || "OPO").toUpperCase();
+    const origin = (req.body.origin || "JFK").toUpperCase(), dest = (req.body.dest || "MIA").toUpperCase();
     const date = req.body.date || searchToday();
     const flights = flightsFor(origin, dest, date);
     const out = composeOffers(req.uid, { origin, dest, date, flights, limit: Number(req.body.limit) || 3 });
@@ -362,7 +362,7 @@ function mount(app, deps) {
 
   // Persona price comparison — the workshop money shot (dry-run, nothing persisted)
   app.get("/api/retail/compare", (req, res) => {
-    const origin = (req.query.origin || "LIS").toUpperCase(), dest = (req.query.dest || "OPO").toUpperCase();
+    const origin = (req.query.origin || "JFK").toUpperCase(), dest = (req.query.dest || "MIA").toUpperCase();
     const date = req.query.date || searchToday();
     const flights = flightsFor(origin, dest, date);
     const out = [];

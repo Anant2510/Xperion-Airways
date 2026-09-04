@@ -225,7 +225,7 @@ const tools = {
     const price = target.toLowerCase().includes("business") ? 240 : 60;
     if (input.confirm !== true) {
       return { ok: false, state: "needs_confirm", pnr: b.pnr, cabin: target, price,
-        message: `Upgrade ${b.pnr} to ${target} for €${price}?` };
+        message: `Upgrade ${b.pnr} to ${target} for $${price}?` };
     }
     b.cabin = target; b.seat = target.toLowerCase().includes("business") ? "2A" : "9C"; b.total += price;
     return { ok: true, pnr: b.pnr, cabin: target, price };
@@ -264,14 +264,14 @@ const tools = {
     const r = a.refunds[0];
     if (!r) return { ok: true, refund: false, message: "No Nordvind refunds in progress." };
     return { ok: true, refund: true, ...r,
-      message: `Refund for ${r.pnr} — €${r.amount} back to your original payment method (${r.eta}).` };
+      message: `Refund for ${r.pnr} — $${r.amount} back to your original payment method (${r.eta}).` };
   },
 
   get_wallet(input, ctx) {
     const a = acct(ctx.uid);
     const v = a.wallet.voucher;
     return { ok: true, miles: a.wallet.miles, miles_value_eur: +(a.wallet.miles * 0.0025).toFixed(2),
-      miles_rate: "1,000 miles ≈ €2.50",
+      miles_rate: "1,000 miles ≈ $2.50",
       voucher: v ? { ...v, available: v.status === "active" } : null,
       card: "your saved card",
       note: "Nordvind lets you split a booking across voucher, miles and card." };

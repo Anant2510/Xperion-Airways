@@ -41,8 +41,8 @@ function dropDestinationExtras() {
 export function syncTripRoute() {
   if (trip.pnr) return false;
   // Multi-city: each leg is its own route, but the legs must CHAIN — leg N's destination must be
-  // leg N+1's origin (JFK→LIS then LIS→OPO). If a stale flight from a previous search breaks the
-  // chain (e.g. a leftover direct JFK→OPO sitting in leg 1 while leg 2 is LIS→OPO, so the itinerary
+  // leg N+1's origin (JFK→JFK then JFK→MIA). If a stale flight from a previous search breaks the
+  // chain (e.g. a leftover direct JFK→MIA sitting in leg 1 while leg 2 is JFK→MIA, so the itinerary
   // shows a direct flight instead of the two stopover segments), drop the whole leg set so the user
   // re-picks each leg for the current multi-city route. Returns true if it cleared anything.
   if (trip.type === "multi") {

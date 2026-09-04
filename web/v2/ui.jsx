@@ -4,7 +4,7 @@ import React, { useState } from "react";
 
 export const cx = (...a) => a.filter(Boolean).join(" ");
 
-/* ---- Relevant imagery: keyword-based real photos (Lisbon→Lisbon, Funchal→Funchal…) ----
+/* ---- Relevant imagery: keyword-based real photos (New York→New York, Cancún→Cancún…) ----
    imageFor() builds a LoremFlickr URL from city/topic keywords; Img falls back to a
    deterministic photo, then a gradient, if a source 404s. Production swaps in AEM/DAM. */
 const CITY_KW = { lisbon: "lisbon,portugal", porto: "porto,portugal", funchal: "funchal,madeira", madeira: "madeira,island", madrid: "madrid,spain", barcelona: "barcelona,spain", paris: "paris,france", london: "london,england", rome: "rome,italy", milan: "milan,italy", amsterdam: "amsterdam", berlin: "berlin,germany", brussels: "brussels", geneva: "geneva,switzerland", zurich: "zurich", "são paulo": "saopaulo,brazil", "sao paulo": "saopaulo,brazil", "rio de janeiro": "rio,brazil", "new york": "newyork,city", boston: "boston,city", faro: "faro,algarve", azores: "azores,island", cascais: "cascais,portugal", sintra: "sintra,palace" };

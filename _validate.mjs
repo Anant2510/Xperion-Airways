@@ -28,7 +28,7 @@ const P = (path, obj, hdr = {}) => J(path, {
   const seen = {};
   for (const pid of ids) {
     await P('/api/persona', { persona: pid, id: pid });
-    const f = await J('/api/flights?origin=LIS&dest=OPO&date=2026-09-20');
+    const f = await J('/api/flights?origin=JFK&dest=MIA&date=2026-09-20');
     const list = f.body.flights || f.body || [];
     const sig = (Array.isArray(list) ? list : []).slice(0, 5)
       .map(x => `${x.flight_no}:${x.price}`).join(' ');
@@ -51,7 +51,7 @@ const P = (path, obj, hdr = {}) => J(path, {
   log('\n########## 4. FULL AGENT FLOW (A2UI cards) ##########');
   const sid = 'val-' + Date.now();
   const turns = [
-    'flights from Lisbon to Porto on 20 September',
+    'flights from New York to Miami on 20 September',
     'select the cheapest one',
     'add lounge and a checked bag',
     'pay for it',
