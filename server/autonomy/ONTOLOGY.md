@@ -1,0 +1,114 @@
+# Xperion Airways · Disruption Autonomy — Ontology
+
+The knowledge graph is the single source of truth. Agents communicate only by
+reading and writing it; the bus merely announces graph changes. This document
+is one section per entity, the edge catalogue, the action space, the
+calibration note for the scorecard, and ADR-001.
+
+## Entities
+
+**Passenger** — one traveller. `name, loyalty_tier, contact_channels[]` (each
+`{channel, consent}`), `quiet_hours {start,end}` (UTC, interruptive channels
+only), `locale`, `vulnerability_flags[]` (reduced_mobility, elderly),
+`flexible` (demand-shaping candidate), `ltv_band`. Identity resolution across
+PSS/CRM/loyalty collapses to one node per person (in the reference build the
+seed is already resolved; the production rule set lives with the identity
+agent of the experience layer).
+
+**PNR** — one booking party. `record_locator, party_size, fare_class,
+segments[]` (second segment carries `connect_min` for misconnect exposure).
+Members attach via `BELONGS_TO`; members of a party always receive identical
+options.
+
+**FlightSchedule / FlightInstance** — the recurring flight (XP201 DEL→MIA) and
+one dated departure (`sched_dep, sched_arr, origin, dest, aircraft_type,
+status`). Recovery flights are FlightInstances flagged `recovery:true` so the
+predictor ignores them.
+
+**Airport** — `iata, geo{lat,lon}, curfew`. `ALTERNATE_OF` edges carry
+`ground_transfer_min`; seeded MIA↔FLL(45)/MCO(240)/ATL(600) and
+DEL↔JAI(280)/AMD(560).
+
+**WeatherEvent** — normalized alert: `source, type, severity, geometry
+{lat,lon,radius_km}, valid{from,to}, raw`. The node id is a content hash, so a
+redelivered alert upserts the same node (dedupe by construction).
+
+**DisruptionPrediction** — per (event, flight instance): `probability,
+confidence, top_drivers[] {factor, weight}, state, model_version`. States:
+WATCH → ACT → OFFERS_OUT → RESOLVING → RESOLVED, or STOOD_DOWN via hysteresis.
+
+**RecoveryOption** — `type` (REROUTE | DIVERT_PLUS_GROUND | REFUND | WAITLIST),
+`components[]`, `total_cost, seat_hold_ref, expiry` (TTL from
+`policy:hold_ttl`), `feasibility_score, party_size`.
+
+**Offer** — `passenger_ref, pnr, prediction, options[] (ordered),
+channel, framing_variant, state (SENT/ACCEPTED/DECLINED/EXPIRED), incentive,
+sent_at, executed, refs, exec_ms`.
+
+**Vendor** — `type (HOTEL/TAXI/PARTNER_AIRLINE), location, rate, name`.
+Reservation contract is idempotent on caller keys; STUB in this build.
+
+**Policy** — machine-readable rules: thresholds + hysteresis, weather waiver,
+spend caps (EUR), outreach limits, hold TTL, kill switch, rollout gate. Agents
+never hardcode a number that lives here.
+
+**Action** — the action space as data: `name, preconditions[] (predicate names
+evaluated against the live graph at execution time), tier, capRef, reversible,
+compensating`. Tier 3 entries exist so the policy check can refuse them by
+data.
+
+**AuditEvent** — append-only: `actor, action, tier, inputs_hash, rationale,
+graph_diff, prediction_id`. Every decision, refusal and compensation lands
+here.
+
+## Edges
+
+`(WeatherEvent)-[:IMPACTS {distance_km, window}]->(Airport)` ·
+`(FlightInstance)-[:ARRIVES_AT|DEPARTS_FROM]->(Airport)` ·
+`(FlightInstance)-[:CARRIES]->(PNR)` · `(PNR)-[:BELONGS_TO]->(Passenger)` ·
+`(Passenger)-[:TRAVELS_WITH]->(Passenger)` ·
+`(DisruptionPrediction)-[:FORECASTS]->(FlightInstance)` ·
+`(DisruptionPrediction)-[:AFFECTS {priority, pnr}]->(Passenger)` ·
+`(RecoveryOption)-[:RESOLVES]->(DisruptionPrediction)` ·
+`(Passenger)-[:QUALIFIES_FOR]->(RecoveryOption)` ·
+`(RecoveryOption)-[:FULFILLED_BY]->(Vendor)` ·
+`(Offer)-[:PRESENTS]->(RecoveryOption)` ·
+`(DisruptionPrediction)-[:OUTREACH {count,last}]->(Passenger)` ·
+`(DisruptionPrediction)-[:DECLINED]->(Passenger)` ·
+`(Airport)-[:ALTERNATE_OF {ground_transfer_min}]->(Airport)`.
+
+## Scorecard calibration (model_version scorecard-v1)
+
+`p = clamp( base(type) + 0.05·(severity−3) + window_overlap(+0.05 / −0.15)
++ airport_base_rate + time_of_day(+0.03 evening / +0.01) )` with base:
+convective_outlook 0.35, tornado_watch 0.58, tornado_warning 0.75, hurricane
+0.70. Every term is written to `top_drivers`, so a controller reads WHY a
+number is what it is. Thresholds from `policy:thresholds`: ≥0.40 WATCH, ≥0.60
+ACT, and a 0.10 hysteresis band before STOOD_DOWN so one oscillating feed
+never double-fires. Replace with a calibrated gradient-boosted model in
+production; the contract (probability + drivers into the same node) is
+unchanged.
+
+## Quiet hours & transactional messages (policy note)
+
+Quiet hours govern interruptive channels (push, SMS, WhatsApp). Email is
+treated as asynchronous and allowed. Confirmations of an action the customer
+just took are transactional and sent on the accepting channel.
+
+## ADR-001 — property graph on the embedded store, not Neo4j/RDF
+
+Context: the master prompt defaults to Neo4j + Cypher. The reference build
+runs one lightweight service with an embedded relational store, no external
+daemons, and must boot anywhere (stand, laptop, pilot VM).
+Decision: implement the knowledge graph as two tables (`kg_nodes`,
+`kg_edges`) with a small traversal API, keeping the ontology, the edge
+catalogue and every agent contract identical to what Neo4j would hold.
+Why property graph over RDF: the domain is a closed, operational schema with
+per-edge attributes (hold TTLs, outreach counts, transfer minutes) —
+property-graph territory. RDF/OWL adds open-world reasoning and vocabulary
+alignment we do not need, at real modelling cost.
+Consequences: traversals are adequate at demo scale (thousands of nodes);
+swapping in Neo4j is a driver change behind graph.js, not an ontology change;
+constraints (uniqueness, append-only audit) are enforced in SQL today and in
+Cypher constraints tomorrow. Revisit at the first pilot when concurrent
+writers and multi-hop analytics appear.

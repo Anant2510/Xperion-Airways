@@ -1,0 +1,11 @@
+{
+  "_comment": "Sample Destination content — author these as Content Fragments in AEM (one CF per item) under /content/dam/tap/destinations, using the Destination model. Or use as the payload shape when scripting creation via the Assets HTTP API. The app's /api/destinations returns this CONTENT plus a per-traveller 'reason' overlaid from CDP/behaviour.",
+  "destinations": [
+    { "city": "Lisbon",  "code": "LIS", "tag": "Your weekly route",              "basePrice": 62,  "milesPrice": null,  "emoji": "🌉", "region": "Iberia",   "affinity": "none", "blurb": "The capital on the Tagus — your most-flown route, always one tap away.", "image": "/content/dam/tap/destinations/lisbon.jpg" },
+    { "city": "Madrid",  "code": "MAD", "tag": "Clients you visited in March",    "basePrice": 89,  "milesPrice": null,  "emoji": "🏛️", "region": "Iberia",   "affinity": "none", "blurb": "Spain's vibrant capital — galleries, late dinners, and a quick hop from home.", "image": "/content/dam/tap/destinations/madrid.jpg" },
+    { "city": "Paris",   "code": "CDG", "tag": "Searched 3× this month",          "basePrice": 121, "milesPrice": null,  "emoji": "🗼", "region": "Europe",   "affinity": "none", "blurb": "Boulevards, museums and café mornings — the city you keep coming back to compare.", "image": "/content/dam/tap/destinations/paris.jpg" },
+    { "city": "Funchal", "code": "FNC", "tag": "Weekend escape · miles eligible", "basePrice": 54,  "milesPrice": 15000, "emoji": "🌴", "region": "Atlantic", "affinity": "none", "blurb": "Madeira's mild Atlantic island — levada walks and ocean views, redeemable with miles.", "image": "/content/dam/tap/destinations/funchal.jpg" },
+    { "city": "New York","code": "JFK", "tag": "Long-haul · premium cabins",      "basePrice": 612, "milesPrice": 85000, "emoji": "🗽", "region": "Americas", "affinity": "football", "blurb": "The transatlantic flagship — business-class flatbeds and the city that never sleeps.", "image": "/content/dam/tap/destinations/newyork.jpg" },
+    { "city": "Faro",    "code": "FAO", "tag": "Algarve sun · golf country",       "basePrice": 48,  "milesPrice": 12000, "emoji": "⛳", "region": "Algarve",  "affinity": "golf", "blurb": "Gateway to the Algarve's fairways and beaches — a short, sunny getaway.", "image": "/content/dam/tap/destinations/faro.jpg" }
+  ]
+}

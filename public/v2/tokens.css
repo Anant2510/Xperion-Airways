@@ -1,0 +1,75 @@
+/* FlyTAP DXP v2 — design tokens + base, derived from the approved Figma (Final Version) */
+:root{
+  --tap-red:#ed1c24; --tap-green:#46a41a; --tap-green-deep:#2e7d33; --tap-green-dark:#336614;
+  --accent-lime:#9efd38; --accent-lime-2:#c7f21f; --accent-tint:#f2ffdb;
+  --ink:#0a0a0a; --ink-strong:#232323; --ink-700:#3a3a3a; --ink-muted:#6b6b6b; --ink-slate:#667080; --ink-faint:#9a9a9a;
+  --surface:#ffffff; --surface-2:#fafaf7; --surface-3:#f2f2ee; --surface-dark:#0a0a0a; --surface-navy:#1a1f29; --surface-navy-2:#1a1a2e;
+  --line:#e8e8e5; --line-2:#dcdcd8; --line-cool:#e0e3e8;
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:24px; --r-pill:999px;
+  --shadow-card:0 1px 2px rgba(10,10,10,.05),0 10px 30px rgba(10,10,10,.06);
+  --shadow-pop:0 12px 40px rgba(10,10,10,.16);
+  --page-max:1440px; --content-max:1200px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:hidden;max-width:100%}
+body{font-family:Inter,system-ui,-apple-system,sans-serif;font-size:13px;color:var(--ink);background:var(--surface-2);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--tap-green);outline-offset:2px;border-radius:6px}
+.v2-num{font-variant-numeric:tabular-nums}
+.v2-scroll::-webkit-scrollbar{height:8px;width:8px}
+.v2-scroll::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:99px}
+.v2-track::-webkit-scrollbar{display:none}
+.v2-track{scrollbar-width:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@keyframes v2fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.v2-in{animation:v2fade .4s ease both}
+
+/* dual-handle range slider (Departure window / Price range) */
+.dual-range-wrap{position:relative;height:20px;display:flex;align-items:center}
+.dual-range-track{position:absolute;left:0;right:0;height:4px;border-radius:9999px;background:#dcdcd8}
+.dual-range-fill{position:absolute;height:4px;border-radius:9999px;background:#46a41a}
+.dual-range{-webkit-appearance:none;appearance:none;position:absolute;left:0;width:100%;height:20px;margin:0;background:transparent;pointer-events:none}
+.dual-range::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #46a41a;box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:pointer}
+.dual-range::-moz-range-thumb{pointer-events:auto;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #46a41a;box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:pointer}
+.dual-range::-webkit-slider-runnable-track{background:transparent;border:none}
+.dual-range::-moz-range-track{background:transparent;border:none}
+.dual-range:focus{outline:none}
+.dual-range:focus::-webkit-slider-thumb{box-shadow:0 0 0 4px rgba(70,164,26,.2)}
+
+
+/* Search bar: five cells sized by content need, not equal 12-col chunks. From/To holds TWO
+   airport pickers plus the swap button, so it gets the most; Cabin/Passenger need least. */
+@media (min-width: 1024px) {
+  /* v35: four cells — the search CTA moved out of the container (HomePage #1) */
+  .v2-searchgrid { grid-template-columns: 2fr 1.3fr 0.95fr 0.9fr; }
+}
+
+/* ── Airline theme tokens (Phase 4 client SDK) ───────────────────────────────
+   Defaults are Xperion's exact palette, so an un-themed deployment renders pixel-
+   identically. A tenant overrides these at runtime from its brand payload, which
+   is why the chat renderer uses .air-* utilities instead of tap-* Tailwind classes. */
+:root{
+  --air-accent:#46a41a;        /* was tap-green      */
+  --air-accent-deep:#2e7d33;   /* was tap-greenDeep  */
+  --air-accent-dark:#336614;   /* was tap-greenDark  */
+  --air-highlight:#9efd38;     /* was lime           */
+  --air-tint:#f2ffdb;          /* was lime-tint      */
+  --air-danger:#ed1c24;        /* was tap-red        */
+}
+.air-accent{color:var(--air-accent)}
+.air-accent-deep{color:var(--air-accent-deep)}
+.air-accent-dark{color:var(--air-accent-dark)}
+.air-danger{color:var(--air-danger)}
+.air-bg-accent{background-color:var(--air-accent)}
+.air-bg-danger{background-color:var(--air-danger)}
+.air-bg-highlight{background-color:var(--air-highlight)}
+.air-bg-tint{background-color:var(--air-tint)}
+.air-bg-tint-soft{background-color:color-mix(in srgb,var(--air-tint) 30%,transparent)}
+.air-border-accent{border-color:var(--air-accent)}
+.air-ring-accent{--tw-ring-color:var(--air-accent);box-shadow:0 0 0 1px var(--air-accent)}
+.air-hover-tint:hover{background-color:var(--air-tint)}
+.air-hover-accent-deep:hover{background-color:var(--air-accent-deep)}
+.air-hover-border-accent:hover{border-color:var(--air-accent)}
+.air-hover-danger-soft:hover{background-color:color-mix(in srgb,var(--air-danger) 5%,transparent)}
+.air-border-highlight-soft{border-color:color-mix(in srgb,var(--air-highlight) 40%,transparent)}

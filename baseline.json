@@ -1,0 +1,54 @@
+{
+  "health": {
+    "ok": true,
+    "db": "C:\\Users\\xPerionExp\\Documents\\AI tools\\tap-demo\\data\\tap.db",
+    "smtp": "configured",
+    "ai": "live",
+    "whatsapp": "configured — messages really send"
+  },
+  "profile.user": {
+    "member_no": "PT-990001",
+    "email": "anant.direct2links+daniel@gmail.com",
+    "tier": "Gold",
+    "home_airport": "OPO",
+    "miles": 48230
+  },
+  "profile.pattern": {
+    "topRoute": "OPO→LIS",
+    "topFlight": "TP1927"
+  },
+  "personas.active": "daniel",
+  "personas.count": 5,
+  "bookings.count": 10,
+  "bookings.pnrs": [
+    "TPG8Y1",
+    "TPN3T5",
+    "TPK6D2",
+    "TPX1C9",
+    "TPB7H4"
+  ],
+  "search.opo_lis.count": 5,
+  "journey.afterSearch": {
+    "stage": "seat",
+    "origin": "OPO",
+    "dest": "LIS"
+  },
+  "agent.wallet.tools": [
+    "get_wallet"
+  ],
+  "offers.tier": "Gold",
+  "offers.tileCount": 3,
+  "cdp.track.userId": "PT-990001",
+  "cdp.counts.users": 5,
+  "selftest": {
+    "ok": true,
+    "passed": 17,
+    "total": 17
+  },
+  "datasource.source": "adobe",
+  "_activeIdentity": {
+    "member": "PT-990001",
+    "email": "anant.direct2links+daniel@gmail.com",
+    "tier": "Gold"
+  }
+}

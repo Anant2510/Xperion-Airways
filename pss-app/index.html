@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>TAP · PSS — Reservations &amp; Loyalty Core</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>%E2%9C%88%EF%B8%8F</text></svg>"/>
+<style>
+  :root{
+    --bg:#f5f7f4; --panel:#ffffff; --panel-2:#fafbf9; --line:#e6e9e3; --line-2:#d7dcd2;
+    --ink:#101512; --ink-mut:#5d6760; --ink-faint:#97a09a;
+    --green:#46a41a; --green-d:#2e7d33; --green-dk:#336614; --tint:#f2ffdb; --lime:#9efd38;
+    --amber:#c98a1e; --amber-bg:#fff6e6; --cyan:#1f8f88; --red:#d8443c;
+    --mono:'SF Mono',ui-monospace,'Roboto Mono',Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --shadow:0 1px 2px rgba(16,21,18,.04),0 4px 16px rgba(16,21,18,.05);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13px;-webkit-font-smoothing:antialiased}
+  a{color:var(--green-d)}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 20px 64px}
+  header{border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:5}
+  .top{max-width:1140px;margin:0 auto;padding:13px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .logo{font-weight:800;letter-spacing:.2px;font-size:16px;display:flex;align-items:center;gap:9px}
+  .logo b{color:var(--green)}
+  .tag{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);letter-spacing:1.6px;text-transform:uppercase;padding-left:10px;border-left:1px solid var(--line-2)}
+  .sysdot{width:8px;height:8px;border-radius:99px;background:var(--green);box-shadow:0 0 0 3px rgba(70,164,26,.16)}
+  .api{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink-mut)}
+  .api input{background:#fff;border:1px solid var(--line-2);color:var(--ink);border-radius:7px;padding:6px 9px;font-family:var(--mono);font-size:11px;width:240px}
+  h1{font-size:22px;margin:24px 0 3px;font-weight:800;letter-spacing:-.2px}
+  .sub{color:var(--ink-mut);font-size:12.5px;margin-bottom:20px;max-width:760px;line-height:1.55}
+  .grid{display:grid;grid-template-columns:1.08fr .92fr;gap:18px;align-items:start}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+  .card h2{font-size:14px;margin:0 0 4px;display:flex;align-items:center;gap:8px;font-weight:700}
+  .card h2 .k{font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:1.4px;text-transform:uppercase;margin-left:auto;font-weight:400}
+  .card .cardsub{color:var(--ink-mut);font-size:11.5px;margin:0 0 14px;line-height:1.5}
+  /* form sections */
+  .sect{border-top:1px solid var(--line);margin-top:16px;padding-top:14px}
+  .sect:first-of-type{border-top:0;margin-top:0;padding-top:0}
+  .sect-h{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--green-d);margin-bottom:11px}
+  .sect-h .n{width:18px;height:18px;border-radius:99px;background:var(--tint);color:var(--green-d);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}
+  label{display:block;margin-bottom:11px}
+  label .l{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-mut);margin-bottom:5px;font-weight:600}
+  label .l .opt{text-transform:none;letter-spacing:0;color:var(--ink-faint);font-weight:400}
+  input,select{width:100%;background:#fff;border:1px solid var(--line-2);color:var(--ink);border-radius:9px;padding:9px 11px;font-size:13px;font-family:var(--sans);transition:border-color .12s,box-shadow .12s}
+  input::placeholder{color:var(--ink-faint)}
+  input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(70,164,26,.12)}
+  select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235d6760' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+  @media(max-width:560px){.row,.row3{grid-template-columns:1fr}}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 4px}
+  .chip{font-size:12px;font-weight:600;padding:7px 13px;border-radius:99px;border:1px solid var(--line-2);background:#fff;color:var(--ink-mut);cursor:pointer;user-select:none;transition:all .12s}
+  .chip:hover{border-color:var(--green)}
+  .chip.on{background:var(--tint);border-color:var(--green);color:var(--green-d)}
+  .btn{width:100%;background:var(--green);color:#fff;border:0;border-radius:11px;padding:13px;font-weight:700;font-size:13.5px;cursor:pointer;margin-top:6px;transition:background .12s}
+  .btn:hover{background:var(--green-d)}
+  .btn:disabled{opacity:.5;cursor:default}
+  .mono{font-family:var(--mono)}
+  .idline{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--ink-mut);margin-bottom:6px;line-height:1.5}
+  .idline b{color:var(--ink)}
+  /* flight timing readout */
+  .flightinfo{background:var(--tint);border:1px solid rgba(70,164,26,.28);border-radius:11px;padding:11px 13px;margin:2px 0 11px;display:none}
+  .flightinfo.show{display:block}
+  .flightinfo .fi-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .fi-seg{display:flex;align-items:baseline;gap:6px}
+  .fi-time{font-size:18px;font-weight:800;font-family:var(--mono);letter-spacing:-.5px}
+  .fi-code{font-size:11px;color:var(--ink-mut);font-weight:600}
+  .fi-arrow{color:var(--green-d);font-weight:700}
+  .fi-meta{font-size:11px;color:var(--ink-mut);margin-top:5px}
+  .fi-meta b{color:var(--ink)}
+  .fi-empty{font-size:11.5px;color:var(--amber);background:var(--amber-bg);border:1px solid #f0dcb0;border-radius:10px;padding:9px 11px;margin:2px 0 11px;display:none}
+  .fi-empty.show{display:block}
+  /* pipeline */
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:8px 0 12px}
+  .step{flex:1;min-width:96px;background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:10px 11px}
+  .step .lbl{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-faint)}
+  .step .v{font-size:12px;margin-top:3px;color:var(--ink);font-weight:500}
+  .step.ok{border-color:rgba(70,164,26,.45);background:var(--tint)} .step.ok .lbl{color:var(--green-d)}
+  .step.warn{border-color:rgba(201,138,30,.45);background:var(--amber-bg)} .step.warn .lbl{color:var(--amber)}
+  .step.err{border-color:rgba(216,68,60,.4);background:#fdf0ef} .step.err .lbl{color:var(--red)}
+  .ok-banner{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:var(--green-d);margin-bottom:8px}
+  .muted{color:var(--ink-mut);font-size:12px;line-height:1.5}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;color:var(--ink-faint);font-family:var(--mono);font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;padding:7px 9px;border-bottom:1px solid var(--line)}
+  td{padding:9px 9px;border-bottom:1px solid var(--line)}
+  tr:last-child td{border-bottom:0}
+  td.r,th.r{text-align:right}
+  .empty{color:var(--ink-faint);padding:16px 9px}
+  .refresh{background:#fff;border:1px solid var(--line-2);color:var(--ink-mut);border-radius:8px;padding:5px 11px;font-size:11px;cursor:pointer;margin-left:auto;font-weight:500}
+  .refresh:hover{border-color:var(--green);color:var(--green-d)}
+  .err-box{background:#fdf0ef;border:1px solid rgba(216,68,60,.35);color:var(--red);border-radius:10px;padding:11px;font-size:12px}
+  .hint{font-size:11px;color:var(--ink-faint);margin-top:10px;line-height:1.55}
+  .seg-chip{display:inline-block;background:rgba(31,143,136,.1);border:1px solid rgba(31,143,136,.32);color:var(--cyan);border-radius:99px;padding:3px 10px;font-size:11px;margin:0 4px 4px 0;font-family:var(--mono)}
+  /* multi-passenger */
+  .paxnote{background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--green);border-radius:9px;padding:9px 12px;font-size:11.5px;color:var(--ink-mut);line-height:1.5;margin:2px 0 12px}
+  .paxnote b{color:var(--ink)}
+  .addpax{margin-top:2px}
+  .addpax-h{display:flex;align-items:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-mut);margin-bottom:10px}
+  .paxcount{margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--green-d);background:var(--tint);border:1px solid rgba(70,164,26,.3);border-radius:99px;padding:2px 9px;letter-spacing:.5px}
+  .paxrow{border:1px solid var(--line-2);border-radius:11px;padding:12px;margin-bottom:10px;background:var(--panel-2)}
+  .paxrow-h{display:flex;align-items:center;margin-bottom:9px;font-size:12px;font-weight:700;color:var(--ink)}
+  .paxrow-h .pn{width:18px;height:18px;border-radius:99px;background:#fff;border:1px solid var(--line-2);display:inline-flex;align-items:center;justify-content:center;font-size:10px;margin-right:7px;color:var(--ink-mut)}
+  .paxrm{margin-left:auto;background:transparent;border:0;color:var(--red);font-size:11px;font-weight:600;cursor:pointer;padding:2px 4px}
+  .paxrm:hover{text-decoration:underline}
+  .addbtn{width:100%;background:#fff;border:1px dashed var(--line-2);color:var(--green-d);border-radius:10px;padding:10px;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .12s}
+  .addbtn:hover{border-color:var(--green);background:var(--tint)}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="logo"><span class="sysdot"></span> <span>TAP <b>PSS</b></span> <span class="tag">Reservations · Loyalty Core</span></div>
+    <div class="api">API
+      <input id="api" placeholder="https://flytap-backend (blank = same origin)"/>
+      <span id="apistat">●</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <h1>Reservation desk</h1>
+  <div class="sub">Passenger Service System for agent &amp; partner-channel bookings. Reservations created here are written to the PSS store (Supabase), ingested into FlyTAP's core (SQLite), and streamed to Adobe RT-CDP under the passenger's loyalty identity — where they stitch with the member's online activity into one 360° profile.</div>
+
+  <div class="grid">
+    <!-- LEFT: new reservation -->
+    <div class="card">
+      <h2>New reservation <span class="k">offline / partner channel</span></h2>
+      <div class="cardsub">Complete the passenger, itinerary and fare details below, then create the reservation. Required fields are marked.</div>
+
+      <!-- 1 · Passengers -->
+      <div class="sect">
+        <div class="sect-h"><span class="n">1</span> Passengers</div>
+        <label><span class="l">Lead passenger — loyalty identity <span class="opt">— email &amp; mobile are the stitch keys</span></span>
+          <select id="member"></select>
+        </label>
+        <div class="idline" id="idline">Select a member…</div>
+        <div id="adhoc" style="display:none">
+          <div class="row">
+            <label><span class="l">First name</span><input id="ad_first" placeholder="Maria"/></label>
+            <label><span class="l">Last name</span><input id="ad_last" placeholder="Silva"/></label>
+          </div>
+          <div class="row">
+            <label><span class="l">Email — required <span class="opt">· stitch key &amp; login</span></span><input id="ad_email" placeholder="maria.silva@example.com"/></label>
+            <label><span class="l">Mobile — required <span class="opt">· email · SMS · WhatsApp</span></span><input id="ad_phone" placeholder="+351 91 234 5678"/></label>
+          </div>
+          <div class="row3">
+            <label><span class="l">Passport / ID no.</span><input id="ad_passport" placeholder="PT1234567"/></label>
+            <label><span class="l">Nationality</span><input id="ad_nat" placeholder="Portuguese" value="Portuguese"/></label>
+            <label><span class="l">Date of birth</span><input id="ad_dob" type="date"/></label>
+          </div>
+          <label><span class="l">Loyalty ID <span class="opt">— optional · blank = new prospect</span></span><input id="ad_loyalty" placeholder="(blank for a first-time customer)"/></label>
+        </div>
+        <div class="paxnote">The <b>lead passenger's email &amp; mobile</b> are the identity keys — used to stitch online + offline activity and serve personalization. Additional passengers travel on the same reservation &amp; PNR and don't need their own contact.</div>
+        <div class="addpax">
+          <div class="addpax-h">Party <span class="paxcount" id="paxcount">1 passenger</span></div>
+          <div id="paxList"></div>
+          <button type="button" class="addbtn" id="addpax">+ Add passenger</button>
+        </div>
+      </div>
+
+      <!-- 2 · Itinerary -->
+      <div class="sect">
+        <div class="sect-h"><span class="n">2</span> Itinerary</div>
+        <div class="row">
+          <label><span class="l">Origin</span><select id="origin"></select></label>
+          <label><span class="l">Destination</span><select id="dest"></select></label>
+        </div>
+        <label><span class="l">Travel date</span><input id="date" type="date"/></label>
+        <label><span class="l">Flight <span class="opt">— loaded from schedule for this route &amp; date</span></span><select id="flight"></select></label>
+        <div class="flightinfo" id="flightinfo">
+          <div class="fi-top">
+            <div class="fi-seg"><span class="fi-time" id="fi-dep">--:--</span><span class="fi-code" id="fi-org">—</span></div>
+            <span class="fi-arrow">→</span>
+            <div class="fi-seg"><span class="fi-time" id="fi-arr">--:--</span><span class="fi-code" id="fi-dst">—</span></div>
+          </div>
+          <div class="fi-meta" id="fi-meta">Select a flight to see its scheduled timing.</div>
+        </div>
+        <div class="fi-empty" id="fi-empty">No scheduled flights for this route &amp; date. Try another date or route.</div>
+        <div class="row">
+          <label><span class="l">Cabin</span>
+            <select id="cabin"><option>Economy</option><option>Premium Economy</option><option>Business</option></select>
+          </label>
+          <label><span class="l">Seat <span class="opt">— lead passenger</span></span><input id="seat" value="4C" placeholder="e.g. 12A"/></label>
+        </div>
+      </div>
+
+      <!-- 3 · Fare -->
+      <div class="sect">
+        <div class="sect-h"><span class="n">3</span> Fare &amp; loyalty</div>
+        <div class="row">
+          <label><span class="l">Fare amount (€)</span><input id="amount" type="number" value="540"/></label>
+          <label><span class="l">Miles earned</span><input id="miles" type="number" value="1200"/></label>
+        </div>
+        <span class="l" style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-mut);margin-bottom:8px;font-weight:600">Ancillaries / partner services</span>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <button class="btn" id="book">Create reservation →</button>
+      <div class="hint">Tip: book here as the member you'll log in as on the FlyTAP site. Same email / loyalty ID → Adobe stitches the PSS booking with the web session into one 360° profile.</div>
+    </div>
+
+    <!-- RIGHT: result pipeline -->
+    <div class="card">
+      <h2>Ingestion pipeline <span class="k" id="pipe-k">awaiting booking</span></h2>
+      <div id="result"><div class="muted">Create a reservation to see it flow PSS → Supabase → SQLite → Adobe RT-CDP.</div></div>
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+        <button class="refresh" id="recheck" style="margin:0">↻ Re-check 360° profile segments</button>
+        <div id="segout" class="hint" style="margin-top:9px">After booking the same member on the FlyTAP website, re-check to watch <b style="color:var(--cyan)">Cross-Channel Booker</b> qualify.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- bottom: ledger -->
+  <div class="card" style="margin-top:18px">
+    <h2>PSS reservations ledger <button class="refresh" id="refresh">↻ refresh</button></h2>
+    <table>
+      <thead><tr><th>PNR</th><th>Flight</th><th>Date</th><th class="r">Fare</th><th>PSS ref</th></tr></thead>
+      <tbody id="ledger"><tr><td class="empty" colspan="5">No reservations yet.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(function(){
+  var qp = new URLSearchParams(location.search);
+  var API = qp.get("api");
+  if (API == null) { try { API = localStorage.getItem("pss_api") || ""; } catch(e){ API = ""; } }
+  var apiEl = document.getElementById("api");
+  apiEl.value = API;
+  apiEl.addEventListener("change", function(){ API = apiEl.value.replace(/\/$/,""); try{ localStorage.setItem("pss_api", API); }catch(e){} ping(); loadMembers(); loadAirports(); loadLedger(); });
+
+  function url(p){ return (API||"") + p; }
+  function j(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }
+  function get(p){ return fetch(url(p)).then(j); }
+  function post(p,b){ return fetch(url(p),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}).then(j); }
+  function val(id){ return document.getElementById(id).value; }
+
+  function ping(){
+    var el = document.getElementById("apistat");
+    get("/api/health").then(function(){ el.style.color="var(--green)"; }).catch(function(){ el.style.color="var(--red)"; });
+  }
+
+  /* ---------- Airports (origin / destination dropdowns from DB) ---------- */
+  var AIRPORTS = [];
+  function airportOption(a, selCode){
+    var label = a.code + " — " + a.city + (a.country ? ", " + a.country : "");
+    return '<option value="'+a.code+'"'+(a.code===selCode?' selected':'')+'>'+label+'</option>';
+  }
+  function loadAirports(){
+    get("/api/airports").then(function(rows){
+      AIRPORTS = rows || [];
+      var o = document.getElementById("origin"), d = document.getElementById("dest");
+      var curO = o.value || "OPO", curD = d.value || "LIS";
+      o.innerHTML = AIRPORTS.map(function(a){ return airportOption(a, curO); }).join("");
+      d.innerHTML = AIRPORTS.map(function(a){ return airportOption(a, curD); }).join("");
+      if (!AIRPORTS.some(function(a){return a.code===o.value;}) && AIRPORTS[0]) o.value = AIRPORTS[0].code;
+      if (!AIRPORTS.some(function(a){return a.code===d.value;}) && AIRPORTS[1]) d.value = AIRPORTS[1].code;
+      loadFlights();
+    }).catch(function(){
+      // Fallback: keep a couple of hard codes so the desk still works offline.
+      var fb = [{code:"OPO",city:"Porto",country:"Portugal"},{code:"LIS",city:"Lisbon",country:"Portugal"}];
+      var o = document.getElementById("origin"), d = document.getElementById("dest");
+      o.innerHTML = fb.map(function(a){return airportOption(a,"OPO");}).join("");
+      d.innerHTML = fb.map(function(a){return airportOption(a,"LIS");}).join("");
+    });
+  }
+  document.getElementById("origin").addEventListener("change", loadFlights);
+  document.getElementById("dest").addEventListener("change", loadFlights);
+  document.getElementById("date").addEventListener("change", loadFlights);
+
+  /* ---------- Flights (dropdown from DB) + auto-populate timing ---------- */
+  var FLIGHTS = [];
+  function loadFlights(){
+    var o = val("origin"), d = val("dest"), dt = val("date");
+    var sel = document.getElementById("flight");
+    var info = document.getElementById("flightinfo"), empty = document.getElementById("fi-empty");
+    info.classList.remove("show"); empty.classList.remove("show");
+    if (!o || !d || !dt){ sel.innerHTML='<option value="">—</option>'; return; }
+    sel.innerHTML = '<option value="">Loading…</option>';
+    get("/api/flights?origin="+encodeURIComponent(o)+"&dest="+encodeURIComponent(d)+"&date="+encodeURIComponent(dt))
+      .then(function(rows){
+        FLIGHTS = rows || [];
+        if (!FLIGHTS.length){
+          sel.innerHTML = '<option value="">No flights available</option>';
+          empty.classList.add("show");
+          return;
+        }
+        sel.innerHTML = FLIGHTS.map(function(f){
+          return '<option value="'+f.flight_no+'">'+f.flight_no+' · '+(f.dep||'--:--')+'–'+(f.arr||'--:--')+' · '+(f.aircraft||'')+'</option>';
+        }).join("");
+        onFlight();
+      })
+      .catch(function(){ sel.innerHTML='<option value="">Schedule unavailable</option>'; empty.classList.add("show"); });
+  }
+  function onFlight(){
+    var fno = val("flight");
+    var f = FLIGHTS.find(function(x){ return x.flight_no === fno; });
+    var info = document.getElementById("flightinfo"), empty = document.getElementById("fi-empty");
+    if (!f){ info.classList.remove("show"); return; }
+    empty.classList.remove("show");
+    document.getElementById("fi-dep").textContent = f.dep || "--:--";
+    document.getElementById("fi-arr").textContent = f.arr || "--:--";
+    document.getElementById("fi-org").textContent = f.origin || val("origin");
+    document.getElementById("fi-dst").textContent = f.dest || val("dest");
+    var meta = [];
+    if (f.duration) meta.push("<b>"+f.duration+"</b>");
+    if (f.aircraft) meta.push("Aircraft <b>"+f.aircraft+"</b>");
+    if (f.seats_left!=null) meta.push("<b>"+f.seats_left+"</b> seats left");
+    if (f.flight_date) meta.push(f.flight_date);
+    document.getElementById("fi-meta").innerHTML = meta.join(" · ") || "Scheduled flight";
+    info.classList.add("show");
+    // Auto-fill total fare from the scheduled price × party size (agent can still override).
+    lastFlightPrice = (f.price != null && f.price !== "") ? Number(f.price) : null;
+    recomputeFare();
+  }
+  document.getElementById("flight").addEventListener("change", onFlight);
+
+  /* ---------- Members ---------- */
+  var MEMBERS = [];
+  function loadMembers(){
+    get("/api/pss/members").then(function(m){
+      MEMBERS = m||[];
+      var sel = document.getElementById("member");
+      sel.innerHTML = '<option value="__adhoc__">✦ New customer — no FlyTAP history</option>'
+        + MEMBERS.map(function(x){ return '<option value="'+x.id+'">'+x.name+' — '+x.tier+'</option>'; }).join("");
+      onMember();
+    }).catch(function(){
+      document.getElementById("member").innerHTML = '<option value="__adhoc__">✦ New customer — no FlyTAP history</option>';
+      onMember();
+    });
+  }
+  function isAdhoc(){ return document.getElementById("member").value === "__adhoc__"; }
+  function fullName(){
+    var f=(val("ad_first")||"").trim(), l=(val("ad_last")||"").trim();
+    return (f+" "+l).trim() || "New customer";
+  }
+  function curMember(){
+    if (isAdhoc()) return {
+      id:"__adhoc__", member_no:(val("ad_loyalty")||"").trim(), email:(val("ad_email")||"").trim(),
+      phone:(val("ad_phone")||"").trim(), name:fullName(),
+      first_name:(val("ad_first")||"").trim(), last_name:(val("ad_last")||"").trim(),
+      passport:(val("ad_passport")||"").trim(), nationality:(val("ad_nat")||"").trim(), dob:(val("ad_dob")||"").trim(),
+      home:""
+    };
+    var id=document.getElementById("member").value; return MEMBERS.find(function(x){return x.id===id;})||{};
+  }
+  function onMember(){
+    var adhoc = isAdhoc();
+    document.getElementById("adhoc").style.display = adhoc ? "block" : "none";
+    if (adhoc){
+      var em=(val("ad_email")||"").trim(), ph=(val("ad_phone")||"").trim(), ln=(val("ad_loyalty")||"").trim();
+      document.getElementById("idline").innerHTML = (em||ph)
+        ? ('New prospect · <span class="mono">'+(em||'—')+'</span> · <span class="mono">'+(ph||'no mobile')+'</span>'+(ln?' · loyalty <b>'+ln+'</b>':' · no prior history'))
+        : 'Enter passenger details to book a brand-new customer (no FlyTAP history yet).';
+      return;
+    }
+    var m = curMember();
+    document.getElementById("idline").innerHTML = m.member_no ?
+      ('Loyalty <b>'+m.member_no+'</b> · <span class="mono">'+m.email+'</span>'+(m.phone?' · <span class="mono">'+m.phone+'</span>':'')+' · home '+(m.home||'—')) : 'Select a member…';
+    if (m.home && AIRPORTS.some(function(a){return a.code===m.home;})){
+      document.getElementById("origin").value = m.home;
+      var dd = (m.home==="LIS"?"OPO":(m.home==="FRA"?"JFK":"LIS"));
+      if (AIRPORTS.some(function(a){return a.code===dd;})) document.getElementById("dest").value = dd;
+      loadFlights();
+    }
+  }
+  document.getElementById("member").addEventListener("change", onMember);
+  ["ad_email","ad_loyalty","ad_first","ad_last","ad_phone"].forEach(function(id){ var e=document.getElementById(id); if(e) e.addEventListener("input", onMember); });
+
+  /* ---------- Ancillary chips ---------- */
+  var ANC = [["Lounge","Lounge access"],["Hotel","Hotel — partner"],["Car","Airport transfer"],["Insurance","Travel insurance"]];
+  var picked = {Lounge:true,Hotel:true,Car:false,Insurance:false};
+  var chips = document.getElementById("chips");
+  function renderChips(){
+    chips.innerHTML="";
+    ANC.forEach(function(a){
+      var b=document.createElement("button");
+      b.className="chip"+(picked[a[0]]?" on":""); b.textContent=(picked[a[0]]?"✓ ":"")+a[0];
+      b.onclick=function(){ picked[a[0]]=!picked[a[0]]; renderChips(); };
+      chips.appendChild(b);
+    });
+  }
+  renderChips();
+
+  /* ---------- Multiple passengers (whole party on one PNR) ---------- */
+  var lastFlightPrice = null;
+  function paxCount(){ return 1 + document.querySelectorAll("#paxList .paxrow").length; }
+  function recomputeFare(){
+    if (lastFlightPrice != null) document.getElementById("amount").value = Math.round(lastFlightPrice) * paxCount();
+  }
+  function renderPaxCount(){
+    var n = paxCount();
+    document.getElementById("paxcount").textContent = n + (n===1 ? " passenger" : " passengers");
+    recomputeFare();
+  }
+  function renumberPax(){
+    document.querySelectorAll("#paxList .paxrow").forEach(function(r, idx){
+      r.querySelector(".pn").textContent = (idx+2);
+      r.querySelector(".pttl").textContent = "Passenger " + (idx+2);
+    });
+  }
+  function addPax(){
+    var row = document.createElement("div");
+    row.className = "paxrow";
+    row.innerHTML =
+      '<div class="paxrow-h"><span class="pn"></span><span class="pttl"></span><button type="button" class="paxrm">Remove</button></div>'+
+      '<div class="row"><label style="margin:0"><span class="l">First name</span><input class="px-first" placeholder="First name"/></label>'+
+      '<label style="margin:0"><span class="l">Last name</span><input class="px-last" placeholder="Last name"/></label></div>'+
+      '<div class="row3" style="margin-top:10px"><label style="margin:0"><span class="l">Type</span><select class="px-type"><option>Adult</option><option>Child</option><option>Infant</option></select></label>'+
+      '<label style="margin:0"><span class="l">Passport / ID</span><input class="px-passport" placeholder="PT1234567"/></label>'+
+      '<label style="margin:0"><span class="l">Seat</span><input class="px-seat" placeholder="e.g. 12B"/></label></div>';
+    document.getElementById("paxList").appendChild(row);
+    row.querySelector(".paxrm").addEventListener("click", function(){ row.remove(); renumberPax(); renderPaxCount(); });
+    renumberPax(); renderPaxCount();
+  }
+  function collectPassengers(){
+    var m = curMember();
+    var nm = (m.name || "").trim();
+    var lead = {
+      lead:true, type:"Adult",
+      first_name: m.first_name || nm.split(" ")[0] || null,
+      last_name: m.last_name || nm.split(" ").slice(1).join(" ") || null,
+      full_name: nm || null, passport: m.passport||null, nationality: m.nationality||null,
+      dob: m.dob||null, seat: val("seat")||null
+    };
+    var list = [lead];
+    document.querySelectorAll("#paxList .paxrow").forEach(function(r){
+      var f=(r.querySelector(".px-first").value||"").trim(), l=(r.querySelector(".px-last").value||"").trim();
+      list.push({
+        lead:false, type:r.querySelector(".px-type").value,
+        first_name:f||null, last_name:l||null, full_name:(f+" "+l).trim()||null,
+        passport:(r.querySelector(".px-passport").value||"").trim()||null,
+        seat:(r.querySelector(".px-seat").value||"").trim()||null
+      });
+    });
+    return list;
+  }
+  document.getElementById("addpax").addEventListener("click", addPax);
+
+  // default date = today + 14d
+  (function(){ var d=new Date(); d.setDate(d.getDate()+14); document.getElementById("date").value=d.toISOString().slice(0,10); })();
+
+  function step(lbl,v,state){ return '<div class="step '+(state||'')+'"><div class="lbl">'+lbl+'</div><div class="v">'+v+'</div></div>'; }
+
+  function render(res){
+    var R = document.getElementById("result");
+    document.getElementById("pipe-k").textContent = res.ok ? "delivered" : "error";
+    if(!res.ok){ R.innerHTML='<div class="err-box">Failed: '+(res.error||"unknown")+'</div>'; return; }
+    var sup = res.supabase||{};
+    var supState = sup.configured ? (sup.ok?"ok":"err") : "warn";
+    var supVal = sup.configured ? (sup.ok?"row written":"write failed") : "local (no creds)";
+    var cdpOk = res.cdp==="sent";
+    var segs = res.segments || [];
+    var offerLabel = res.offer ? res.offer.replace(/^(pss_|seg_)/,"").replace(/_/g," ") : null;
+    var segHtml = segs.length
+      ? segs.map(function(s){ return '<span class="seg-chip">'+s+'</span>'; }).join("")
+      : '<span style="color:var(--ink-faint)">none resolved — set the profile source to Adobe RT-CDP to see audiences</span>';
+    R.innerHTML =
+      '<div class="ok-banner">✓ Reservation '+(res.booking&&res.booking.pnr?res.booking.pnr:"")+' created &amp; delivered to CDP</div>'+
+      '<div class="flow">'+
+        step("PSS","booking #"+(res.bookingId||"—"),"ok")+
+        step("Supabase",supVal,supState)+
+        step("SQLite","source=pss","ok")+
+        step("RT-CDP",cdpOk?"streamed · stitched":"queued (retry)",cdpOk?"ok":"warn")+
+        step("Offer",offerLabel||"no match",res.offer?"ok":"")+
+      '</div>'+
+      '<div class="muted">Identity → Adobe RT-CDP: <span class="mono" style="color:var(--cyan)">'+(res.persona&&res.persona.email||"—")+'</span> / <span class="mono">'+(res.persona&&res.persona.member_no||"—")+'</span>'+
+      (res.stitchedTo? ' · matched local profile <b style="color:var(--ink)">'+res.stitchedTo.name+'</b>':'')+'.</div>'+
+      '<div class="muted" style="margin-top:6px">Segments on unified profile: '+segHtml+'</div>'+
+      (res.offer? '<div class="muted">Offer <b style="color:var(--ink)">'+offerLabel+'</b> triggered <span class="mono">via '+(res.offerVia||"rule")+'</span></div>' : '')+
+      '<div class="hint">Now open the FlyTAP site, log in with <span class="mono">'+(res.persona&&res.persona.email||"this email")+'</span> and search/book — Adobe recognises the same person and personalises from the unified profile.'+
+      ((res.persona&&res.persona.phone)?' Or send a WhatsApp from <span class="mono">'+res.persona.phone+'</span> to the TAP number — the flow resolves this same registered identity.':'')+'</div>';
+  }
+
+  function book(){
+    var btn=document.getElementById("book");
+    var m=curMember();
+    if (isAdhoc() && (!m.email || !m.phone)){ document.getElementById("result").innerHTML='<div class="err-box">Email and mobile number are both required for a new customer.</div>'; document.getElementById("pipe-k").textContent="error"; return; }
+    if (!val("flight")){ document.getElementById("result").innerHTML='<div class="err-box">Select a flight from the schedule first.</div>'; document.getElementById("pipe-k").textContent="error"; return; }
+    btn.disabled=true; btn.textContent="Creating…";
+    var ancillaries = ANC.filter(function(a){return picked[a[0]];}).map(function(a){return {name:a[1]};});
+    var passengers = collectPassengers();
+    var body = {
+      loyalty_id:m.member_no||null, email:m.email, full_name:m.name, phone:m.phone||null,
+      first_name:m.first_name||null, last_name:m.last_name||null,
+      passport:m.passport||null, nationality:m.nationality||null, dob:m.dob||null,
+      origin:val("origin"), destination:val("dest"), travel_date:val("date"),
+      flight_no:val("flight"), seat:val("seat"), cabin:val("cabin"),
+      amount:Number(val("amount"))||0, miles_earned:Number(val("miles"))||0,
+      passengers:passengers, pax_count:passengers.length,
+      ancillaries:ancillaries, channel:"PSS · Reservations desk"
+    };
+    post("/api/pss/book", body).then(function(res){ render(res); loadLedger(); })
+      .catch(function(e){ render({ok:false,error:String(e.message||e)}); })
+      .finally(function(){ btn.disabled=false; btn.textContent="Create reservation →"; });
+  }
+  document.getElementById("book").addEventListener("click", book);
+
+  function recheck(){
+    var m = curMember();
+    var out = document.getElementById("segout");
+    if (!m.member_no && m.email){
+      out.innerHTML = '<span style="color:var(--ink-faint)">checking '+m.email+'…</span>';
+      get("/api/cdp/profile?email="+encodeURIComponent(m.email)).then(function(p){
+        if(!p || p.found===false){ out.innerHTML='<span style="color:var(--ink-faint)">No unified profile yet for '+m.email+' — create the PSS reservation first.</span>'; return; }
+        var segs=(p.segments||[]);
+        var chips = segs.length
+          ? segs.map(function(s){ var nm=(typeof s==="string"?s:(s.name||"")); return '<span class="seg-chip">'+nm+'</span>'; }).join("")
+          : '<span style="color:var(--ink-faint)">no segments yet — cold-start profile (online 0)</span>';
+        out.innerHTML =
+          '<div style="margin-bottom:6px">'+(p.name||m.name)+' · <span class="mono">offline '+(p.offline||0)+' · online '+(p.online||0)+' · max €'+(p.maxTrip||0)+'</span></div>'+
+          chips +
+          '<div style="margin-top:7px;color:var(--ink-faint)">First-touch profile. Log in on the FlyTAP site with <span class="mono">'+m.email+'</span>, search/book, then re-check — new online activity stitches onto this same profile.</div>';
+      }).catch(function(){ out.innerHTML='<span style="color:var(--red)">request failed</span>'; });
+      return;
+    }
+    if(!m.member_no){ out.textContent="Select a member, or enter an email for a new customer."; return; }
+    out.innerHTML = '<span style="color:var(--ink-faint)">checking '+m.member_no+'…</span>';
+    get("/api/segments/"+encodeURIComponent(m.member_no)).then(function(r){
+      if(!r.ok){ out.innerHTML='<span style="color:var(--red)">'+(r.error||"unknown member")+'</span>'; return; }
+      var p=r.profile||{}, segs=(r.segments||[]);
+      var chips = segs.length
+        ? segs.map(function(s){ return '<span class="seg-chip" title="'+(s.rationale||"")+'">'+s.name+'</span>'; }).join("")
+        : '<span style="color:var(--ink-faint)">no segments yet</span>';
+      var cross = segs.some(function(s){ return s.id==="cross_channel_booker"; });
+      out.innerHTML =
+        '<div style="margin-bottom:6px">'+(p.name||m.name)+' · <span class="mono">offline '+(p.offline||0)+' · online '+(p.online||0)+' · max €'+(p.maxTrip||0)+'</span></div>'+
+        chips +
+        (cross ? '<div style="margin-top:7px;color:var(--green-d);font-weight:700">✓ Cross-Channel Booker — online + offline stitched into one 360° profile</div>' : '');
+    }).catch(function(){ out.innerHTML='<span style="color:var(--red)">request failed</span>'; });
+  }
+  document.getElementById("recheck").addEventListener("click", recheck);
+
+  function loadLedger(){
+    get("/api/pss/bookings").then(function(rows){
+      var tb=document.getElementById("ledger");
+      if(!rows||!rows.length){ tb.innerHTML='<tr><td class="empty" colspan="5">No reservations yet.</td></tr>'; return; }
+      tb.innerHTML = rows.map(function(b){
+        return '<tr><td style="font-weight:700">'+b.pnr+'</td><td>'+(b.flight_no||"")+'</td><td>'+(b.flight_date||"")+
+          '</td><td class="r mono">€'+(b.total!=null?b.total:"—")+'</td><td class="mono" style="color:var(--ink-faint)">'+(b.pss_ref||"")+'</td></tr>';
+      }).join("");
+    }).catch(function(){});
+  }
+  document.getElementById("refresh").addEventListener("click", loadLedger);
+
+  ping(); loadMembers(); loadAirports(); loadLedger();
+})();
+</script>
+</body>
+</html>

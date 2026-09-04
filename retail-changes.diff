@@ -1,0 +1,234 @@
+--- /home/claude/orig/Tap-demo/server/server.js	2026-08-31 07:19:57.000000000 +0000
++++ server/server.js	2026-09-02 06:35:29.750724409 +0000
+@@ -28,6 +28,8 @@
+ const { appCtx, currentApp, currentUid } = require("./appctx");
+ const pss = require("./pss");   // PSS (3rd-party) ingestion → SQLite + RT-CDP
+ const cdpProfile = require("./cdp-profile");   // unified profile + identity stitching + segments
++const retail = require("./retail");            // Modern Retailing engine: Offer → Order → Settlement
++const propensity = require("./propensity");    // per-ancillary propensity models (trained from DB)
+ const segments = require("./segments");   // per-member local segment engine
+ const cdpAudiences = require("./cdp-audiences");   // Adobe RT-CDP audience reads + publish
+ const segmentAgent = require("./cdp-segment-agent");   // self-extending RT-CDP segment sync (opt-in)
+@@ -502,6 +504,10 @@
+   });
+ });
+ 
++/* ── Modern Retailing surface (Offer → Order → Settlement, NDC-aligned) ── */
++retail.mount(app, { generateFlights, persistFlights, getRoute });
++try { propensity.train(); } catch (e) { log("propensity_train_error", { e: String(e.message || e) }); }
++
+ app.get("/api/flights", (req, res) => {
+   const dest = (req.query.dest || "LIS").toUpperCase();
+   const origin = (req.query.origin || "OPO").toUpperCase();
+@@ -712,7 +718,9 @@
+   cdpEvents.emit("booked", liveIdentity(req.uid), { origin: f.origin, destination: f.dest, travelDate: bookDate, flightNumber: flight_no, seat: seat || "—", cabin: meta.cabin || "Economy", ancillaries: (items || []).map(i => i.name || i.label || i), channel: "Web app", abandoned: false });
+   cdpProfile.record({ identity: liveIdentity(req.uid), channel: "web", type: "booked", spend: tot,
+     lounge: (items || []).some(i => /lounge/i.test(i.name || i.label || i)) });   // online booking → unified profile
+-  res.json({ ok: true, pnr, email });
++  // Modern Retailing: every legacy web checkout also becomes an ORDER (ONE Order over the PNR)
++  const order = retail.recordOrderFromBooking({ uid: req.uid, channel: "web", pnr, flight: f, date: bookDate, items: items || [], total: tot, split: { voucher: vAmt, miles_amt: mAmt, card: cAmt, seat } });
++  res.json({ ok: true, pnr, order_id: order?.id || null, email });
+ });
+ 
+ app.get("/api/bookings", (req, res) => {
+@@ -1489,6 +1497,15 @@
+ // Tool implementations migrate here from the inline chain in agentRunTool, one
+ // at a time, verbatim. Helpers (db, cityName, generateFlights, …) are module-
+ // scope in this file, so moved bodies resolve them identically at call time.
++/* The booking this CHAT SESSION is talking about. A booking made in this session
++   (session.lastPnr, set at checkout) always wins over the date-nearest seeded trip —
++   fixes "pay for LIS→OPO, then check-in answers about tomorrow's OPO→LIS". */
++const sessionBooking = (uid, session) => {
++  const p = session && session.lastPnr;
++  if (p) { const b = db.prepare("SELECT * FROM bookings WHERE user_id=? AND pnr=? AND status='confirmed'").get(uid, p); if (b) return b; }
++  return currentBooking(uid);
++};
++
+ const TapAdapter = createAirlineAdapter("tap", {
+   search_flights(input, ctx) {
+     const { uid, session } = ctx;
+@@ -1630,7 +1647,7 @@
+     const oldPrice = seatPrice(cur, tier), newPrice = seatPrice(target, tier), diff = +(newPrice - oldPrice).toFixed(2);
+     // Persist: update the basket seat (pre-purchase) and/or the active booking seat.
+     if (session.selected) session.selected.seat = target;
+-    else { const cb = currentBooking(uid); if (cb) db.prepare("UPDATE bookings SET seat=? WHERE id=?").run(target, cb.id); }
++    else { const cb = sessionBooking(uid, session); if (cb) db.prepare("UPDATE bookings SET seat=? WHERE id=?").run(target, cb.id); }
+     if (session.selected) { const cf = flightByNo(session.selected.flight_no) || {}; saveJourney({ origin: cf.origin, dest: cf.dest, date: cf.flight_date, device: "Chat agent", stage: "extras", flight_no: session.selected.flight_no, seat: target, items: session.selected.items }, uid); }
+     log("agent_change_seat", { from: cur, to: target, cabin: seatCabinLabel(target), diff });
+     return { ok: true, from: cur, seat: target, cabin: seatCabinLabel(target),
+@@ -1679,8 +1696,11 @@
+     log("agent_checkout", { pnr, gross, date: bookDate, split: { voucher_amt, miles_used, card_amt } });
+     cancelAllSearchFollowups(uid);   // converted — don't chase with abandonment emails
+     sendEmail("booking_confirmation", { f: { ...f, flight_date: bookDate }, pnr, pay: { voucher_amt, miles_used, miles_amt, card_amt } });
++    // Modern Retailing: the chat checkout is an ORDER too, and the session remembers ITS booking
++    const order = retail.recordOrderFromBooking({ uid, channel: "chat", pnr, flight: f, date: bookDate, items: sel.items || [], total: gross, split: { voucher: voucher_amt, miles_amt, card: card_amt, seat } });
++    session.lastPnr = pnr;
+     session.selected = null;
+-    return { ok: true, pnr, total: gross, date: bookDate, split: { voucher: voucher_amt, miles: miles_used, miles_eur: miles_amt, card: card_amt }, route: `${cityName(f.origin)}→${cityName(f.dest)}`, dep: f.dep };
++    return { ok: true, pnr, order_id: order?.id || null, total: gross, date: bookDate, split: { voucher: voucher_amt, miles: miles_used, miles_eur: miles_amt, card: card_amt }, route: `${cityName(f.origin)}→${cityName(f.dest)}`, dep: f.dep };
+   },
+   get_wallet(input, ctx) {
+     const { uid, session } = ctx;
+@@ -1741,7 +1761,7 @@
+   },
+   get_booking(input, ctx) {
+     const { uid, session } = ctx;
+-    const b = currentBooking(uid);
++    const b = sessionBooking(uid, session);
+     if (!b) return { ok: true, booking: null };
+     const f = flightByNo(b.flight_no) || {};
+     return { ok: true, booking: { pnr: b.pnr, flight_no: b.flight_no, route: `${cityName(f.origin)}→${cityName(f.dest)}`, dep: f.dep, seat: b.seat, status: f.status, checked_in: !!b.checked_in } };
+@@ -1778,7 +1798,7 @@
+   },
+   check_in(input, ctx) {
+     const { uid, session } = ctx;
+-    const b = currentBooking(uid);
++    const b = sessionBooking(uid, session);
+     if (!b) return { ok: false, state: "no_booking", message: "You have no upcoming flight to check in for." };
+     const f = flightByNo(b.flight_no) || {};
+     if (b.checked_in) return { ok: true, state: "already_checked_in", pnr: b.pnr, flight_no: b.flight_no, route: `${cityName(f.origin)}→${cityName(f.dest)}`, date: b.flight_date, seat: b.seat, group: boardingGroup(userTier(uid)), message: "You're already checked in for this flight." };
+@@ -1789,7 +1809,7 @@
+   },
+   split_booking(input, ctx) {
+     const { uid, session } = ctx;
+-    const b = currentBooking(uid);
++    const b = sessionBooking(uid, session);
+     if (!b) return { ok: false, state: "no_booking", message: "You have no active booking to split." };
+     const meta = _safeJSON(b.meta_json, {}) || {};
+     const pax = Array.isArray(meta.passengers) ? meta.passengers : [];
+@@ -1813,7 +1833,7 @@
+   },
+   resolve_disruption(input, ctx) {
+     const { uid, session } = ctx;
+-    const b = currentBooking(uid);
++    const b = sessionBooking(uid, session);
+     if (!b) return { ok: false, state: "no_booking", message: "You have no active booking." };
+     const meta = _safeJSON(b.meta_json, {}) || {};
+     const pax = Array.isArray(meta.passengers) && meta.passengers.length ? meta.passengers : [{ first: "You" }];
+@@ -1889,7 +1909,7 @@
+   },
+   upgrade_cabin(input, ctx) {
+     const { uid, session } = ctx;
+-    const b = currentBooking(uid);
++    const b = sessionBooking(uid, session);
+     if (!b) return { ok: false, state: "no_booking", message: "You have no active booking to upgrade." };
+     const f = flightByNo(b.flight_no) || {};
+     const target = input.cabin === "Business" ? "Business" : "Premium";
+@@ -1903,7 +1923,7 @@
+   },
+   get_disruption(input, ctx) {
+     const { uid, session } = ctx;
+-    const b = currentBooking(uid);
++    const b = sessionBooking(uid, session);
+     if (!b) return { ok: true, disrupted: false, message: "No active booking, so nothing is disrupted." };
+     const f = flightByNo(b.flight_no) || {};
+     const disrupted = !!(f.status && /delay|cancel/i.test(f.status));
+@@ -1914,7 +1934,7 @@
+   },
+   rebook_flight(input, ctx) {
+     const { uid, session } = ctx;
+-    const b = currentBooking(uid);
++    const b = sessionBooking(uid, session);
+     if (!b) return { ok: false, state: "no_booking", message: "You have no booking to rebook." };
+     const id = String(input.option_id || "");
+     if (!id || /^keep$/i.test(id)) return { ok: true, kept: true, pnr: b.pnr, message: `Keeping you on ${b.flight_no}.` };
+@@ -1936,7 +1956,7 @@
+   },
+   cancel_booking(input, ctx) {
+     const { uid, session } = ctx;
+-    const b = currentBooking(uid);
++    const b = sessionBooking(uid, session);
+     if (!b) return { ok: false, state: "no_booking", message: "You have no active booking to cancel." };
+     const f = flightByNo(b.flight_no) || {};
+     if (input.confirm !== true) return { ok: false, state: "needs_confirm", pnr: b.pnr, route: `${cityName(f.origin)}→${cityName(f.dest)}`, date: b.flight_date, message: `Confirm before cancelling ${b.pnr} (${b.flight_no} ${cityName(f.origin)}→${cityName(f.dest)}, ${b.flight_date}). Ask the customer to confirm.` };
+--- /home/claude/orig/Tap-demo/server/pss.js	2026-06-26 06:45:11.000000000 +0000
++++ server/pss.js	2026-09-02 06:35:38.998534772 +0000
+@@ -204,6 +204,12 @@
+       bookingId = Number(r.lastInsertRowid);
+       db.prepare(`INSERT INTO payments (booking_id,total,voucher_amt,miles_used,miles_amt,card_amt,created_at)
+         VALUES (?,?,?,?,?,?,?)`).run(bookingId, env.amount, 0, 0, 0, env.amount, ts);
++      // Modern Retailing: an offline PSS booking is an ORDER in the same ledger as web/chat —
++      // the ONE Order record spans channels even when the sale happened in a partner system.
++      try {
++        const retail = require("./retail");
++        if (user) retail.recordOrderFromBooking({ uid: user.id, channel: "pss", pnr, flight: { flight_no: env.flightNumber, origin: env.origin, dest: env.destination, flight_date: env.travelDate }, date: env.travelDate, items: env.ancillaries || [], total: env.amount, split: { card: env.amount, seat: env.seat } });
++      } catch { /* retail engine absent in this slice — booking truth is unaffected */ }
+       // Accrue miles to the live record if matched, else to the members directory.
+       if (env.milesEarned) {
+         if (user) db.prepare("UPDATE users SET miles = miles + ? WHERE id=?").run(env.milesEarned, user.id);
+--- /home/claude/orig/Tap-demo/server/packages.js	2026-06-13 13:27:52.000000000 +0000
++++ server/packages.js	2026-09-02 06:35:57.120988990 +0000
+@@ -1,7 +1,15 @@
+ /* Affinity-driven travel packages (event ticket + hotel + return flight).
+    Each persona's co-branded card spend profile derives an `affinity`
+    (football / golf / music), and we surface a matching bundle in a city
+-   they fly to. Prices are demo values; the bundle total = flight + hotel + event. */
++   they fly to. Prices are demo values; the bundle total = flight + hotel + event.
++   EVERGREEN: event dates are computed forward from the real current date, so a
++   package can never advertise an event that has already happened. */
++
++// N days ahead of the real today, as YYYY-MM-DD.
++function futureDate(daysAhead) {
++  const d = new Date(); d.setUTCDate(d.getUTCDate() + daysAhead);
++  return d.toISOString().slice(0, 10);
++}
+ 
+ // Helper to assemble a package object with computed total.
+ function pkg({ id, affinity, badge, city, code, event, venue, date, eventPrice, hotel, hotelNights, hotelPrice, flightDesc, flightPrice, image, blurb, addon }) {
+@@ -12,22 +20,22 @@
+ // Packages by affinity. `home` is filled per-request so the return flight is correct.
+ const PACKAGES = {
+   football: (home) => pkg({
+-    id: "wc-final-week",
++    id: "clasico-lisbon",
+     affinity: "football",
+-    badge: "FIFA World Cup 2026",
+-    city: "New York",
+-    code: "JFK",
+-    event: "World Cup Quarter-Final",
+-    venue: "MetLife Stadium · East Rutherford",
+-    date: "2026-07-11",
+-    eventPrice: 290,
+-    hotel: "Manhattan NoMad · 4★",
++    badge: "Matchday in Lisbon",
++    city: "Lisbon",
++    code: "LIS",
++    event: "Lisbon derby — league matchday",
++    venue: "Estádio da Luz · Lisbon",
++    date: futureDate(45),
++    eventPrice: 120,
++    hotel: "Baixa House · 4★",
+     hotelNights: 3,
+-    hotelPrice: 540,
+-    flightDesc: `Return ${home} ⇄ JFK · Economy`,
+-    flightPrice: 612,
++    hotelPrice: 310,
++    flightDesc: `Return ${home} ⇄ LIS · Economy`,
++    flightPrice: 96,
+     image: "https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=1000&q=80",
+-    blurb: "You stream every match and your card sees the stadium spend — here's the real thing. Match ticket, 3 nights in Manhattan, and your return flight, one tap.",
++    blurb: "You stream every match and your card sees the stadium spend — here's the real thing. Match ticket, 3 nights in the Baixa, and your return flight, one tap.",
+     addon: null,
+   }),
+   golf: (home) => pkg({
+@@ -38,7 +46,7 @@
+     code: "FAO",
+     event: "Portugal Masters — Final Round",
+     venue: "Dom Pedro Victoria GC · Vilamoura",
+-    date: "2026-06-21",
++    date: futureDate(60),
+     eventPrice: 95,
+     hotel: "Vilamoura Resort · 4★ (golf view)",
+     hotelNights: 2,
+@@ -55,9 +63,9 @@
+     badge: "Live in Lisbon",
+     city: "Lisbon",
+     code: "LIS",
+-    event: "Coldplay · Music of the Spheres",
++    event: "Stadium live — summer tour night",
+     venue: "Estádio da Luz · Lisbon",
+-    date: "2026-06-28",
++    date: futureDate(30),
+     eventPrice: 145,
+     hotel: "Avenida Boutique · 5★",
+     hotelNights: 2,

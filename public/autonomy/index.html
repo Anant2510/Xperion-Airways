@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Xperion · Disruption Autonomy — Ops Controller</title>
+<style>
+  :root{--petrol:#12414E;--petrolM:#1B5666;--sage:#5E9A8B;--sageD:#3C7365;--sageLt:#E7F1EE;--bg:#F4F7F6;--ink:#1D2B30;--mut:#687A80;--hair:#D7E2DF;--plum:#8C4A63}
+  *{box-sizing:border-box}body{margin:0;font:14px/1.45 Calibri,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:var(--petrol);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header h1{font:700 19px Cambria,serif;margin:0}
+  header .sub{color:#BCD3CE;font-size:12px}
+  .wrap{max-width:1180px;margin:18px auto;padding:0 18px}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .card{background:#fff;border:1px solid var(--hair);border-radius:10px;padding:14px 16px;flex:1;min-width:250px}
+  .k{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--sageD);text-transform:uppercase}
+  .big{font:700 26px Cambria,serif;color:var(--petrol)}
+  button{background:var(--petrol);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:600 13px Calibri;cursor:pointer}
+  button.ghost{background:#fff;color:var(--petrol);border:1px solid var(--hair)}
+  button.warn{background:var(--plum)}
+  button:disabled{opacity:.45;cursor:default}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{color:var(--sageD);text-transform:uppercase;font-size:10.5px;letter-spacing:.06em;text-align:left;padding:6px 8px;border-bottom:1px solid var(--hair)}
+  td{padding:6px 8px;border-bottom:1px solid #EEF3F1;vertical-align:top}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;background:var(--sageLt);color:var(--sageD);font-weight:700;font-size:11px}
+  .pill.act{background:#FCEEF1;color:var(--plum)}
+  .mono{font-family:'Courier New',monospace;font-size:11.5px;color:var(--petrolM)}
+  .log{max-height:280px;overflow:auto;background:#fff;border:1px solid var(--hair);border-radius:10px;padding:8px 12px}
+  .log div{padding:3px 0;border-bottom:1px dashed #EEF3F1;font-size:12px}
+  .muted{color:var(--mut)}
+  .steps{display:flex;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header>
+  <h1>Xperion Airways · Proactive Disruption Autonomy</h1>
+  <span class="sub">ontology + knowledge graph + tiered agent mesh · golden scenario DEL→MIA</span>
+  <span style="flex:1"></span>
+  <button id="killBtn" class="warn">Kill switch: …</button>
+</header>
+<div class="wrap">
+  <div class="card" style="margin-bottom:14px">
+    <div class="k">Replayable simulation</div>
+    <div class="steps" style="margin-top:8px">
+      <button onclick="step('reset')">Reset world</button>
+      <button onclick="step('t72')" class="ghost">T-72h · outlook</button>
+      <button onclick="step('t48')" class="ghost">T-48h · tornado watch → agents run</button>
+      <button onclick="step('accept')" class="ghost">One-tap accept (sample family)</button>
+      <button onclick="step('t0')" class="ghost">T-0 · close out</button>
+      <button onclick="step('golden')">Run full golden timeline</button>
+    </div>
+    <div id="stepOut" class="mono" style="margin-top:8px;color:var(--sageD)"></div>
+  </div>
+
+  <div class="row" id="kpis"></div>
+
+  <div class="row" style="margin-top:14px">
+    <div class="card" style="flex:2">
+      <div class="k">Predictions</div>
+      <table id="preds"><thead><tr><th>id</th><th>state</th><th>p</th><th>impacted</th><th>offers</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card" style="flex:1">
+      <div class="k">Tier-2 queue (human approves)</div>
+      <div id="tier2"></div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <div class="card" style="flex:1">
+      <div class="k">Outbox (honest statuses)</div>
+      <div id="outbox" class="log"></div>
+    </div>
+    <div class="card" style="flex:1">
+      <div class="k">Audit trail (append-only)</div>
+      <div id="audit" class="log"></div>
+    </div>
+  </div>
+</div>
+<script>
+const J = (u, opt) => fetch(u, opt).then(r => r.json());
+const P = (u, body) => J(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) });
+let kill = { global: false };
+
+async function refresh() {
+  const s = await J("/api/autonomy/status");
+  kill = s.kill || kill;
+  document.getElementById("killBtn").textContent = "Kill switch: " + (kill.global ? "ON (frozen)" : "off");
+  document.getElementById("killBtn").style.background = kill.global ? "#8C4A63" : "#12414E";
+  const k = document.getElementById("kpis");
+  k.innerHTML = "";
+  const tiles = [
+    ["Offers sent", s.offers_sent], ["Accepted", s.offers_accepted],
+    ["Acceptance", Math.round((s.acceptance_rate || 0) * 100) + "%"],
+    ["Proactive resolution", Math.round((s.proactive_resolution_rate || 0) * 100) + "%"],
+    ["Mean saga", (s.mean_saga_ms || 0) + " ms"], ["Tier-2 pending", s.tier2_pending],
+  ];
+  for (const [a, b] of tiles) k.insertAdjacentHTML("beforeend", `<div class="card"><div class="k">${a}</div><div class="big">${b}</div></div>`);
+  const tb = document.querySelector("#preds tbody"); tb.innerHTML = "";
+  for (const p of s.predictions || []) tb.insertAdjacentHTML("beforeend",
+    `<tr><td class="mono">${p.id.slice(0, 34)}…</td><td><span class="pill ${["ACT","OFFERS_OUT"].includes(p.state) ? "act" : ""}">${p.state}</span></td><td>${p.probability ?? ""}</td><td>${p.impacted || 0}</td><td>${(s.offers_sent || 0)}</td></tr>`);
+  const t2 = await J("/api/autonomy/tier2");
+  document.getElementById("tier2").innerHTML = (t2.items || []).slice(0, 8).map(i =>
+    `<div style="padding:6px 0;border-bottom:1px dashed #EEF3F1">
+       <div><b>${i.action}</b> <span class="muted">· ${i.payload?.pnr || i.payload?.offerId || ""}</span></div>
+       <div class="muted" style="font-size:11.5px">${i.rationale || ""}</div>
+       <button class="ghost" style="margin-top:4px;padding:4px 10px" onclick="approve('${i.id}')">Approve</button></div>`).join("") || '<span class="muted">empty</span>';
+  const ob = await J("/api/autonomy/outbox");
+  document.getElementById("outbox").innerHTML = (ob.sent || []).slice().reverse().map(m =>
+    `<div><b>${m.channel}</b> → <span class="mono">${m.to}</span> <span class="muted">· ${m.status}</span><br><span class="muted">${(m.text || "").slice(0, 110)}…</span></div>`).join("") || '<span class="muted">empty</span>';
+  const au = await J("/api/autonomy/audit?limit=40");
+  document.getElementById("audit").innerHTML = (au.events || []).map(e =>
+    `<div><span class="mono">${(e.at || "").slice(11, 19)}</span> <b>${e.actor}</b> ${e.action}${e.tier !== null ? ' <span class="pill">T' + e.tier + "</span>" : ""}<br><span class="muted">${(e.rationale || "").slice(0, 130)}</span></div>`).join("");
+}
+async function step(which) {
+  const out = document.getElementById("stepOut");
+  out.textContent = "running " + which + "…";
+  const r = await P("/api/autonomy/sim/" + which);
+  out.textContent = JSON.stringify(r).slice(0, 220);
+  refresh();
+}
+async function approve(id) { await P("/api/autonomy/tier2/" + id + "/approve"); refresh(); }
+document.getElementById("killBtn").onclick = async () => { await P("/api/autonomy/kill", { global: !kill.global }); refresh(); };
+refresh(); setInterval(refresh, 5000);
+</script>
+</body>
+</html>

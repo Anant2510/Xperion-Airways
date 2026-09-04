@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# secrets — never commit your real .env
+.env
+.env.local
+
+# runtime database (created on first start, re-seeds itself)
+data/
+
+# logs / OS cruft
+*.log
+.DS_Store
+
+flytap-v2-section-zebra.zip
+Archive/
+
+flytap-v2-section-zebra.zip
+Archive/
+
+server.bak/
+ngrok.exe
+ngrok.zip
+*.zip
+*.zip

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Modern Retailing engine — Offer → Order → Settlement</title>
+<style>
+  :root{--ink:#0d1b3e;--mut:#5c6478;--line:#e3e6ee;--bg:#f6f7fa;--card:#fff;--accent:#0b6ea8;--good:#0f6e56;--goodbg:#e1f5ee;--warn:#854f0b;--warnbg:#faeeda;--bad:#a32d2d;--badbg:#fcebeb;--chip:#eef1f7}
+  *{box-sizing:border-box}body{margin:0;font:15px/1.55 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 60px}
+  h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:26px 0 10px}
+  .sub{color:var(--mut);margin:0 0 18px}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .personas{display:flex;gap:8px;flex-wrap:wrap}
+  .p-btn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px}
+  .p-btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  input,button.act{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px}
+  button.act{background:var(--accent);border-color:var(--accent);color:#fff;cursor:pointer}
+  button.ghost{background:#fff;color:var(--accent);cursor:pointer}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-top:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .price{font-size:24px;font-weight:600}.was{color:var(--mut);text-decoration:line-through;font-size:14px;margin-left:6px}
+  .chip{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 10px;font-size:12px;margin:2px 4px 2px 0}
+  .chip.d{background:var(--goodbg);color:var(--good)}.chip.u{background:var(--warnbg);color:var(--warn)}.chip.n{background:var(--chip);color:var(--mut)}
+  .pr{display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0}
+  .barbg{flex:1;height:6px;background:var(--chip);border-radius:3px;overflow:hidden}.barfill{height:6px;background:var(--accent)}
+  .drivers{color:var(--mut);font-size:12px;margin-left:2px}
+  .bundle{border:1px dashed var(--accent);border-radius:10px;padding:10px;margin-top:10px;font-size:13px}
+  table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:500}
+  .tag{border-radius:6px;padding:2px 8px;font-size:12px}.tag.ok{background:var(--goodbg);color:var(--good)}.tag.rf{background:var(--badbg);color:var(--bad)}.tag.pn{background:var(--warnbg);color:var(--warn)}
+  .cmp{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .cmp .card{min-width:150px;padding:10px 14px}
+  .foot{color:var(--mut);font-size:12px;margin-top:26px}
+  .muted{color:var(--mut);font-size:13px}
+  .x{color:var(--bad);background:none;border:none;cursor:pointer;font-size:12px;text-decoration:underline;padding:0}
+</style>
+</head>
+<body><div class="wrap">
+  <h1>Modern retailing engine</h1>
+  <p class="sub">Offer → Order → Settlement, layered over the existing PNR core. Same flight, different customer, different offer — every euro explained.</p>
+
+  <div class="bar">
+    <div class="personas" id="personas"></div>
+    <span class="muted" id="who"></span>
+    <span style="flex:1"></span>
+    <input id="o" value="LIS" size="4"/> → <input id="d" value="OPO" size="4"/>
+    <input id="dt" type="date"/>
+    <button class="act" onclick="shop()">Shop offers</button>
+    <button class="ghost act" onclick="compare()">Compare all personas</button>
+  </div>
+
+  <div id="cmpwrap" style="display:none"><h2>One flight, priced per customer</h2><div class="cmp" id="cmp"></div></div>
+
+  <h2 id="offers-h" style="display:none">Offers for this customer <span class="muted" id="ttl"></span></h2>
+  <div class="grid" id="offers"></div>
+
+  <div id="orderwrap" style="display:none">
+    <h2>Order <span id="ordid" class="muted"></span></h2>
+    <div class="card">
+      <div id="ordmeta" class="muted" style="margin-bottom:8px"></div>
+      <table id="items"></table>
+      <h2 style="font-size:14px">Settlement ledger</h2>
+      <table id="ledger"></table>
+      <div id="balance" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <div class="foot" id="model"></div>
+</div>
+<script>
+const $=(id)=>document.getElementById(id);
+const J=async(p,o={})=>{const r=await fetch(p,o);return r.json()};
+const P=(p,b,h={})=>J(p,{method:'POST',headers:{'content-type':'application/json',...h},body:JSON.stringify(b)});
+const eur=(n)=>'€'+(Math.round(n*100)/100).toFixed(2);
+let PERS=[],CUR=null;
+
+(async function init(){
+  const d=new Date();d.setDate(d.getDate()+18);$('dt').value=d.toISOString().slice(0,10);
+  PERS=await J('/api/personas');
+  const box=$('personas');
+  PERS.forEach(p=>{const b=document.createElement('button');b.className='p-btn';b.id='pb-'+p.id;b.textContent=`${p.label.split(' ')[0]} · ${p.tier}`;b.onclick=()=>pick(p.id);box.appendChild(b)});
+  const me=await J('/api/profile');CUR=(PERS.find(p=>me.user&&me.user.full_name===p.label)||PERS[0]).id;mark();
+  const m=await J('/api/retail/model');
+  $('model').textContent=`Propensity: ${m.algorithm} · trained ${m.training_rows} real booking rows · features: ${ (m.features||[]).slice(1).join(', ') }`;
+  shop();
+})();
+function mark(){PERS.forEach(p=>$('pb-'+p.id).classList.toggle('on',p.id===CUR));const p=PERS.find(x=>x.id===CUR);$('who').textContent=p?`${p.label} · ${p.tier} · ${p.miles.toLocaleString()} miles`:''}
+async function pick(id){await P('/api/persona',{persona:id,id});CUR=id;mark();$('orderwrap').style.display='none';shop()}
+
+async function shop(){
+  const r=await P('/api/retail/offers',{origin:$('o').value,dest:$('d').value,date:$('dt').value});
+  const box=$('offers');box.innerHTML='';$('offers-h').style.display='';
+  if(!r.ok){box.innerHTML='<div class="card">'+(r.error||'no offers')+'</div>';return}
+  $('ttl').textContent=`· offer holds for ${Math.round(r.offer_ttl_seconds/60)} min, re-priced at commit if it lapses`;
+  r.offers.forEach(o=>{
+    const adj=(o.pricing.adjustments||[]).map(a=>`<span class="chip ${a.amount<0?'d':a.amount>0?'u':'n'}">${a.label}${a.amount?` ${a.amount>0?'+':''}${eur(a.amount)}`:''}</span>`).join('');
+    const inc=o.items.filter(i=>i.included).map(i=>`<span class="chip n">✓ ${i.descr}${i.note?' · '+i.note:''}</span>`).join('');
+    const prop=(o.propensity_top||[]).map(t=>`
+      <div class="pr"><span style="width:120px">${t.name||t.code} ${t.price?`· ${eur(t.price)}`:''}</span>
+      <div class="barbg"><div class="barfill" style="width:${Math.round((t.p||0)*100)}%"></div></div>
+      <span style="width:44px;text-align:right">${t.p==null?'—':Math.round(t.p*100)+'%'}</span></div>
+      <div class="drivers">${(t.drivers||[]).map(d=>d.direction+' '+d.label).join(' · ')}${t.low_confidence?' · low data':''}</div>`).join('');
+    const bd=o.bundle?`<div class="bundle"><b>${o.bundle.name}</b> — ${o.bundle.items.join(' + ')} for <b>${eur(o.bundle.price)}</b> <span class="was">${eur(o.bundle.list_total)}</span> · save ${eur(o.bundle.saving)}<br><span class="muted">${o.bundle.reason}</span><br><button class="act" style="margin-top:6px" onclick="accept('${o.id}',true)">Accept offer + bundle</button></div>`:'';
+    const el=document.createElement('div');el.className='card';
+    el.innerHTML=`<div class="muted">${o.flight_no} · ${o.items[0].descr} ${o.badge?'<span class="chip d">'+o.badge+'</span>':''}</div>
+      <div><span class="price">${eur(o.total)}</span><span class="was">${eur(o.base_total)}</span></div>
+      <div style="margin:6px 0">${adj}</div><div>${inc}</div>
+      <div style="margin-top:10px"><b style="font-size:13px">Extras, ranked by your propensity</b>${prop}</div>${bd}
+      <button class="act ghost" style="margin-top:10px" onclick="accept('${o.id}',false)">Accept offer</button>`;
+    box.appendChild(el);
+  });
+}
+async function accept(id,bundle){
+  const r=await P('/api/retail/orders',bundle?{offer_id:id,accept_bundle:true}:{offer_id:id},{'Idempotency-Key':'ui-'+id});
+  if(r.repriced){alert('Offer lapsed — re-priced at commit. Old '+eur(r.old_total)+' → new '+eur(r.offer.total)+'. Fresh offer loaded.');shop();return}
+  if(!r.ok){alert(r.error||'failed');return}
+  renderOrder(r.order);
+}
+async function cancelItem(oid,iid){const r=await P(`/api/retail/orders/${oid}/items/${iid}/cancel`,{});if(r.ok)renderOrder(r.order);else alert(r.error)}
+function renderOrder(o){
+  $('orderwrap').style.display='';$('ordid').textContent=o.id+' · '+o.status;
+  const f=o.items.find(i=>i.type==='flight');
+  $('ordmeta').innerHTML=`One commercial record for the whole purchase. The flight item's fulfilment reference is the PNR — <b>${f?f.fulfillment_ref:'—'}</b> stays the fulfilment record; the Order is the commercial record.`;
+  $('items').innerHTML='<tr><th>Item</th><th>Type</th><th>Price</th><th>Fulfilment</th><th>Status</th><th></th></tr>'+o.items.map(i=>`
+    <tr><td>${i.descr}</td><td>${i.type}</td><td>${eur(i.price)}</td><td>${i.fulfillment_ref||'—'}</td>
+    <td><span class="tag ${i.status==='confirmed'?'ok':i.status==='refunded'?'rf':'pn'}">${i.status}</span></td>
+    <td>${i.type!=='flight'&&i.status==='confirmed'&&i.price>0?`<button class="x" onclick="cancelItem('${o.id}',${i.id})">cancel just this</button>`:''}</td></tr>`).join('');
+  $('ledger').innerHTML='<tr><th>Entry</th><th>Party</th><th>Method</th><th>Amount</th></tr>'+o.settlement.ledger.map(l=>`
+    <tr><td>${l.entry}</td><td>${l.party||''}</td><td>${l.method||''}</td><td>${eur(l.amount)}</td></tr>`).join('');
+  $('balance').innerHTML=`<span class="tag ${o.settlement.balanced?'ok':'rf'}">${o.settlement.balanced?'balanced':'imbalance'}</span>
+    <span class="muted"> revenue ${eur(o.settlement.revenue_total)} · payments ${eur(o.settlement.payment_total)} · refunded ${eur(o.settlement.refund_total)}</span>`;
+  $('orderwrap').scrollIntoView({behavior:'smooth'});
+}
+async function compare(){
+  const r=await J(`/api/retail/compare?origin=${$('o').value}&dest=${$('d').value}&date=${$('dt').value}`);
+  $('cmpwrap').style.display='';const box=$('cmp');box.innerHTML='';
+  (r.personas||[]).forEach(p=>{const el=document.createElement('div');el.className='card';
+    el.innerHTML=`<div class="muted">${p.name} · ${p.tier}</div><div class="price" style="font-size:20px">${eur(p.total)}</div>
+      <div>${(p.adjustments||[]).filter(a=>!['demand','demand_high','close_in','early_bird'].includes(a.code)).map(a=>`<span class="chip d">${a.label}</span>`).join('')||'<span class="chip n">list price</span>'}</div>`;
+    box.appendChild(el)});
+}
+</script>
+</body></html>

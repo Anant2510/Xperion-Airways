@@ -1,0 +1,32 @@
+{
+  "name": "mar-reference-build",
+  "version": "10.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server/server.js",
+    "build": "esbuild web/app.jsx --bundle --jsx=automatic --minify --outfile=public/app.js",
+    "build:v2": "esbuild web/v2/main.jsx --bundle --jsx=automatic --minify --outfile=public/v2/app.js",
+    "build:all": "npm run build && npm run build:v2",
+    "dev": "npm run build && node server/server.js",
+    "build:v3": "esbuild web/v3/app.jsx --bundle --jsx=automatic --minify --outfile=public/v3/app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": { "node": ">=22.5.0" },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "nodemailer": "^8.0.11"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0",
+    "lucide-react": "^1.17.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}
