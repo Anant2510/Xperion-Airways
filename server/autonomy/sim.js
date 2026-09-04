@@ -30,6 +30,7 @@ const depMs = () => new Date(state.depIso).getTime();
 const arrIso = () => G.getNode(state.fiId).sched_arr;
 
 function t72() {
+  if (!state.fiId || !G.getNode(state.fiId)) reset();   // step pressed on a fresh boot: seed first
   clock.set(new Date(depMs() - 72 * 3600e3).toISOString());
   const arr = new Date(arrIso()).getTime();
   const { weId } = sensing.ingestAlert({
@@ -44,6 +45,7 @@ function t72() {
 }
 
 function t48() {
+  if (!state.predId) throw new Error('No active scenario — press "Reset world" then run the steps in order, or use "Run full golden timeline".');
   clock.set(new Date(depMs() - 48 * 3600e3).toISOString());
   const arr = new Date(arrIso()).getTime();
   sensing.ingestAlert({
@@ -64,13 +66,16 @@ function sampleOffer(pred = state.predId, { minParty = 2 } = {}) {
 }
 
 function acceptSample() {
+  if (!state.predId) throw new Error('No active scenario — press "Reset world" then run the steps in order, or use "Run full golden timeline".');
   const off = sampleOffer();
+  if (!off) throw new Error('No offers out yet — run "T-48h · tornado watch" first, then accept.');
   const opt = off.options.find(o => G.getNode(o)?.type === "DIVERT_PLUS_GROUND") || off.options[0];
   const r = A.accept(off.id, opt);
   return { offerId: off.id, optionId: opt, ...r };
 }
 
 function t0() {
+  if (!state.predId) throw new Error('No active scenario — press "Reset world" then run the steps in order, or use "Run full golden timeline".');
   clock.set(state.depIso);
   return orch.closeOut(state.predId);
 }

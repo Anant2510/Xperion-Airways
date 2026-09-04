@@ -14,6 +14,9 @@ const V = require("./vendors");
 
 const router = express.Router();
 router.use(express.json());
+/* sim endpoints can be pressed out of order from the ops page: answer with a
+   friendly 409 instead of a stack trace */
+const safe = (fn) => (req, res) => { try { fn(req, res); } catch (e) { res.status(409).json({ ok: false, error: e.message }); } };
 orch.wire();
 
 router.get("/status", (_req, res) => res.json({ ok: true, ...orch.kpis(), graph: G.stats() }));
@@ -23,16 +26,16 @@ router.get("/graph", (_req, res) => res.json({ ok: true, stats: G.stats(),
 router.get("/audit", (req, res) => res.json({ ok: true, events: O.auditList(Number(req.query.limit) || 60) }));
 router.get("/outbox", (_req, res) => res.json({ ok: true, sent: V.sent().slice(-40) }));
 
-router.post("/sim/reset", (_req, res) => res.json({ ok: true, ...sim.reset() }));
-router.post("/sim/t72", (_req, res) => res.json({ ok: true, ...sim.t72(), pred: G.getNode(sim.state.predId) }));
-router.post("/sim/t48", (_req, res) => res.json({ ok: true, ...sim.t48() }));
-router.post("/sim/accept", (_req, res) => res.json(sim.acceptSample()));
-router.post("/sim/t0", (_req, res) => res.json({ ok: true, ...sim.t0() }));
-router.post("/sim/golden", (_req, res) => {
+router.post("/sim/reset", safe((_req, res) => res.json({ ok: true, ...sim.reset() })));
+router.post("/sim/t72", safe((_req, res) => res.json({ ok: true, ...sim.t72(), pred: G.getNode(sim.state.predId) })));
+router.post("/sim/t48", safe((_req, res) => res.json({ ok: true, ...sim.t48() })));
+router.post("/sim/accept", safe((_req, res) => res.json(sim.acceptSample())));
+router.post("/sim/t0", safe((_req, res) => res.json({ ok: true, ...sim.t0() })));
+router.post("/sim/golden", safe((_req, res) => {
   const seeded = sim.reset(); const a = sim.t72(); const b = sim.t48();
   const acc = sim.acceptSample(); const closed = sim.t0();
   res.json({ ok: true, seeded, watch: { probability: a.p }, act: { probability: b.p }, accepted: acc, closed, kpis: orch.kpis() });
-});
+}));
 
 router.post("/offer/:id/accept", (req, res) => res.json(A.accept(req.params.id, req.body?.optionId)));
 router.post("/offer/:id/decline", (req, res) => res.json(A.decline(req.params.id)));
