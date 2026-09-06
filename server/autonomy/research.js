@@ -67,6 +67,7 @@ function prompt(code, from, to, f) {
   return `You are a neutral travel-intelligence analyst for an airline. Research what could affect a traveller arriving in ${cityOf(code)} (${code}, ${countryOf(code)}) between ${from} and ${to}.
 Cover: weather outlook (we already have a forecast: ${f.weather.outlook}; alerts: ${f.weather.alerts.map((a) => a.headline).join("; ") || "none"}), political or civil events (elections, protests, strikes, curfews), major scheduled events (sport, concerts, festivals, conferences), official travel advisories, transport or airport disruption, health notices, and any other notable news for those dates. Public holidays already known: ${f.holidays.map((h) => `${h.date} ${h.name}`).join(", ") || "none"}.
 Use web search. Be factual and neutral: describe political events without taking a side, attribute every claim to a source, and omit anything you cannot source. Estimate impact on a visitor's trip, not on the country.
+Source quality matters: prefer official and authoritative sources (national meteorological service, airport operator, government travel advisories, transport authorities, major national and international news outlets); use blogs or aggregators only when nothing better exists. Anything rated medium or high impact needs at least two independent sources; if you can only find one, rate it low and say so in the note. Always include the official travel-advisory level for the country from a government source (e.g. the US State Department or the UK FCDO), even when it is unchanged. Put health notices (disease activity, air quality) in events with kind "health". Do not pad: an empty list is the right answer when nothing is happening.
 After researching, respond with the JSON object wrapped exactly like <brief>{...}</brief>, nothing else outside the tags:
 <brief>{"summary": "2-3 sentences for the traveller", "events": [{"kind": "political|civil|strike|sport|concert|festival|conference|transport|health|other", "title": "", "date": "YYYY-MM-DD or range", "impact": "low|medium|high", "note": "one sentence", "source": "url"}], "advisories": [{"level": "", "summary": "", "source": "url"}], "news": [{"title": "", "note": "", "source": "url"}], "travel_impact": "none|low|medium|high", "confidence": 0.0}</brief>`;
 }
@@ -76,7 +77,7 @@ async function callClaude(text) {
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({ model: process.env.RESEARCH_MODEL || process.env.CLAUDE_MODEL || "claude-sonnet-5", max_tokens: 1800,
-      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: Number(process.env.RESEARCH_MAX_SEARCHES) || 5 }],
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: Number(process.env.RESEARCH_MAX_SEARCHES) || 7 }],
       messages: [{ role: "user", content: text }] }),
   });
   const j = await r.json();
