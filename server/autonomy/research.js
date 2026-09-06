@@ -31,7 +31,7 @@ const TTL_MS = Number(process.env.RESEARCH_TTL_MS) || 12 * 60 * 60 * 1000;
 const MAX_PER_HOUR = Number(process.env.RESEARCH_MAX_PER_HOUR) || 20;
 const calls = [];                          // timestamps of LLM calls (rate limit)
 const hasKey = () => !!process.env.ANTHROPIC_API_KEY && process.env.RESEARCH_ENABLED !== "0";
-const cityOf = (code) => AIRPORTS[code]?.city || code;
+const cityOf = (code) => { const c = AIRPORTS[code]?.city || code; return /^[A-Z0-9 .'-]+$/.test(c) && c.length > 3 ? c.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : c; };
 const countryOf = (code) => AIRPORTS[code]?.country || null;
 const addDays = (iso, n) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const idFor = (code, from, to) => `brief:${code}:${from}:${to}`;
@@ -67,8 +67,8 @@ function prompt(code, from, to, f) {
   return `You are a neutral travel-intelligence analyst for an airline. Research what could affect a traveller arriving in ${cityOf(code)} (${code}, ${countryOf(code)}) between ${from} and ${to}.
 Cover: weather outlook (we already have a forecast: ${f.weather.outlook}; alerts: ${f.weather.alerts.map((a) => a.headline).join("; ") || "none"}), political or civil events (elections, protests, strikes, curfews), major scheduled events (sport, concerts, festivals, conferences), official travel advisories, transport or airport disruption, health notices, and any other notable news for those dates. Public holidays already known: ${f.holidays.map((h) => `${h.date} ${h.name}`).join(", ") || "none"}.
 Use web search. Be factual and neutral: describe political events without taking a side, attribute every claim to a source, and omit anything you cannot source. Estimate impact on a visitor's trip, not on the country.
-Respond with ONLY a JSON object, no prose, no code fence:
-{"summary": "2-3 sentences for the traveller", "events": [{"kind": "political|civil|strike|sport|concert|festival|conference|transport|health|other", "title": "", "date": "YYYY-MM-DD or range", "impact": "low|medium|high", "note": "one sentence", "source": "url"}], "advisories": [{"level": "", "summary": "", "source": "url"}], "news": [{"title": "", "note": "", "source": "url"}], "travel_impact": "none|low|medium|high", "confidence": 0.0}`;
+After researching, respond with the JSON object wrapped exactly like <brief>{...}</brief>, nothing else outside the tags:
+<brief>{"summary": "2-3 sentences for the traveller", "events": [{"kind": "political|civil|strike|sport|concert|festival|conference|transport|health|other", "title": "", "date": "YYYY-MM-DD or range", "impact": "low|medium|high", "note": "one sentence", "source": "url"}], "advisories": [{"level": "", "summary": "", "source": "url"}], "news": [{"title": "", "note": "", "source": "url"}], "travel_impact": "none|low|medium|high", "confidence": 0.0}</brief>`;
 }
 async function callClaude(text) {
   if (llmImpl) return llmImpl(text);
@@ -87,9 +87,27 @@ async function callClaude(text) {
   return { text: texts.map((b) => b.text).join("\n"), cites, usage: j.usage };
 }
 function parseJSON(text) {
-  const clean = String(text || "").replace(/```json|```/g, "").trim();
-  const a = clean.indexOf("{"), b = clean.lastIndexOf("}");
-  try { return JSON.parse(clean.slice(a, b + 1)); } catch { return null; }
+  const raw = String(text || "");
+  const tagged = raw.match(/<brief>([\s\S]*?)<\/brief>/i);
+  const candidates = [tagged && tagged[1], raw].filter(Boolean);
+  for (const c of candidates) {
+    const clean = c.replace(/```json|```/g, "").trim();
+    const a = clean.indexOf("{"), b = clean.lastIndexOf("}");
+    if (a < 0 || b <= a) continue;
+    try { const o = JSON.parse(clean.slice(a, b + 1)); if (o && typeof o === "object") return o; } catch {}
+  }
+  return null;
+}
+/* one repair pass, no web search: turn free-form findings into the JSON shape */
+async function repairJSON(findings) {
+  const r = await fetchImpl("https://api.anthropic.com/v1/messages", {
+    method: "POST", headers: { "content-type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: process.env.RESEARCH_MODEL || process.env.CLAUDE_MODEL || "claude-sonnet-5", max_tokens: 1200,
+      messages: [{ role: "user", content: `Convert these research findings into the JSON object described, keeping every source URL. Respond with ONLY the JSON object.\n\nFINDINGS:\n${String(findings).slice(0, 12000)}\n\nSHAPE: {"summary": "", "events": [{"kind": "", "title": "", "date": "", "impact": "low|medium|high", "note": "", "source": "url"}], "advisories": [{"level": "", "summary": "", "source": "url"}], "news": [{"title": "", "note": "", "source": "url"}], "travel_impact": "none|low|medium|high", "confidence": 0.0}` }] }),
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error(`Anthropic ${r.status}: ${(j.error && j.error.message) || "repair failed"}`);
+  return parseJSON((j.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n"));
 }
 function rateOk() { const now = Date.now(); while (calls.length && now - calls[0] > 3600000) calls.shift(); return calls.length < MAX_PER_HOUR; }
 
@@ -109,8 +127,9 @@ async function build(code, from, to, { force = false } = {}) {
         const out = await callClaude(prompt(code, from, to, f));
         const res = typeof out === "string" ? { text: out, cites: [] } : out;
         analysis = parseJSON(res.text);
+        if (!analysis && res.text && !llmImpl) { try { analysis = await repairJSON(res.text); } catch (e) { error = "repair: " + String(e.message || e).slice(0, 120); } }
         if (analysis) { mode = "llm+facts"; sources = [...res.cites, ...[...(analysis.events || []), ...(analysis.advisories || []), ...(analysis.news || [])].filter((x) => x.source).map((x) => ({ title: x.title || x.summary || x.source, url: x.source }))]; }
-        else error = "analysis returned no JSON";
+        else error = error || `analysis returned no JSON (${String(res.text || "").slice(0, 160).replace(/\s+/g, " ")}…)`;
       } catch (e) { error = String(e.message || e).slice(0, 160); }
     }
   }

@@ -57,7 +57,7 @@ router.post("/sim/golden", safe(async (_req, res) => {
 }));
 
 /* ── destination intelligence: live weather feeds, research briefs, T-72 proactive briefs ── */
-router.get("/briefs", (_req, res) => res.json({ ok: true, research: research.status(), feeds: feeds.status(), briefs: research.list().map((b) => ({ id: b.id, city: b.city, code: b.code, window: b.window, impact: b.travel_impact, mode: b.mode, sources: b.source_count, generated_at: b.generated_at, summary: b.summary })) }));
+router.get("/briefs", (_req, res) => res.json({ ok: true, research: research.status(), feeds: feeds.status(), briefs: research.list().map((b) => ({ id: b.id, city: b.city, code: b.code, window: b.window, impact: b.travel_impact, mode: b.mode, sources: b.source_count, generated_at: b.generated_at, summary: b.summary, error: b.error || null })) }));
 router.get("/brief/:code", safe(async (req, res) => { const from = req.query.from || new Date().toISOString().slice(0, 10); const to = req.query.to || research.addDays(from, 3); res.json({ ok: true, brief: await research.build(req.params.code, from, to, { force: req.query.force === "1" }) }); }));
 router.post("/briefs/run", safe(async (req, res) => res.json({ ok: true, ...(await briefs.run({ uids: req.body?.uids || (req.body?.uid ? [Number(req.body.uid)] : null), force: !!req.body?.force, reason: req.body?.reason || "manual" })) })));
 router.get("/briefs/due", (_req, res) => res.json({ ok: true, due: briefs.due().map((d) => ({ pnr: d.booking.pnr, uid: d.booking.user_id, dest: d.dest, hours: d.hoursToDeparture })) }));
