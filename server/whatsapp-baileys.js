@@ -140,9 +140,14 @@ async function start({ onMessage, log = console.log } = {}) {
         log("   WhatsApp session logged out — delete data/baileys-auth and restart to pair again");
         return;
       }
-      /* 515 right after pairing is WhatsApp forcing one reconnect for a new device; other codes are network */
-      const wait = Math.min(30000, 3000 * Math.max(1, ++state.attempts));
-      log(`   WhatsApp connection closed (${code || "unknown"}); reconnecting in ${wait / 1000}s`);
+      /* 515 right after pairing is WhatsApp forcing one reconnect for a new device; other codes are
+         network. 440 means another process connected with these same credentials and replaced us
+         (a second node process, or a copy of data/baileys-auth elsewhere): back off for a minute
+         so the two never ping-pong, and say what to check. */
+      const replaced = code === DisconnectReason.connectionReplaced || code === 440;
+      const wait = replaced ? 60000 : Math.min(30000, 3000 * Math.max(1, ++state.attempts));
+      if (replaced) log("   WhatsApp session replaced by another process using the same pairing (440). Check `Get-Process node` / `pgrep node` — only one process may hold data/baileys-auth. Retrying in 60s.");
+      else log(`   WhatsApp connection closed (${code || "unknown"}); reconnecting in ${wait / 1000}s`);
       setTimeout(() => start({ onMessage: onInbound, log }).catch((e) => log("   WhatsApp reconnect failed: " + e.message)), wait);
     }
   });
