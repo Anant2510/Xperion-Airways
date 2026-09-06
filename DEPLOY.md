@@ -218,3 +218,32 @@ connected non-stop to both hubs, plus a 16-city US point-to-point mesh.
 
     node _network-validate.mjs                                  (static)
     BASE=http://127.0.0.1:<port> node _network-validate.mjs     (static + live)
+
+## Adobe Real-Time CDP — connect the live tenant
+
+The build talks to the same AEP tenant TAP V2 did; every AEP-facing identifier
+(IMS org, sandbox, identity namespace symbol, tenant namespace, schema/dataset
+ids, streaming inlet, audience id→name map) comes from the environment, so the
+TAP V2 `.env` values carry over unchanged. Copy this block from the old `.env`:
+
+    PROFILE_SOURCE=adobe
+    ADOBE_CDP_ENABLED=1
+    ADOBE_IMS_ORG=            ADOBE_CLIENT_ID=            ADOBE_CLIENT_SECRET=
+    ADOBE_SANDBOX=            ADOBE_SCOPES=               ADOBE_IMS_URL=
+    ADOBE_IDENTITY_NS=        ADOBE_LOOKUP_ATTR=          ADOBE_LOYALTY_NS=
+    ADOBE_TENANT_NS=          ADOBE_PROFILE_SCHEMA_ID=    ADOBE_PROFILE_DATASET_ID=
+    ADOBE_EVENT_SCHEMA_ID=    ADOBE_EVENT_DATASET_ID=     ADOBE_EVENT_FLOW_ID=
+    ADOBE_STREAMING_URL=      ADOBE_AUDIENCE_NAMES=       ADOBE_LOCAL_SEGMENTS_FIELD=
+    AEP_AUDIENCE_PREFIX=TAP –     (keeps the audiences the tenant already has)
+    CDP_AGENT_ENABLED=0           (1 only if the self-extending audience sync is wanted)
+
+Then `pm2 restart xperion-v10 --update-env` (Windows) or restart `npm start`
+(Mac) and verify, in order:
+
+1. `GET /api/health` → `"cdp": "configured — live tenant (…)"`
+2. `GET /api/admin/cdp/test` → `"Connected — a live profile was returned"`;
+   otherwise the message names the exact reason (token, namespace, scopes).
+3. `POST /api/admin/cdp/event/test` → streams one test event to the inlet.
+4. `POST /api/admin/cdp/ingest` → re-pushes the personas into the profile
+   dataset so the tenant's profiles carry the Xperion (US) attributes. Persona
+   loyalty ids and emails are unchanged, so the same profiles are updated.

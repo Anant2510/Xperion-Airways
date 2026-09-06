@@ -21,3 +21,6 @@ Archive/
 server.bak/
 ngrok.exe
 ngrok.zip
+
+data.old/
+data.old-*/

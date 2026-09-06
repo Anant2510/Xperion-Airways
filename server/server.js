@@ -3045,7 +3045,9 @@ const NETWORK_FACTS = (() => {
 })();
 app.get("/api/health", (req, res) => {
   const waOn = typeof whatsapp.CONFIGURED === "function" ? whatsapp.CONFIGURED() : !!whatsapp.CONFIGURED;
+  const cdpCfg = cdp.cdpConfig();
   res.json({ ok: true, version: "v10", db: DB_PATH,
+    cdp: cdpCfg.configured ? `configured — live tenant (sandbox ${cdpCfg.sandbox}; streaming ${cdpCfg.streaming.configured ? "on" : "off"})` : "simulated (set ADOBE_CDP_ENABLED, ADOBE_IMS_ORG, ADOBE_CLIENT_ID, ADOBE_CLIENT_SECRET)",
     airline: { name: XperionAdapter.config.name, code: "XP", country: XperionAdapter.config.country, home: XperionAdapter.config.homeAirport, hubs: XperionAdapter.config.hubs, currency: XperionAdapter.config.currency, locale: XperionAdapter.config.locale },
     network: NETWORK_FACTS, smtp: SMTP_READY ? "configured" : "not configured (emails logged to DB)", ai: hasKey() ? "live" : "fallback mode", whatsapp: waOn ? "configured — messages really send" : "not configured (messages logged to DB)" });
 });
@@ -3086,6 +3088,13 @@ app.get("/api/admin/selftest", (req, res) => {
 
   // — Integrations —
   add("AI (Xperion AI) connectivity", "Integrations", () => ({ ok: hasKey(), detail: hasKey() ? "live (API key found)" : "fallback mode — set ANTHROPIC_API_KEY" }));
+  add("Adobe RT-CDP connectivity", "Integrations", () => {
+    const c = cdp.cdpConfig();
+    const missing = [["ADOBE_CDP_ENABLED", c.enabled], ["ADOBE_IMS_ORG", !!process.env.ADOBE_IMS_ORG], ["ADOBE_CLIENT_ID", !!process.env.ADOBE_CLIENT_ID], ["ADOBE_CLIENT_SECRET", !!process.env.ADOBE_CLIENT_SECRET]].filter(([, v]) => !v).map(([k]) => k);
+    return { ok: c.configured, detail: c.configured
+      ? `credentials present · sandbox ${c.sandbox} · lookup ${c.identityNamespace} · streaming ${c.streaming.configured ? "inlet set" : "no inlet"} · prove it at /api/admin/cdp/test`
+      : `simulated profile — set ${missing.join(", ")}` };
+  });
   add("Email channel", "Integrations", () => ({ ok: true, detail: SMTP_READY ? "SMTP configured — really sends" : "logged to DB outbox" }));
   add("WhatsApp channel", "Integrations", () => ({ ok: true, detail: whatsapp.CONFIGURED() ? "Twilio configured — really sends" : "logged to DB" }));
 
@@ -3095,11 +3104,11 @@ app.get("/api/admin/selftest", (req, res) => {
 
   const total = checks.length, passed = checks.filter(c => c.ok).length;
   // Integrations that are "configured-or-logged" are healthy either way; only AI-live is advisory
-  const critical = checks.filter(c => !c.ok && c.name !== "AI (Xperion AI) connectivity");
+  const critical = checks.filter(c => !c.ok && !["AI (Xperion AI) connectivity", "Adobe RT-CDP connectivity"].includes(c.name));
   res.json({
     ok: critical.length === 0,
     passed, total,
-    advisory: checks.filter(c => !c.ok && c.name === "AI (Xperion AI) connectivity").length,
+    advisory: checks.filter(c => !c.ok && ["AI (Xperion AI) connectivity", "Adobe RT-CDP connectivity"].includes(c.name)).length,
     ranAt: new Date().toISOString(),
     checks,
   });

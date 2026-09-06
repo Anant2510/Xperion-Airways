@@ -60,7 +60,7 @@ const pql = (name, c) => `"${String(name).replace(/"/g, '\\"')}" in ${TENANT}.${
 // whitespace, lowercase. Keep in sync with scripts/aep-create-segment-audiences.js. Robust to
 // en-dash vs hyphen drift between the prefix AEP stored and the clean desired name (the exact
 // match silently missed everything → empty cache → re-create → "already exists" → learnedCount 0).
-const normName = (s) => String(s).replace(/^\s*Xperion\s*[–—-]\s*/i, "").replace(/[–—]/g, "-").replace(/\s+/g, " ").trim().toLowerCase();
+const normName = (s) => String(s).replace(/^\s*(?:Xperion|TAP)\s*[–—-]\s*/i, "")   // recognise audiences created under either brand prefix in the same AEP tenant.replace(/[–—]/g, "-").replace(/\s+/g, " ").trim().toLowerCase();
 
 // Distinct segment names from the SAME engine the app uses — the desired audience set.
 function desiredNames() {
