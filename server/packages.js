@@ -78,10 +78,28 @@ const PACKAGES = {
   }),
 };
 
-// Return the package for a given affinity + home airport (or null).
+// Second venues so a package never flies a customer to their own city.
+const ALT = {
+  football: (home) => pkg({ id: "nyc-derby", affinity: "football", badge: "Matchday in New York", city: "New York", code: "JFK", event: "New York derby — league matchday", venue: "Harbor Stadium · New York", date: futureDate(38), eventPrice: 135, hotel: "Midtown Boutique · 4★", hotelNights: 2, hotelPrice: 380, flightDesc: `Return ${home} ⇄ JFK · Economy`, flightPrice: 118, image: "https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=1000&q=80", blurb: "You stream every match and your card sees the stadium spend — here's the real thing in New York. Match ticket, 2 nights midtown, and your return flight, one tap.", addon: null }),
+  golf: (home) => pkg({ id: "orlando-classic", affinity: "golf", badge: "Tee time in Orlando", city: "Orlando", code: "MCO", event: "Orlando Classic — pro-am weekend", venue: "Lakeside Links · Orlando", date: futureDate(52), eventPrice: 210, hotel: "Fairway Lodge · 4★", hotelNights: 3, hotelPrice: 420, flightDesc: `Return ${home} ⇄ MCO · Economy`, flightPrice: 104, image: "https://images.unsplash.com/photo-1535131749006-b7f58c99034b?auto=format&fit=crop&w=1000&q=80", blurb: "Green fees, three nights on the course, and your flights — one tap.", addon: null }),
+  music: (home) => pkg({ id: "miami-bayfront", affinity: "music", badge: "Live in Miami", city: "Miami", code: "MIA", event: "Bayfront live — summer tour night", venue: "Bayfront Amphitheater · Miami", date: futureDate(34), eventPrice: 125, hotel: "Bayside House · 4★", hotelNights: 2, hotelPrice: 300, flightDesc: `Return ${home} ⇄ MIA · Economy`, flightPrice: 96, image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1000&q=80", blurb: "Concerts top your card spend — floor ticket, two nights by the bay, and your return flight.", addon: null }),
+};
+
+// The package for an affinity + home airport: the venue that is NOT the customer's own city.
+// If every venue is local, it becomes a ticket + hotel package with no flight.
 function packageFor(affinity, home) {
-  const make = PACKAGES[affinity];
-  return make ? make(home || "JFK") : null;
+  home = home || "JFK";
+  const makers = [PACKAGES[affinity], ALT[affinity]].filter(Boolean);
+  if (!makers.length) return null;
+  const away = makers.map((m) => m(home)).find((p) => p.code !== home);
+  if (away) return away;
+  const local = makers[0](home);
+  return { ...local, flightDesc: "No flight needed — you're local", flightPrice: 0, total: (local.total || 0) - (local.flightPrice || 0), local: true, blurb: local.blurb.replace(/,? and your return flight[^.]*\./i, ".") };
+}
+// Every package in a given city (for "anything on there?" questions)
+function packagesIn(code, home) {
+  code = String(code || "").toUpperCase();
+  return Object.keys(PACKAGES).flatMap((a) => [PACKAGES[a], ALT[a]].filter(Boolean).map((m) => m(home || "JFK"))).filter((p) => p.code === code);
 }
 
-module.exports = { packageFor };
+module.exports = { packageFor, packagesIn };

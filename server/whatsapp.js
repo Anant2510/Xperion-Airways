@@ -824,7 +824,11 @@ async function handleIncoming({ from, text, pushName }) {
   if (/^(status|delay)\b/.test(t)) return handleAction(from, "STATUS");
   if (/\b(my booking|my flight|my trip|booking details|view booking|show booking)\b/.test(t) || /^booking\b/.test(t)) return handleAction(from, "MY_BOOKING");
   if (/\b(offer|offers|deal|deals|special|promo|discount)\b/.test(t) && !/book|cancel|status|check.?in/.test(t)) return showOffer(from);
-  if (/\b(packages?|made for me|made for you|recommend|suggestions?|what should i do|things to do|anything fun|what'?s on|whats on|events?|concerts?|matches?|tournaments?|golf|football|music)\b/.test(t) && !/book|cancel|status|check.?in/.test(t)) return handleAction(from, "MADE_FOR_YOU");
+  /* explicit package requests only; questions about events, matches or concerts at a place go to
+     the agent, which answers from the destination brief and mentions a package only if it is there */
+  const asksAboutPlace = /\b(there|happening|at the same time|during|while i'?m|in [a-z]|when i|that week|those dates|on the \d)/.test(t);
+  if (/\b(packages?|made for me|made for you|recommend(ation)?s?|suggestions?|what should i do|things to do|anything fun)\b/.test(t) && !asksAboutPlace && !/book|cancel|status|check.?in/.test(t)) return handleAction(from, "MADE_FOR_YOU");
+  if (/\b(what'?s on|whats on|events?|concerts?|matches?|tournaments?|golf|football|music|games?|fixtures?)\b/.test(t) && !/book|cancel|status|check.?in/.test(t)) return runAgent(from, text);
   if (/\b(seat options|seating options|available seats|seat map|what seats|which seats)\b/.test(t)) return handleAction(from, "SEATMAP_INFO");
   if (/\b(change|move|switch|upgrade).{0,20}\bseat\b|\bseat\b.{0,20}\b(change|window|aisle|business|premium)\b|\bwindow seat\b|\baisle seat\b/.test(t)) return runAgent(from, text);
   if (/\b(extras|add.?ons?|ancillar|upgrade my)\b/.test(t)) return handleAction(from, "EXTRAS");

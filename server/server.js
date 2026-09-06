@@ -18,7 +18,7 @@ const { sendEmail, SMTP_READY } = require("./email");
 const { callClaude, callClaudeAgent, FALLBACKS, hasKey } = require("./claude");
 const { generateFlights, getRoute } = require("./search");
 const { AIRPORTS } = require("./routes-data");
-const { packageFor } = require("./packages");
+const { packageFor, packagesIn } = require("./packages");
 const { createAirlineAdapter, registerAirline, getAirline, resolveTenant, listAirlines, REQUIRED_TOOLS } = require("./airline");
 const whatsapp = require("./whatsapp");
 const notify = require("./notify");
@@ -1402,6 +1402,7 @@ const AGENT_TOOLS = [
       city: { type: "string", description: "City name or IATA code, e.g. Delhi or DEL. Omit to use the customer's next trip." },
       from: { type: "string", description: "Start date YYYY-MM-DD (default: today or the trip date)." },
       to: { type: "string", description: "End date YYYY-MM-DD (default: from + 3 days)." },
+      interest: { type: "string", description: "Optional focus, e.g. 'football', 'concerts', 'tennis', 'festivals': the brief then lists scheduled events of that kind on those dates with sources, plus any Xperion package in that city." },
     } } },
   { name: "list_destinations", description: "List the real cities {{airline}} flies to FROM a given origin airport. Use this whenever the customer asks where they can fly from a city, asks for 'options from <city>' without naming a destination, or asks a factual question like 'do we only fly to X from Y?'. Returns the actual route network from the database.",
     input_schema: { type: "object", properties: {
@@ -1549,8 +1550,11 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     }
     if (!code) return { ok: false, message: "Which city should I look at? Name it, or book a trip and I'll brief you on its destination automatically." };
     from = from || searchToday(); const to = input.to || autonomy.research.addDays(from, 3);
-    const brief = await autonomy.research.build(code, from, to);
-    return { ok: true, code, city: brief.city, from, to, impact: brief.travel_impact, mode: brief.mode, summary: brief.summary, text: autonomy.research.briefText(brief),
+    const interest = input.interest ? String(input.interest).trim().slice(0, 40) : null;
+    const brief = await autonomy.research.build(code, from, to, { interest });
+    const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "JFK";
+    const packages = packagesIn(code, home).map(p => ({ id: p.id, event: p.event, venue: p.venue, date: p.date, city: p.city, total: p.total, affinity: p.affinity, local: !!p.local }));
+    return { ok: true, code, city: brief.city, from, to, interest, impact: brief.travel_impact, mode: brief.mode, summary: brief.summary, text: autonomy.research.briefText(brief), packages,
       weather: { outlook: brief.weather.outlook, alerts: brief.weather.alerts.slice(0, 3), risk: brief.weather.risk }, events: brief.events.slice(0, 6), advisories: brief.advisories.slice(0, 3), news: brief.news.slice(0, 3), holidays: brief.holidays, sources: brief.sources.slice(0, 8), confidence: brief.confidence,
       message: `Brief for ${brief.city} ${from} to ${to}: ${brief.summary}` };
   },
@@ -2188,9 +2192,11 @@ function deterministicAgent(text, session) {
   const uid = (session && session.uid) || SERVER_DEFAULT_UID;   // per-session identity for direct reads (tools get it via session)
   const calls = [];
   /* Destination intelligence: weather / events / news / safety questions get the brief (offline too) */
-  if (/\b(weather|forecast|rain|storm|snow|heat|protest|strike|election|curfew|riot|unrest|safe to (go|travel|fly)|what'?s (happening|going on)|events?|festival|concert|news|advisor(y|ies))\b/.test(q) && !/\b(tornado watch|my (miami|delhi) flight)\b/.test(q)) {
-    const cityWord = (q.match(/\b(?:in|at|to|for|about)\s+([a-z][a-z .'-]{2,30}?)(?:\s+(?:next|this|on|in|during|around|between|from|over)\b|[?.,!]|$)/) || [])[1];
-    return { async: true, toolName: "get_destination_brief", toolInput: cityWord ? { city: cityWord.trim() } : {} };
+  if (/\b(weather|forecast|rain|storm|snow|heat|protest|strike|election|curfew|riot|unrest|safe to (go|travel|fly)|what'?s (happening|going on|on)|events?|festival|concerts?|matches?|games?|fixtures?|football|soccer|tennis|golf|cricket|news|advisor(y|ies))\b/.test(q) && !/\b(tornado watch|my (miami|delhi) flight)\b/.test(q)) {
+    const cityWord = (q.match(/\b(?:in|at|to|for|about)\s+([a-z][a-z .'-]{2,30}?)(?:\s+(?:next|this|on|in|during|around|between|from|over|at)\b|[?.,!]|$)/) || [])[1];
+    const interest = (q.match(/\b(football|soccer|tennis|golf|cricket|basketball|baseball|hockey|concerts?|music|festivals?|theatre|theater|comedy)\b/) || [])[1];
+    const input = {}; if (cityWord && !/^the same time|^there/.test(cityWord.trim())) input.city = cityWord.trim(); if (interest) input.interest = interest.replace(/s$/, "");
+    return { async: true, toolName: "get_destination_brief", toolInput: input };
   }
   /* Enterprise Autonomy: disruption questions are answered from the knowledge graph, offline too */
   if (/weather|storm|tornado|disrupt|delay|risk|xp ?201|my (miami|delhi|next|upcoming) flight|what('s| is) (happening|going on)|status of my|my (flight|trip|booking)/.test(q)) {
@@ -2607,7 +2613,7 @@ app.post("/api/ai/agent", async (req, res) => {
   }
   if (session.selected) situ += ` Currently selected flight: ${session.selected.flight_no}.`;
   try { situ += autonomy.bridge.contextLine(req.uid); } catch {}   // Enterprise Autonomy: live disruption facts from the knowledge graph
-  situ += " For weather, events, safety or news at any destination, call get_destination_brief and report its contents with sources; never invent a forecast, and leave travel decisions with the customer.";
+  situ += " For weather, events, safety or news at any destination, call get_destination_brief (pass interest, e.g. football, when the customer asks about a kind of event) and report its contents with sources for THAT city and THOSE dates; never invent a forecast, never answer with a package for a different city, and mention a package only when the tool lists one there. Leave travel decisions with the customer.";
   situ += ")";
   // Stored history first, so the agent has context even on a fresh tab / after a reload,
   // and picks up whatever the customer said on WhatsApp.

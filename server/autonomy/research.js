@@ -34,7 +34,8 @@ const hasKey = () => !!process.env.ANTHROPIC_API_KEY && process.env.RESEARCH_ENA
 const cityOf = (code) => { const c = AIRPORTS[code]?.city || code; return /^[A-Z0-9 .'-]+$/.test(c) && c.length > 3 ? c.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : c; };
 const countryOf = (code) => AIRPORTS[code]?.country || null;
 const addDays = (iso, n) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-const idFor = (code, from, to) => `brief:${code}:${from}:${to}`;
+const slug = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24);
+const idFor = (code, from, to, interest) => `brief:${code}:${from}:${to}${interest ? ":" + slug(interest) : ""}`;
 
 /* ── facts ────────────────────────────────────────────────────────────── */
 const RISK = { tornado_warning: 0.8, tornado_watch: 0.6, hurricane: 0.75, hurricane_watch: 0.6, severe_thunderstorm_warning: 0.55, severe_thunderstorm_watch: 0.45, blizzard: 0.65, winter_storm: 0.5, ice_storm: 0.6, flash_flood: 0.35, flood: 0.25, high_wind: 0.3, dense_fog: 0.35, extreme_heat: 0.1, convective_outlook: 0.35, heavy_rain: 0.2 };
@@ -63,8 +64,8 @@ async function facts(code, from, to) {
 }
 
 /* ── analysis (Claude + web search) ───────────────────────────────────── */
-function prompt(code, from, to, f) {
-  return `You are a neutral travel-intelligence analyst for an airline. Research what could affect a traveller arriving in ${cityOf(code)} (${code}, ${countryOf(code)}) between ${from} and ${to}.
+function prompt(code, from, to, f, interest) {
+  return `You are a neutral travel-intelligence analyst for an airline. Research what could affect a traveller arriving in ${cityOf(code)} (${code}, ${countryOf(code)}) between ${from} and ${to}.${interest ? `\nThe traveller is specifically interested in: ${interest}. Find scheduled ${interest} events in or near the city on those dates (name, venue, date, ticket availability and an official or ticketing source) and list them as events with kind "sport", "concert" or "festival" as appropriate, before the general items.` : ""}
 Cover: weather outlook (we already have a forecast: ${f.weather.outlook}; alerts: ${f.weather.alerts.map((a) => a.headline).join("; ") || "none"}), political or civil events (elections, protests, strikes, curfews), major scheduled events (sport, concerts, festivals, conferences), official travel advisories, transport or airport disruption, health notices, and any other notable news for those dates. Public holidays already known: ${f.holidays.map((h) => `${h.date} ${h.name}`).join(", ") || "none"}.
 Use web search. Be factual and neutral: describe political events without taking a side, attribute every claim to a source, and omit anything you cannot source. Estimate impact on a visitor's trip, not on the country.
 Source quality matters: prefer official and authoritative sources (national meteorological service, airport operator, government travel advisories, transport authorities, major national and international news outlets); use blogs or aggregators only when nothing better exists. Anything rated medium or high impact needs at least two independent sources; if you can only find one, rate it low and say so in the note. Always include the official travel-advisory level for the country from a government source (e.g. the US State Department or the UK FCDO), even when it is unchanged. Put health notices (disease activity, air quality) in events with kind "health". Do not pad: an empty list is the right answer when nothing is happening.
@@ -113,9 +114,9 @@ async function repairJSON(findings) {
 function rateOk() { const now = Date.now(); while (calls.length && now - calls[0] > 3600000) calls.shift(); return calls.length < MAX_PER_HOUR; }
 
 /* ── the brief ────────────────────────────────────────────────────────── */
-async function build(code, from, to, { force = false } = {}) {
+async function build(code, from, to, { force = false, interest = null } = {}) {
   code = String(code || "").toUpperCase();
-  const id = idFor(code, from, to);
+  const id = idFor(code, from, to, interest);
   const cached = G.getNode(id);
   if (cached && !force && cached.expires_at > clock.nowIso()) return { ...cached, cached: true };
   const f = await facts(code, from, to);
@@ -125,7 +126,7 @@ async function build(code, from, to, { force = false } = {}) {
     else {
       calls.push(Date.now());
       try {
-        const out = await callClaude(prompt(code, from, to, f));
+        const out = await callClaude(prompt(code, from, to, f, interest));
         const res = typeof out === "string" ? { text: out, cites: [] } : out;
         analysis = parseJSON(res.text);
         if (!analysis && res.text && !llmImpl) { try { analysis = await repairJSON(res.text); } catch (e) { error = "repair: " + String(e.message || e).slice(0, 120); } }
@@ -136,7 +137,7 @@ async function build(code, from, to, { force = false } = {}) {
   }
   const seen = new Set(); sources = sources.filter((s) => s.url && !seen.has(s.url) && seen.add(s.url));
   const brief = {
-    code, city: cityOf(code), country: countryOf(code), window: { from, to },
+    code, city: cityOf(code), country: countryOf(code), window: { from, to }, interest: interest || null,
     generated_at: clock.nowIso(), expires_at: new Date(Date.parse(clock.nowIso()) + TTL_MS).toISOString(), mode, error,
     weather: f.weather, holidays: f.holidays,
     events: analysis?.events || [], advisories: analysis?.advisories || [], news: analysis?.news || [],
