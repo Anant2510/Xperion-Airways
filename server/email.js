@@ -174,6 +174,21 @@ const TEMPLATES = {
       cta: { label: "Choose in the app" },
     }),
   }),
+  destination_brief: ({ brief, booking, first }) => ({
+    subject: `${brief.city} before you go — ${brief.travel_impact === "none" ? "looks clear" : brief.travel_impact + " impact"} · ${booking.pnr}`,
+    html: wrap({
+      title: `${brief.city}, ${brief.window.from} to ${brief.window.to}`,
+      accent: brief.travel_impact === "high" ? "#E2354B" : brief.travel_impact === "medium" ? "#E8A317" : "#2E7D33",
+      preheader: brief.summary,
+      bodyHtml: `${first ? first + ", h" : "H"}ere is what we know about ${brief.city} for your trip on ${booking.flight_date}. Nothing has changed on your booking; the decision is yours.<br/><br/>
+        <b>Weather</b>: ${brief.weather.outlook}${brief.weather.alerts.length ? `<br/><span style="color:#B4192F">${brief.weather.alerts.map((a) => a.headline).join(" · ")}</span>` : ""}
+        ${(brief.events || []).length ? `<br/><br/><b>Happening there</b><ul style="padding-left:18px;margin:6px 0">${brief.events.slice(0, 6).map((e) => `<li style="margin:4px 0">${e.title}${e.date ? ` (${e.date})` : ""} — ${e.impact} impact${e.note ? `: ${e.note}` : ""}${e.source ? ` <a href="${e.source}" style="color:#6b7a73">source</a>` : ""}</li>`).join("")}</ul>` : ""}
+        ${(brief.advisories || []).length ? `<br/><b>Advisories</b>: ${brief.advisories.map((a) => `${a.summary}${a.source ? ` <a href="${a.source}" style="color:#6b7a73">source</a>` : ""}`).join("; ")}` : ""}
+        ${(brief.holidays || []).length ? `<br/><b>Public holidays</b>: ${brief.holidays.map((h) => `${h.name} (${h.date})`).join(", ")}` : ""}
+        <br/><br/><b>Overall trip impact: ${brief.travel_impact}.</b> ${brief.mode === "llm+facts" ? `${brief.source_count} sources reviewed.` : "Forecast and holidays only."}`,
+      cta: { label: "Keep, change dates, or talk to us — in the app" },
+    }),
+  }),
   recovery_confirmed: ({ pnr, option, items = [] }) => ({
     subject: `Done ✓ ${option.label} — ${pnr} updated`,
     html: wrap({

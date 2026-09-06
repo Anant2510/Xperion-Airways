@@ -108,3 +108,25 @@ Endpoints used by the app: `GET /api/autonomy/customer/status` (banner),
 `POST /api/autonomy/customer/link` re-links without a world reset.
 
 Verification: `BASE=http://127.0.0.1:<port> node _bridge-test.mjs` → 27/27.
+
+## Destination intelligence
+
+Three schedulers start with the server (all free sources, no keys):
+
+- **Feeds** (`FEEDS_ENABLED`, every 30 min): NWS alerts + Open-Meteo outlooks for the arrival
+  airport of every graph flight and every upcoming booking → `sensing.ingestAlert()` → the
+  disruption pipeline. Ops page: **Poll live weather now**.
+- **Research** (needs `ANTHROPIC_API_KEY`): Claude with web search builds a DestinationBrief per
+  city and window — weather, political/civil events, strikes, major events, advisories, news —
+  neutral, every item sourced; cached 12 h; capped at `RESEARCH_MAX_PER_HOUR`. Without a key
+  the brief is forecast + holidays only and says so.
+- **Briefs** (`BRIEFS_ENABLED`, every 30 min): every booked trip gets its brief 60–84 h before
+  departure as a Tier-0 message (card in the app, WhatsApp, email) with three choices: keep the
+  trip, see other dates, talk to a person. Decision stays with the customer. Ops page: **Brief
+  Daniel's next trip now**; the golden T-72 step also briefs the linked customers.
+
+Ask path: the assistant tool `get_destination_brief` answers "what's the weather / what's
+happening / is it safe in <city>" from the same brief, live and offline, web and WhatsApp.
+
+Verification: `node _brief-test.mjs` → 24/24 (mocked sources). Live: `GET /api/autonomy/briefs`,
+`GET /api/autonomy/brief/DEL?force=1`, `POST /api/autonomy/feeds/poll`.

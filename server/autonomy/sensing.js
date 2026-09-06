@@ -36,7 +36,10 @@ function ingestAlert(alert) {
 }
 
 /* transparent scorecard — weights documented in ONTOLOGY.md §calibration */
-const TYPE_BASE = { convective_outlook: 0.35, tornado_watch: 0.58, tornado_warning: 0.75, hurricane: 0.70 };
+const TYPE_BASE = { convective_outlook: 0.35, tornado_watch: 0.58, tornado_warning: 0.75, hurricane: 0.70,
+  /* live feed types (feeds.js): NWS watches/warnings and Open-Meteo outlooks */
+  hurricane_watch: 0.60, severe_thunderstorm_warning: 0.55, severe_thunderstorm_watch: 0.45, blizzard: 0.65, winter_storm: 0.50, ice_storm: 0.60,
+  flash_flood: 0.35, flood: 0.25, high_wind: 0.30, dense_fog: 0.35, extreme_heat: 0.10, heavy_rain: 0.20 };
 const AIRPORT_RATE = { MIA: 0.02, MCO: 0.015, FLL: 0.02, ATL: 0.01, DEL: 0.01 };
 function scoreInstance(fi, we, ap) {
   const drivers = [];

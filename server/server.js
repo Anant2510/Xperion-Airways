@@ -1397,6 +1397,12 @@ const AGENT_TOOLS = [
       dest: { type: "string", description: "Destination IATA code, e.g. LIS, MAD, CDG. REQUIRED — never guess this. If unknown, call list_destinations instead." },
       date: { type: "string", description: `Travel date YYYY-MM-DD. Defaults to today (${searchToday()}) if the customer gave no date.` },
     }, required: ["origin", "dest"] } },
+  { name: "get_destination_brief", description: "Destination intelligence for a city and date window: weather outlook and alerts, political or civil events, strikes, major scheduled events, public holidays, official travel advisories and notable news, each with sources. Use whenever the customer asks about weather, what's happening, safety, protests, strikes, events or news at a destination, or whether they should still travel. If no city is given, use the destination of their next upcoming trip. Never invent a forecast; report what the brief returns and leave the decision with the customer.",
+    input_schema: { type: "object", properties: {
+      city: { type: "string", description: "City name or IATA code, e.g. Delhi or DEL. Omit to use the customer's next trip." },
+      from: { type: "string", description: "Start date YYYY-MM-DD (default: today or the trip date)." },
+      to: { type: "string", description: "End date YYYY-MM-DD (default: from + 3 days)." },
+    } } },
   { name: "list_destinations", description: "List the real cities {{airline}} flies to FROM a given origin airport. Use this whenever the customer asks where they can fly from a city, asks for 'options from <city>' without naming a destination, or asks a factual question like 'do we only fly to X from Y?'. Returns the actual route network from the database.",
     input_schema: { type: "object", properties: {
       origin: { type: "string", description: "Origin IATA code, e.g. JFK, MIA, ORD." },
@@ -1531,6 +1537,22 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     session.lastSearch = { origin, dest, date, flights: stored };
     return { ok: true, origin, dest, date, city: cityName(dest),
       flights: stored.map(f => ({ flight_no: f.flight_no, dep: f.dep, arr: f.arr, price: f.price, status: f.status, recommended: !!f.recommended })) };
+  },
+  async get_destination_brief(input, ctx) {
+    const { uid } = ctx;
+    let code = null;
+    if (input.city) { const q = String(input.city).trim(); code = /^[A-Za-z]{3}$/.test(q) && AIRPORTS[q.toUpperCase()] ? q.toUpperCase() : (Object.keys(AIRPORTS).find(c => AIRPORTS[c].city.toLowerCase() === q.toLowerCase()) || Object.keys(AIRPORTS).find(c => AIRPORTS[c].city.toLowerCase().includes(q.toLowerCase())) || null); }
+    let from = input.from || null;
+    if (!code) {
+      const nxt = db.prepare("SELECT flight_no, flight_date, meta_json FROM bookings WHERE user_id=? AND status IN ('confirmed','rebooked') AND flight_date >= date('now') ORDER BY flight_date LIMIT 1").get(uid);
+      if (nxt) { let m = {}; try { m = JSON.parse(nxt.meta_json || "{}"); } catch {} code = m.dest || (db.prepare("SELECT dest FROM flights WHERE flight_no=?").get(nxt.flight_no) || {}).dest; from = from || nxt.flight_date; }
+    }
+    if (!code) return { ok: false, message: "Which city should I look at? Name it, or book a trip and I'll brief you on its destination automatically." };
+    from = from || searchToday(); const to = input.to || autonomy.research.addDays(from, 3);
+    const brief = await autonomy.research.build(code, from, to);
+    return { ok: true, code, city: brief.city, from, to, impact: brief.travel_impact, mode: brief.mode, summary: brief.summary, text: autonomy.research.briefText(brief),
+      weather: { outlook: brief.weather.outlook, alerts: brief.weather.alerts.slice(0, 3), risk: brief.weather.risk }, events: brief.events.slice(0, 6), advisories: brief.advisories.slice(0, 3), news: brief.news.slice(0, 3), holidays: brief.holidays, sources: brief.sources.slice(0, 8), confidence: brief.confidence,
+      message: `Brief for ${brief.city} ${from} to ${to}: ${brief.summary}` };
   },
   list_destinations(input, ctx) {
     const { uid, session } = ctx;
@@ -2044,6 +2066,9 @@ function buildUI(toolCalls) {
     } else if (tc.name === "get_suggestions" && tc.result?.ok) {
       cards = [{ type: "suggestions", suggestions: tc.result.suggestions }];
       command = { action: "navigate", screen: "search" };
+    } else if (tc.name === "get_destination_brief" && tc.result?.ok) {
+      const r = tc.result;
+      cards = [{ type: "destination_brief", code: r.code, city: r.city, window: { from: r.from, to: r.to }, summary: r.summary, impact: r.impact, weather: r.weather, events: r.events, advisories: r.advisories, news: r.news, holidays: r.holidays, sources: r.sources, mode: r.mode, confidence: r.confidence, options: [] }];
     } else if (tc.name === "list_destinations" && tc.result?.ok) {
       cards = [{ type: "destinations", origin: tc.result.origin, originCity: tc.result.originCity, count: tc.result.count, destinations: tc.result.destinations }];
     } else if (tc.name === "select_flight" && tc.result?.ok) {
@@ -2162,6 +2187,11 @@ function deterministicAgent(text, session) {
   const q = (text || "").toLowerCase();
   const uid = (session && session.uid) || SERVER_DEFAULT_UID;   // per-session identity for direct reads (tools get it via session)
   const calls = [];
+  /* Destination intelligence: weather / events / news / safety questions get the brief (offline too) */
+  if (/\b(weather|forecast|rain|storm|snow|heat|protest|strike|election|curfew|riot|unrest|safe to (go|travel|fly)|what'?s (happening|going on)|events?|festival|concert|news|advisor(y|ies))\b/.test(q) && !/\b(tornado watch|my (miami|delhi) flight)\b/.test(q)) {
+    const cityWord = (q.match(/\b(?:in|at|to|for|about)\s+([a-z][a-z .'-]{2,30}?)(?:\s+(?:next|this|on|in|during|around|between|from|over)\b|[?.,!]|$)/) || [])[1];
+    return { async: true, toolName: "get_destination_brief", toolInput: cityWord ? { city: cityWord.trim() } : {} };
+  }
   /* Enterprise Autonomy: disruption questions are answered from the knowledge graph, offline too */
   if (/weather|storm|tornado|disrupt|delay|risk|xp ?201|my (miami|delhi|next|upcoming) flight|what('s| is) (happening|going on)|status of my|my (flight|trip|booking)/.test(q)) {
     try {
@@ -2484,7 +2514,7 @@ function deterministicAgent(text, session) {
 // drift. Tenant, identity and session keying are resolved exactly as in
 // /api/ai/agent, so a WebMCP call is indistinguishable from a chat tool call.
 // ─────────────────────────────────────────────────────────────────────────────
-app.post("/api/ai/tool", (req, res) => {
+app.post("/api/ai/tool", async (req, res) => {
   const name = String(req.body.name || "");
   const input = req.body.input && typeof req.body.input === "object" ? req.body.input : {};
   const sessionId = req.body.sessionId || "web-default";
@@ -2507,7 +2537,7 @@ app.post("/api/ai/tool", (req, res) => {
 
   let result;
   try {
-    result = agentRunTool(name, input, session);
+    result = await agentRunTool(name, input, session);   // tools may be async (destination brief)
   } catch (e) {
     log("webmcp_tool_error", { name, error: e.message });
     return res.status(500).json({ ok: false, error: "tool_failed", message: e.message });
@@ -2577,6 +2607,7 @@ app.post("/api/ai/agent", async (req, res) => {
   }
   if (session.selected) situ += ` Currently selected flight: ${session.selected.flight_no}.`;
   try { situ += autonomy.bridge.contextLine(req.uid); } catch {}   // Enterprise Autonomy: live disruption facts from the knowledge graph
+  situ += " For weather, events, safety or news at any destination, call get_destination_brief and report its contents with sources; never invent a forecast, and leave travel decisions with the customer.";
   situ += ")";
   // Stored history first, so the agent has context even on a fresh tab / after a reload,
   // and picks up whatever the customer said on WhatsApp.
@@ -2628,7 +2659,11 @@ app.post("/api/ai/agent", async (req, res) => {
     // runs real tools and returns real cards/commands, so it never goes dead.
     try {
       const lastUser = [...messages].reverse().find(m => m.role === "user" && typeof m.content === "string");
-      const det = deterministicAgent(lastUser ? lastUser.content : "", session);
+      let det = deterministicAgent(lastUser ? lastUser.content : "", session);
+      if (det && det.async && det.toolName) {   // a rule that needs an async tool (destination brief)
+        let result; try { result = await agentRunTool(det.toolName, det.toolInput || {}, session); } catch (e) { result = { ok: false, message: "I couldn't build that brief right now: " + e.message }; }
+        det = { reply: result?.ok ? (result.text || result.message) + "\n\nYour call — I can look at other dates, or you can keep the plan as it is." : (result?.message || "I couldn't build that brief."), toolCalls: [{ name: det.toolName, input: det.toolInput || {}, result }] };
+      }
       const { reply, toolCalls } = det;
       const { cards: uiCards, command } = buildUI(toolCalls);
       const cards = det.cards && det.cards.length ? det.cards : uiCards;   // graph-sourced cards (disruption) bypass buildUI
@@ -3579,6 +3614,8 @@ function bootWhatsAppTransport() {
 }
 app.listen(PORT, HOST, () => {
   bootWhatsAppTransport();
+  /* destination intelligence: live weather feeds + T-72 briefs (schedulers; off with FEEDS_ENABLED=0 / BRIEFS_ENABLED=0) */
+  try { autonomy.feeds.start({ log: console.log }); autonomy.briefs.start({ log: console.log }); } catch (e) { console.error("   Destination intelligence failed to start:", e.message); }
   const suffix = BASE_PATH ? BASE_PATH + "/" : "/";
   console.log(`\n✈  MAR reference build v10 running`);
   console.log(`   Local:   http://localhost:${PORT}${suffix}`);

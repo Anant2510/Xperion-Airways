@@ -393,11 +393,45 @@ function DisruptionConfirmedCard({ card, go }) {
   );
 }
 
+
+/* ── Destination intelligence: weather, events, advisories with sources; the customer decides ── */
+function DestinationBriefCard({ card, onChoice, resolved }) {
+  const [busy, setBusy] = useState(null);
+  const tone = card.impact === "high" ? "#B4192F" : card.impact === "medium" ? "#B7791F" : "#2E7D33";
+  const bg = card.impact === "high" ? "#FFF2F4" : card.impact === "medium" ? "#FFF8E6" : "#F2FCD9";
+  const go = async (id) => { if (busy || resolved) return; setBusy(id); try { await onChoice(id, card); } finally { setBusy(null); } };
+  return (
+    <div className="rounded-xl border mt-2 overflow-hidden" style={{ borderColor: tone }}>
+      <div className="px-3.5 py-2.5 flex items-center justify-between gap-2" style={{ background: bg }}>
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: tone }}>Destination brief · {card.mode === "llm+facts" ? "researched" : "forecast only"}</div>
+          <div className="text-[13px] font-bold text-ink">{card.city} · {card.window?.from?.slice(5)} to {card.window?.to?.slice(5)}</div>
+        </div>
+        <div className="text-right shrink-0"><div className="text-[11px] font-black uppercase" style={{ color: tone }}>{card.impact} impact</div>{card.confidence != null && <div className="text-[9px] text-ink-faint">confidence {Math.round(card.confidence * 100)}%</div>}</div>
+      </div>
+      <div className="px-3.5 py-2 space-y-2 text-[12px] text-ink">
+        {card.summary && <div className="text-ink-muted">{card.summary}</div>}
+        <div><span className="font-bold">Weather</span> · {card.weather?.alerts?.length ? card.weather.alerts.map((a) => a.headline).join(" · ") : (card.weather?.days?.length ? card.weather.days.map((d) => `${d.date.slice(5)} ${d.label}${d.tmax != null ? ` ${Math.round(d.tmin)}–${Math.round(d.tmax)}°` : ""}`).join(", ") : "no forecast yet")}</div>
+        {card.events?.length > 0 && <div><div className="font-bold">Happening there</div><ul className="mt-1 space-y-1">{card.events.map((e, i) => <li key={i} className="flex items-start gap-2"><span className="shrink-0 rounded-full px-1.5 text-[9px] font-bold uppercase text-white" style={{ background: e.impact === "high" ? "#B4192F" : e.impact === "medium" ? "#B7791F" : "#5E9A8B" }}>{e.kind}</span><span>{e.title}{e.date ? ` (${e.date})` : ""}{e.note ? ` — ${e.note}` : ""}{e.source && <a href={e.source} target="_blank" rel="noreferrer" className="ml-1 text-ink-faint underline">source</a>}</span></li>)}</ul></div>}
+        {card.advisories?.length > 0 && <div><span className="font-bold">Advisory</span> · {card.advisories.map((a, i) => <span key={i}>{a.summary}{a.level ? ` (${a.level})` : ""}{a.source && <a href={a.source} target="_blank" rel="noreferrer" className="ml-1 text-ink-faint underline">source</a>} </span>)}</div>}
+        {card.holidays?.length > 0 && <div><span className="font-bold">Public holidays</span> · {card.holidays.map((h) => `${h.name} (${h.date.slice(5)})`).join(", ")}</div>}
+        {card.sources?.length > 0 && <div className="text-[10px] text-ink-faint">{card.sources.length} sources · generated {String(card.generated_at || "").replace("T", " ").slice(0, 16)} UTC</div>}
+      </div>
+      {card.options?.length > 0 && (
+        <div className="px-3.5 pb-3 flex flex-wrap gap-2">
+          {card.options.map((o) => <button key={o.id} disabled={!!busy || resolved} onClick={() => go(o.id)} className={cx("text-[11px] font-semibold rounded-full border px-3 py-1.5", o.id === "keep" ? "air-bg-accent text-white border-transparent" : "border-line bg-surface text-ink hover:border-tap-green", resolved && "opacity-60")}>{busy === o.id ? "…" : o.label}</button>)}
+          {resolved && <span className="text-[11px] font-semibold air-accent-deep self-center">Noted ✓</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Bubble({ m, onPick, onQuick, go, act }) {
   if (m.role === "user") return <div className="flex justify-end"><div className="max-w-[80%] rounded-2xl rounded-br-md bg-surface-dark text-white px-3.5 py-2.5 text-[13px]">{m.content}</div></div>;
   const c = (m.cards || [])[0];
   // Rendered as interactive A2UI cards. Any unrecognised type still shows a minimal line.
-  const richSlice = c && ["flights", "selected", "confirmation", "booking", "seat", "confirm", "upgraded", "cancelled", "checkin", "refund", "extras", "package", "suggestions", "wallet", "seats", "destinations", "disruption", "disruption_confirmed", "disruption_declined", "disruption_allclear"].includes(c.type);
+  const richSlice = c && ["flights", "selected", "confirmation", "booking", "seat", "confirm", "upgraded", "cancelled", "checkin", "refund", "extras", "package", "suggestions", "wallet", "seats", "destinations", "disruption", "disruption_confirmed", "disruption_declined", "disruption_allclear", "destination_brief", "brief_ack"].includes(c.type);
   return (
     <div className="space-y-2">
       {m.content && <div className={cx("text-[13px] text-ink leading-relaxed whitespace-pre-line", m.intro && "rounded-2xl bg-surface-mute px-4 py-3")}>{m.content}</div>}
@@ -419,6 +453,7 @@ function Bubble({ m, onPick, onQuick, go, act }) {
       {c?.type === "seats" && <SeatsCard card={c} act={act} />}
       {c?.type === "disruption" && <DisruptionCard card={c} resolved={!!m.resolved} onResolve={m.onResolve || (() => {})} />}
       {c?.type === "disruption_confirmed" && <DisruptionConfirmedCard card={c} go={go} />}
+      {c?.type === "destination_brief" && <DestinationBriefCard card={c} resolved={!!m.resolved} onChoice={m.onBriefChoice || (() => {})} />}
       {c && !richSlice && <div className="rounded-xl border border-line bg-surface-soft p-3 text-[12px] text-ink-muted">Done.</div>}
       {m.command?.action === "show_search" && <Btn size="sm" variant="outline" className="mt-1" onClick={() => go("results", { origin: m.command.origin, dest: m.command.dest, date: m.command.date })}>View all flights →</Btn>}
       {m.command?.action === "express" && <Btn size="sm" variant="outline" className="mt-1" onClick={() => go("express")}>Open express checkout →</Btn>}
@@ -474,6 +509,13 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
       { role: "assistant", content: r?.reply || (r?.ok ? "Done." : `I couldn't complete that: ${r?.error || "please try again"}.`), cards: r?.card ? [r.card] : [] },
     ]);
   };
+  const briefChoice = async (id, card) => {
+    const r = await api.post(`/autonomy/customer/brief/${id}`, {});
+    if (r?.inboxId) consumed.current.add(r.inboxId);
+    setMsgs(prev => [...prev.map(m => (m.cards?.[0]?.type === "destination_brief" && m.cards[0].pnr === card.pnr ? { ...m, resolved: true } : m)),
+      ...(r?.reply ? [{ role: "assistant", content: r.reply, cards: [] }] : [])]);
+    if (id === "alternatives" && r?.search) send(`flights to ${card.city} around ${r.search.date}, flexible dates`);
+  };
   useEffect(() => {
     let alive = true;
     const tick = async () => {
@@ -487,7 +529,7 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
         const resolvedOffers = new Set(fresh.filter(m => /^disruption_(confirmed|declined)$/.test(m.kind)).map(m => m.card?.offerId).filter(Boolean));
         setMsgs(prev => [
           ...prev.map(m => (resolvedOffers.has(m.cards?.[0]?.offerId) ? { ...m, resolved: true } : m)),
-          ...fresh.map(m => ({ role: "assistant", content: m.text, cards: m.card ? [m.card] : [], proactive: true, inboxId: m.id, onResolve: resolveOffer, resolved: m.kind === "disruption_offer" && resolvedOffers.has(m.card?.offerId) })),
+          ...fresh.map(m => ({ role: "assistant", content: m.text, cards: m.card ? [m.card] : [], proactive: true, inboxId: m.id, onResolve: resolveOffer, onBriefChoice: briefChoice, resolved: m.kind === "disruption_offer" && resolvedOffers.has(m.card?.offerId) })),
         ]);
         api.post("/autonomy/customer/inbox/seen", { ids: fresh.map(m => m.id) }).catch(() => {});
       } catch {}

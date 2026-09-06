@@ -9,7 +9,7 @@
 const G = require("./graph");
 const { db } = require("../db");
 
-const KINDS = ["Passenger","PNR","FlightSchedule","FlightInstance","Airport","WeatherEvent",
+const KINDS = ["Passenger","PNR","FlightSchedule","FlightInstance","Airport","WeatherEvent","DestinationEvent","DestinationBrief",
   "DisruptionPrediction","RecoveryOption","Offer","Vendor","Policy","Action","AuditEvent"];
 
 /* ---------- audit: append-only ---------- */
@@ -67,6 +67,7 @@ const PRED = {
 
 /* ---------- the action space, as data ---------- */
 const ACTIONS = [
+  { name: "SEND_DESTINATION_BRIEF", tier: 0, preconditions: ["passenger_consented","outside_quiet_hours"], reversible: true, compensating: null, description: "Tier-0 information: destination weather, events and advisories with sources; the customer decides" },
   { name: "NOTIFY_PASSENGER",     tier: 0, preconditions: ["prediction_active","passenger_consented","outside_quiet_hours","under_outreach_limit","not_declined"], reversible: true,  compensating: null },
   { name: "SEND_ALL_CLEAR",       tier: 0, preconditions: ["passenger_consented"], reversible: true, compensating: null },
   { name: "SOFT_HOLD_INVENTORY",  tier: 0, preconditions: ["prediction_in_act","hold_capacity_available"], reversible: true, compensating: "RELEASE_HOLD" },

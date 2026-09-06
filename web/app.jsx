@@ -2372,6 +2372,35 @@ function ChatCards({ cards, onSelectFlight, cardBrand = "card" }) {
             </div>
           </div>
         );
+        if (c.type === "destination_brief") {
+          const tone = c.impact === "high" ? "var(--tap-red)" : c.impact === "medium" ? "#B7791F" : "var(--tap-green)";
+          const bg = c.impact === "high" ? "#FFF2F4" : c.impact === "medium" ? "#FFF8E6" : "#E2F4EA";
+          return (
+            <div key={i} className="bg-white border rounded-2xl overflow-hidden" style={{ borderColor: tone }}>
+              <div className="px-3.5 py-2.5 flex items-center justify-between gap-2" style={{ background: bg }}>
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: tone }}>Destination brief · {c.mode === "llm+facts" ? "researched" : "forecast only"}</div>
+                  <div className="font-bold text-sm" style={{ color: "var(--tap-ink)" }}>{c.city} · {c.window?.from?.slice(5)} to {c.window?.to?.slice(5)}</div>
+                </div>
+                <div className="text-[11px] font-black uppercase shrink-0" style={{ color: tone }}>{c.impact} impact</div>
+              </div>
+              <div className="px-3.5 py-2 space-y-2 text-xs" style={{ color: "var(--tap-ink)" }}>
+                {c.summary && <div className="text-gray-600">{c.summary}</div>}
+                <div><b>Weather</b> · {c.weather?.alerts?.length ? c.weather.alerts.map((a) => a.headline).join(" · ") : (c.weather?.days?.length ? c.weather.days.map((d) => `${d.date.slice(5)} ${d.label}`).join(", ") : "no forecast yet")}</div>
+                {c.events?.length > 0 && <div><b>Happening there</b><ul className="mt-1 space-y-1">{c.events.map((e, k) => <li key={k}>• {e.title}{e.date ? ` (${e.date})` : ""} — {e.impact} impact{e.note ? `: ${e.note}` : ""}{e.source && <a href={e.source} target="_blank" rel="noreferrer" className="ml-1 text-gray-400 underline">source</a>}</li>)}</ul></div>}
+                {c.advisories?.length > 0 && <div><b>Advisory</b> · {c.advisories.map((a) => a.summary).join("; ")}</div>}
+                {c.holidays?.length > 0 && <div><b>Public holidays</b> · {c.holidays.map((h) => `${h.name} (${h.date.slice(5)})`).join(", ")}</div>}
+                {c.sources?.length > 0 && <div className="text-[10px] text-gray-400">{c.sources.length} sources</div>}
+              </div>
+              {c.options?.length > 0 && (
+                <div className="px-3.5 pb-3 flex flex-wrap gap-2">
+                  {c.options.map((o) => <button key={o.id} disabled={!!c._resolved} onClick={() => c._onBriefChoice?.(o.id, c)} className="text-[11px] font-semibold rounded-full border px-3 py-1.5" style={o.id === "keep" ? { background: "var(--tap-green)", color: "#fff", borderColor: "transparent" } : { borderColor: "var(--tap-line)" }}>{o.label}</button>)}
+                  {c._resolved && <span className="text-[11px] font-bold self-center" style={{ color: "var(--tap-green)" }}>Noted ✓</span>}
+                </div>
+              )}
+            </div>
+          );
+        }
         if (c.type === "disruption_confirmed") return (
           <div key={i} className="bg-white border rounded-2xl overflow-hidden" style={{ borderColor: c.status === "refund_pending" ? "var(--tap-gold)" : "var(--tap-green)" }}>
             <div className="px-3.5 py-2.5" style={{ background: c.status === "refund_pending" ? "#FFF9EC" : "#E2F4EA" }}>
@@ -2459,6 +2488,13 @@ function Assistant({ open, onClose, screen, profile, onCommand, onSelectFlight }
       { role: "assistant", content: r?.reply || (r?.ok ? "Done." : `I couldn't complete that: ${r?.error || "please try again"}.`), cards: r?.card ? [r.card] : undefined },
     ]);
   };
+  const briefChoice = async (id, card) => {
+    const r = await api.post(`/autonomy/customer/brief/${id}`, {});
+    if (r?.inboxId) consumed.current.add(r.inboxId);
+    setMsgs(prev => [...prev.map(m => (m.cards?.[0]?.type === "destination_brief" && m.cards[0].pnr === card.pnr ? { ...m, cards: m.cards.map(cc => ({ ...cc, _resolved: true })) } : m)),
+      ...(r?.reply ? [{ role: "assistant", content: r.reply }] : [])]);
+    if (id === "alternatives" && r?.search) send(`flights to ${card.city} around ${r.search.date}, flexible dates`);
+  };
   useEffect(() => {
     let alive = true;
     const tick = async () => {
@@ -2472,7 +2508,7 @@ function Assistant({ open, onClose, screen, profile, onCommand, onSelectFlight }
         const resolved = new Set(fresh.filter(m => /^disruption_(confirmed|declined)$/.test(m.kind)).map(m => m.card?.offerId).filter(Boolean));
         setMsgs(prev => [
           ...prev.map(m => (resolved.has(m.cards?.[0]?.offerId) ? { ...m, cards: m.cards.map(cc => ({ ...cc, _resolved: true })) } : m)),
-          ...fresh.map(m => ({ role: "assistant", content: m.text, cards: m.card ? [{ ...m.card, _onResolve: resolveOffer, _resolved: m.kind === "disruption_offer" && resolved.has(m.card.offerId) }] : undefined })),
+          ...fresh.map(m => ({ role: "assistant", content: m.text, cards: m.card ? [{ ...m.card, _onResolve: resolveOffer, _onBriefChoice: briefChoice, _resolved: m.kind === "disruption_offer" && resolved.has(m.card.offerId) }] : undefined })),
         ]);
         if (open) api.post("/autonomy/customer/inbox/seen", { ids: fresh.map(m => m.id) }).catch(() => {});
       } catch {}
@@ -3105,6 +3141,7 @@ function ProactiveBanner({ active, onOpen }) {
   if (!st || !st.linked) return null;
   let tone = null, text = "";
   if (st.pending) { tone = "var(--tap-red)"; text = `Weather risk on your ${st.booking?.flight_no || "XP201"} flight to Miami · Xperion AI has ${st.pending.options.length} options ready, nothing charged`; }
+  else if (st.unseen > 0 && st.latest?.kind === "destination_brief") { tone = st.latest.impact === "high" ? "var(--tap-red)" : st.latest.impact === "medium" ? "#B7791F" : "var(--tap-deep)"; text = `Destination brief for ${st.latest.city || "your trip"}: ${st.latest.impact === "none" ? "looks clear" : st.latest.impact + " impact"} · weather, events and advisories with sources`; }
   else if (st.unseen > 0 && st.booking?.recovery) { tone = "var(--tap-deep)"; text = `Handled: ${st.booking.recovery.label} · booking ${st.booking.pnr} updated`; }
   if (!tone) return null;
   return (

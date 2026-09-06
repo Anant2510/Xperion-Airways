@@ -139,3 +139,25 @@ as `meta.recovery` (type, label, items, legs, vendor refs, accepted_at) and the
 booking status becomes `rebooked` (or `refund_pending` for a Tier-2 refund).
 Customer-facing messages live in `ai_inbox` and are mirrored into
 `chat_turns`, so the assistant remembers what it said proactively.
+
+## Destination intelligence (feeds.js · research.js · briefs.js)
+
+- **WeatherEvent** now also arrives from live feeds: NWS active alerts (US) and Open-Meteo
+  outlooks, through the same `sensing.ingestAlert()` with the same dedupe and scorecard.
+  New scored types: hurricane_watch, severe_thunderstorm_watch/warning, blizzard,
+  winter_storm, ice_storm, flash_flood, flood, high_wind, dense_fog, extreme_heat, heavy_rain.
+- **DestinationEvent** (declared): political, civil, strike, transport, health, major_event,
+  advisory — the structured non-weather kinds for Phase 2 feeds (GDELT, advisories,
+  Ticketmaster). Declared now so the scorecard can grow without a schema change.
+- **DestinationBrief** `brief:<code>:<from>:<to>` — the analyst's output for a city and date
+  window: `weather` (outlook, days, alerts, risk), `holidays`, `events[]` (kind, title, date,
+  impact, note, source), `advisories[]`, `news[]`, `travel_impact`, `summary`, `confidence`,
+  `sources[]`, `mode` (llm+facts | facts-only), `generated_at`, `expires_at`. Edge
+  `BRIEF_FOR → Airport`. Cached until `expires_at`; built only for booked destinations or on
+  request; analyst calls capped per hour.
+- **Action SEND_DESTINATION_BRIEF** (Tier 0; preconditions passenger_consented,
+  outside_quiet_hours). Information only: it never changes a booking and never raises a
+  prediction. Governance line: only structured feeds move a prediction toward ACT; the analyst
+  explains and informs, and the customer decides (keep · other dates · talk to a person).
+- New AuditEvent actions: LIVE_WEATHER_INGEST, DESTINATION_BRIEF, BRIEF_SENT, DELIVER_BRIEF,
+  CUSTOMER_CALLBACK. Political content is summarised neutrally and every item carries a source.

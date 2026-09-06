@@ -454,8 +454,8 @@ async function handleAction(to, id) {
 
   /* Pick a flight returned by a search → go to SEAT selection */
   if (id.startsWith("PICK_")) {
-    const fno = id.slice(5);
-    const f = flightByNo(fno);
+    const [fno, pickDate] = id.slice(5).split("@");
+    const f = (pickDate && db.prepare("SELECT * FROM flights WHERE flight_no=? AND flight_date=?").get(fno, pickDate)) || flightByNo(fno);
     if (!f) { await sendText(to, "That flight's no longer available — reply \"menu\" to start over."); return; }
     const prefSeat = (db.prepare("SELECT seat FROM bookings WHERE user_id=? AND seat IS NOT NULL GROUP BY seat ORDER BY COUNT(*) DESC").get(waUid(to)) || {}).seat || "";
     const d = getDraft(to); d.flight_no = f.flight_no; d.seat = prefSeat; d.items = ["seat","bag","meal"];
@@ -843,7 +843,7 @@ async function handleIncoming({ from, text, pushName }) {
     if (vals.some(v => String(v).startsWith("PICK_"))) {
       const c = getCtx(from);
       const pick = c && c.flights && resolvePick(t, c.flights);
-      if (pick) return handleAction(from, `PICK_${pick}`);
+      if (pick) { const cf = c.flights.find(x => x.flight_no === pick); return handleAction(from, `PICK_${pick}${cf?.date ? "@" + cf.date : ""}`); }
     }
     // (b) SEAT step — keep/continue with the recommended seat, or a typed seat code
     if (seatOpts.length) {
@@ -900,7 +900,7 @@ async function handleIncoming({ from, text, pushName }) {
     // Only fire the deterministic search when we have a real destination.
     if (destCode && destCode !== originCode) {
       const home = db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid)?.home_airport || "MIA";
-      return searchRoute(from, originCode || home, destCode, parsedDate || searchToday(), text);
+      return searchRoute(from, originCode || home, destCode, parsedDate || searchToday(), text, { scanDays: wantsWeekScan(t) ? 7 : 0, sort: wantsCheapest(t) ? "price" : null });
     }
   }
 
@@ -983,6 +983,10 @@ function detectDest(t) {
    "june 20", "20/06", "the 20th") with optional year, and an explicit YYYY-MM-DD. Returns
    null if no date phrase is present. Shared with the web AI agent (server.js) so both
    channels resolve dates identically. */
+/* "cheapest options" / "over the coming week": sort by price, scan a 7-day window */
+const wantsCheapest = (t) => /\b(cheap(est|er)?|lowest|budget|best price|least expensive|affordable)\b/i.test(t || "");
+const wantsWeekScan = (t) => /\b(next|upcoming|coming|following|this) (week|few days|\d days)\b|\bweek ahead\b|\bany ?day\b|\bflexible\b/i.test(t || "");
+const fmtDay = (iso) => { try { const d = new Date(iso + "T00:00:00Z"); return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }); } catch { return iso; } };
 function parseDate(t) {
   const TODAY = new Date(searchToday() + "T00:00:00Z");
   const iso = (d) => d.toISOString().slice(0, 10);
@@ -1004,7 +1008,8 @@ function parseDate(t) {
     }
   }
   if (/\bin (\d+) days?\b/.test(t)) { const m = t.match(/\bin (\d+) days?\b/); return add(parseInt(m[1])); }
-  if (/\bnext week\b/.test(t)) return add(7);
+  if (/\b(next|upcoming|coming|following) week\b|\bweek ahead\b|\bin a week\b|\ba week('s)? time\b/.test(t)) return add(7);
+  if (/\bnext month\b/.test(t)) return add(30);
 
   // ── Natural calendar dates ───────────────────────────────────────────────
   // "20 june", "20th june", "20th of june", "june 20", "june 20th", "20/06",
@@ -1049,8 +1054,21 @@ function parseDate(t) {
 }
 
 /* Free-route search → numbered flight list (mirrors the web AI chat). */
-async function searchRoute(to, origin, dest, date = searchToday(), userText) {
-  const r = await apiCall("GET", `/search?origin=${origin}&dest=${dest}&date=${date}`, null, to);
+async function searchRoute(to, origin, dest, date = searchToday(), userText, opts = {}) {
+  const scan = Math.max(0, Math.min(14, Number(opts.scanDays) || 0));
+  let r;
+  if (scan > 0) {
+    /* week scan: every day from tomorrow, flights tagged with their date, best 5 across the window */
+    const days = []; const base = new Date(searchToday() + "T00:00:00Z");
+    for (let i = 1; i <= scan; i++) { const d = new Date(base); d.setUTCDate(d.getUTCDate() + i); days.push(d.toISOString().slice(0, 10)); }
+    const all = [];
+    for (const d of days) { const rr = await apiCall("GET", `/search?origin=${origin}&dest=${dest}&date=${d}`, null, to).catch(() => null); if (rr?.ok) for (const f of rr.flights || []) all.push({ ...f, date: d }); }
+    all.sort(opts.sort === "price" ? ((a, b) => a.price - b.price) : ((a, b) => (a.date + a.dep).localeCompare(b.date + b.dep)));
+    r = { ok: all.length > 0, flights: all, window: `${fmtDay(days[0])} to ${fmtDay(days[days.length - 1])}` };
+  } else {
+    r = await apiCall("GET", `/search?origin=${origin}&dest=${dest}&date=${date}`, null, to);
+    if (r?.ok && opts.sort === "price") r = { ...r, flights: r.flights.slice().sort((a, b) => a.price - b.price) };
+  }
   if (userText) pushConvo(to, "user", userText);
   if (!r.ok || !r.flights?.length) {
     const msg = `Hmm, I couldn't find a ${cityName(origin)} → ${cityName(dest)} flight in our network. Try another city, or reply "menu".`;
@@ -1062,18 +1080,18 @@ async function searchRoute(to, origin, dest, date = searchToday(), userText) {
   const map = { "0": "MENU" }; const lines = [];
   flights.forEach((f, i) => {
     const n = String(i + 1);
-    map[n] = `PICK_${f.flight_no}`;
-    lines.push(`${n}️⃣  ${f.flight_no} · ${f.dep}–${f.arr} · $${f.price}${f.recommended ? " ⭐" : ""}`);
+    map[n] = `PICK_${f.flight_no}${f.date ? "@" + f.date : ""}`;
+    lines.push(`${n}️⃣  ${f.flight_no}${f.date ? " · " + fmtDay(f.date) : ""} · ${f.dep}–${f.arr} · $${f.price}${f.recommended ? " ⭐" : ""}`);
   });
   setMenu(to, map);
   // Remember the active route + date AND the shown flights, so a follow-up can pick by
   // position/attribute ("the second one", "cheapest") or a date-only follow-up re-runs the route.
-  setCtx(to, { origin, dest, date, flights: flights.map(f => ({ flight_no: f.flight_no, dep: f.dep, arr: f.arr, price: f.price })) });
+  setCtx(to, { origin, dest, date, flights: flights.map(f => ({ flight_no: f.flight_no, dep: f.dep, arr: f.arr, price: f.price, date: f.date || date })) });
   // Record it in the conversation so the AI agent has context on any follow-up.
-  pushConvo(to, "assistant", `Showed ${cityName(origin)}→${cityName(dest)} on ${date}: ` + flights.map(f => `${f.flight_no} ${f.dep}-${f.arr} $${f.price}`).join("; "));
+  pushConvo(to, "assistant", `Showed ${cityName(origin)}→${cityName(dest)} on ${r.window ? r.window : fmtDay(date)}: ` + flights.map(f => `${f.flight_no} ${f.dep}-${f.arr} $${f.price}`).join("; "));
   await sendText(to,
-`✈️ ${cityName(origin)} → ${cityName(dest)} · ${date}
-Found ${flights.length} flights — reply with a number to pick:
+`✈️ ${cityName(origin)} → ${cityName(dest)} · ${r.window ? r.window : fmtDay(date)}
+${r.window ? (opts.sort === "price" ? "Cheapest " + flights.length + " across the week" : flights.length + " flights across the week") : "Found " + flights.length + " flights"}${!r.window && opts.sort === "price" ? " (cheapest first)" : ""} — reply with a number to pick:
 
 ${lines.join("\n")}
 

@@ -289,3 +289,10 @@ layer's proactive offers go out over the same socket.
 Verify: `/api/health` → `"whatsapp":"baileys — connected as +91…"`; self-test
 line **WhatsApp channel** reads the same; `node _baileys-test.mjs` → 16/16.
 Twilio remains available: any other WA_MODE keeps `/api/whatsapp/webhook`.
+
+## Destination intelligence
+
+No new dependencies or keys. Live weather feeds and T-72 briefs start automatically; research
+briefs use the existing `ANTHROPIC_API_KEY` (≈ $0.02–0.05 per brief, capped at 20/hour, cached
+12 h). To see it: `/autonomy/` → **Brief Daniel's next trip now**, or ask the assistant
+"what's happening in Delhi next week?". Turn off with `FEEDS_ENABLED=0` / `BRIEFS_ENABLED=0`.

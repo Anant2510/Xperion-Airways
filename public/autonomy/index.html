@@ -66,6 +66,19 @@
 
   <div class="row" style="margin-top:14px">
     <div class="card" style="flex:1">
+      <div class="k">Destination intelligence (live weather feeds · research briefs · T-72 proactive briefs)</div>
+      <div class="mono" id="intel" style="font-size:12px;color:var(--sageD);margin-bottom:8px">—</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <button onclick="pollWeather()">Poll live weather now</button>
+        <button onclick="briefNow()">Brief Daniel's next trip now</button>
+        <button onclick="briefCity()">Brief a city…</button>
+      </div>
+      <table id="briefs"><thead><tr><th>city</th><th>window</th><th>impact</th><th>mode</th><th>sources</th><th>generated</th><th>summary</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <div class="card" style="flex:1">
       <div class="k">Real customers on this flight (live app · the same rules, the same saga)</div>
       <div class="mono" style="font-size:12px;color:var(--sageD);margin-bottom:6px">Every app customer holds a real booking on XP201. Their offers go through the app's own channels: WhatsApp, push, SMS, email, and the Xperion AI assistant. Log in as one of them to watch it land.</div>
       <table id="linked"><thead><tr><th>customer</th><th>tier</th><th>PNR</th><th>channel</th><th>offer</th><th>delivery</th></tr></thead><tbody></tbody></table>
@@ -88,7 +101,21 @@ const J = (u, opt) => fetch(u, opt).then(r => r.json());
 const P = (u, body) => J(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) });
 let kill = { global: false };
 
+async function pollWeather() { const r = await J("/api/autonomy/feeds/poll", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }); alert(`Polled ${r.airports} airport(s): ${r.alerts} alert(s), ${r.ingested} new, ${r.deduped} duplicates, ${r.errors} error(s)`); refresh(); }
+async function briefNow() { const r = await J("/api/autonomy/briefs/run", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ uid: 1, force: true, reason: "ops" }) }); alert(`Checked ${r.checked} booking(s), sent ${r.sent}`); refresh(); }
+async function briefCity() { const code = prompt("Airport code (e.g. DEL, LHR, GRU):"); if (!code) return; const r = await J(`/api/autonomy/brief/${code.toUpperCase()}?force=1`); alert(`${r.brief.city}: ${r.brief.travel_impact} impact (${r.brief.mode}, ${r.brief.source_count} sources)\n\n${r.brief.summary}`); refresh(); }
+async function refreshIntel() {
+  try {
+    const b = await J("/api/autonomy/briefs");
+    const lp = b.feeds.lastPoll || {};
+    document.getElementById("intel").textContent = `Research: ${b.research.llm} · ${b.research.calls_last_hour}/${b.research.max_per_hour} calls this hour · Feeds: ${b.feeds.enabled ? "on" : "off"}, last poll ${lp.at ? lp.at.replace("T", " ").slice(0, 16) + " UTC (" + lp.alerts + " alerts, " + lp.ingested + " new)" : "not yet"} · watching ${(b.feeds.watching || []).join(" ") || "—"}`;
+    const tb = document.querySelector("#briefs tbody"); tb.innerHTML = "";
+    for (const x of b.briefs.slice(0, 12)) tb.insertAdjacentHTML("beforeend", `<tr><td>${x.city} <span class="mono">${x.code}</span></td><td class="mono">${x.window.from.slice(5)}→${x.window.to.slice(5)}</td><td><span class="pill ${x.impact === "high" ? "act" : x.impact === "medium" ? "watch" : ""}">${x.impact}</span></td><td>${x.mode}</td><td>${x.sources}</td><td class="mono" style="font-size:11px">${String(x.generated_at).replace("T", " ").slice(5, 16)}</td><td style="font-size:12px">${(x.summary || "").slice(0, 140)}</td></tr>`);
+    if (!b.briefs.length) tb.insertAdjacentHTML("beforeend", `<tr><td colspan="7" style="color:var(--sageD)">No briefs yet — they are built at T-72 for booked trips, or on demand.</td></tr>`);
+  } catch {}
+}
 async function refresh() {
+  refreshIntel();
   const s = await J("/api/autonomy/status");
   kill = s.kill || kill;
   document.getElementById("killBtn").textContent = "Kill switch: " + (kill.global ? "ON (frozen)" : "off");

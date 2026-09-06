@@ -255,6 +255,40 @@ function onAccepted({ offerId, off, pax, pnr, opt, refs }) {
   O.audit({ actor: "bridge", action: "APPLY_TO_BOOKING", predictionId: off.prediction, rationale: `booking ${pnr.record_locator} (app customer ${uid}) → ${status} · ${view.label}` });
   return card;
 }
+/* Tier-0 destination brief: information with the decision left to the customer */
+function onBrief({ uid, booking, brief, channel }) {
+  const research = require("./research");
+  const first = (db.prepare("SELECT first_name FROM users WHERE id=?").get(uid) || {}).first_name || "there";
+  const impact = brief.travel_impact || "none";
+  const lead = impact === "none"
+    ? `${first}, a quick look ahead at ${brief.city} for your trip on ${booking.flight_date}: nothing that should get in your way. Here's what I found.`
+    : `${first}, a heads-up before your trip to ${brief.city} on ${booking.flight_date}: there are things happening there worth knowing about (${impact} impact). Nothing has changed on your booking; you decide.`;
+  const text = `${lead}\n\n${research.briefText(brief)}\n\nYour call: keep the trip as it is, look at alternative dates, or talk to a person.`;
+  const card = { type: "destination_brief", pnr: booking.pnr, flight: booking.flight_no, date: booking.flight_date, code: brief.code, city: brief.city, window: brief.window,
+    summary: brief.summary, impact, weather: { outlook: brief.weather.outlook, alerts: brief.weather.alerts.slice(0, 3), risk: brief.weather.risk, days: (brief.weather.days || []).slice(0, 5).map((d) => ({ date: d.date, label: d.label, tmax: d.tmax, tmin: d.tmin })) },
+    events: (brief.events || []).slice(0, 6), advisories: (brief.advisories || []).slice(0, 3), news: (brief.news || []).slice(0, 3), holidays: brief.holidays || [],
+    sources: (brief.sources || []).slice(0, 8), mode: brief.mode, confidence: brief.confidence, generated_at: brief.generated_at,
+    options: [{ id: "keep", label: "Keep my trip as it is" }, { id: "alternatives", label: `See other dates to ${brief.city}` }, { id: "talk", label: "Talk to a person" }] };
+  inbox(uid, "destination_brief", text, card);
+  deliver({ uid, pnr: booking.pnr, channel, text: `${lead}\n\n${research.briefText(brief)}\n\nReply KEEP to keep the trip, DATES to see other dates, or TALK for a person.`, event: "destination_brief", emailType: "destination_brief", emailData: { brief, booking, first } })
+    .then((results) => O.audit({ actor: "bridge", action: "DELIVER_BRIEF", rationale: `customer ${uid} · ${results.map((r) => `${r.channel} ${r.status}`).join(", ")} · mirrored to assistant inbox` })).catch(() => {});
+  return card;
+}
+function briefResponse(uid, choice) {
+  const last = inboxList(uid).filter((m) => m.kind === "destination_brief").pop();
+  if (!last) return { ok: false, error: "no_brief" };
+  const c = last.card || {};
+  if (choice === "keep") { const t = `Noted — your trip to ${c.city} stays exactly as it is. I'll keep watching the weather and the news there and tell you if anything changes.`; inbox(uid, "brief_ack", t, { type: "brief_ack", pnr: c.pnr }); return { ok: true, reply: t }; }
+  if (choice === "talk") {
+    const qid = `tier2:CUSTOMER_CALLBACK:${G.hash({ uid, pnr: c.pnr, t: clock.nowIso() })}`;
+    G.upsertNode(qid, "Tier2Item", { action: "CUSTOMER_CALLBACK", payload: { uid, pnr: c.pnr, city: c.city, reason: "destination brief" }, status: "PENDING", prepared_at: clock.nowIso(), rationale: `Customer asked to talk about ${c.city} after a destination brief` });
+    O.audit({ actor: "bridge", action: "CUSTOMER_CALLBACK", rationale: `customer ${uid} asked for a person about ${c.city}; queued for a controller` });
+    const t = `Of course. I've asked a travel specialist to call you about ${c.city}; you'll hear from them shortly, and your booking ${c.pnr} is untouched meanwhile.`;
+    inbox(uid, "brief_ack", t, { type: "brief_ack", pnr: c.pnr, callback: qid }); return { ok: true, reply: t, queued: qid };
+  }
+  if (choice === "alternatives") return { ok: true, reply: `Let me look at other days to ${c.city} around ${c.date}.`, search: { dest: c.code, date: c.date, flexible: true } };
+  return { ok: false, error: "unknown_choice" };
+}
 function onDeclined({ off, pax }) {
   if (!pax?.app_uid) return;
   inbox(pax.app_uid, "disruption_declined", "Understood — I'll leave your booking exactly as it is and won't message you again about this. If the weather changes I'll still keep options ready in My Trips.", { type: "disruption_declined", offerId: off.id, pnr: G.getNode(off.pnr)?.record_locator });
@@ -283,10 +317,12 @@ function markSeen(uid, ids) {
 }
 function status(uid) {
   const pend = pending(uid);
-  const unseen = db.prepare("SELECT COUNT(*) AS n FROM ai_inbox WHERE user_id=? AND seen=0 AND kind LIKE 'disruption%'").get(uid)?.n || 0;
+  const unseen = db.prepare("SELECT COUNT(*) AS n FROM ai_inbox WHERE user_id=? AND seen=0 AND (kind LIKE 'disruption%' OR kind='destination_brief')").get(uid)?.n || 0;
+  const latest = db.prepare("SELECT kind, card_json FROM ai_inbox WHERE user_id=? AND seen=0 ORDER BY id DESC LIMIT 1").get(uid);
+  const latestCard = latest ? parse(latest.card_json) : null;
   const pred = activePrediction();
   const b = db.prepare("SELECT pnr, flight_no, flight_date, status, meta_json FROM bookings WHERE user_id=? AND pnr=? ORDER BY id DESC").get(uid, LOC(uid)) || null;
-  return { linked: !!G.getNode(PNR(uid)), pending: pend, unseen, prediction: pred ? { id: pred.id, state: pred.state, probability: pred.probability ?? pred.p ?? null } : null, booking: b ? { ...b, recovery: parse(b.meta_json, {})?.recovery || null, meta_json: undefined } : null };
+  return { linked: !!G.getNode(PNR(uid)), pending: pend, unseen, latest: latest ? { kind: latest.kind, city: latestCard?.city || null, impact: latestCard?.impact || null } : null, prediction: pred ? { id: pred.id, state: pred.state, probability: pred.probability ?? pred.p ?? null } : null, booking: b ? { ...b, recovery: parse(b.meta_json, {})?.recovery || null, meta_json: undefined } : null };
 }
 function acceptForUser(uid, optionId, offerId) {
   const A = require("./agents");
@@ -312,7 +348,17 @@ function declineForUser(uid) {
 /* plain-language intent from the assistant or WhatsApp → same saga as a button press */
 function intercept(uid, text) {
   const pend = pending(uid);
-  if (!pend) return null;
+  if (!pend) {
+    const t0 = String(text || "").trim().toLowerCase();
+    const lastBrief = inboxList(uid).filter((m) => m.kind === "destination_brief").pop();
+    const recent = lastBrief && (Date.now() - Date.parse(lastBrief.at || 0)) < 7 * 24 * 3600000;
+    if (recent) {
+      if (/^(keep|keep (it|my trip)|leave it|no change|i'?ll keep it)\b/.test(t0)) return briefResponse(uid, "keep");
+      if (/^(talk|call me|speak to (someone|a person|an agent)|talk to (someone|a person|an agent))\b/.test(t0)) return briefResponse(uid, "talk");
+      if (/^(dates|other dates|alternatives|see other dates)\b/.test(t0)) return briefResponse(uid, "alternatives");
+    }
+    return null;
+  }
   const t = String(text || "").trim().toLowerCase();
   if (!t) return null;
   const pick = (o) => acceptForUser(uid, o.id, pend.offerId);
@@ -334,4 +380,4 @@ function contextLine(uid) {
   return ` The customer holds booking ${LOC(uid)} on XP201 Delhi→Miami; the autonomy layer is monitoring it.`;
 }
 
-module.exports = { link, linked, isLinked, onOffer, onAccepted, onDeclined, onAllClear, pending, inboxList, markSeen, status, acceptForUser, declineForUser, intercept, contextLine, LOC, PAX, PNR };
+module.exports = { link, linked, isLinked, onOffer, onAccepted, onDeclined, onAllClear, onBrief, briefResponse, deliver, pending, inboxList, markSeen, status, acceptForUser, declineForUser, intercept, contextLine, LOC, PAX, PNR };

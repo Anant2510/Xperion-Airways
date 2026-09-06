@@ -44,15 +44,16 @@ function ProactiveBanner({ loggedIn, route, go }) {
   if (!st || !st.linked || route === "ai") return null;
   let tone = null, text = "";
   if (st.pending) { tone = "red"; text = `Weather risk on your ${st.booking?.flight_no || "XP201"} flight to Miami · Xperion AI has ${st.pending.options.length} options ready, nothing charged`; }
+  else if (st.unseen > 0 && st.latest?.kind === "destination_brief") { tone = st.latest.impact === "high" ? "red" : st.latest.impact === "medium" ? "amber" : "green"; text = `Destination brief for ${st.latest.city || "your trip"}: ${st.latest.impact === "none" ? "looks clear" : st.latest.impact + " impact"} · weather, events and advisories with sources`; }
   else if (st.unseen > 0 && st.booking?.recovery) { tone = "green"; text = `Handled: ${st.booking.recovery.label} · booking ${st.booking.pnr} updated`; }
   if (!tone) return null;
   return (
     <button onClick={() => go("ai")} className="w-full text-left" aria-label="Open Xperion AI">
       <div className="mx-auto max-w-page px-4 sm:px-6">
-        <div className="mt-2 rounded-xl px-4 py-2.5 flex items-center gap-3 text-white shadow-card" style={{ background: tone === "red" ? "#B4192F" : "#2E7D33" }}>
+        <div className="mt-2 rounded-xl px-4 py-2.5 flex items-center gap-3 text-white shadow-card" style={{ background: tone === "red" ? "#B4192F" : tone === "amber" ? "#B7791F" : "#2E7D33" }}>
           <span className="w-2 h-2 rounded-full bg-white animate-pulse shrink-0" />
           <span className="flex-1 text-[13px] font-semibold">{text}</span>
-          <span className="text-[12px] font-bold whitespace-nowrap">{st.pending ? "Choose in Xperion AI →" : "See details →"}</span>
+          <span className="text-[12px] font-bold whitespace-nowrap">{st.pending ? "Choose in Xperion AI →" : st.latest?.kind === "destination_brief" ? "Read it →" : "See details →"}</span>
         </div>
       </div>
     </button>
