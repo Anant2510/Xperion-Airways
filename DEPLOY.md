@@ -247,3 +247,40 @@ Then `pm2 restart xperion-v10 --update-env` (Windows) or restart `npm start`
 4. `POST /api/admin/cdp/ingest` → re-pushes the personas into the profile
    dataset so the tenant's profiles carry the Xperion (US) attributes. Persona
    loyalty ids and emails are unchanged, so the same profiles are updated.
+
+## WhatsApp over Baileys (no webhook, no Twilio)
+
+`WA_MODE=baileys` makes the server dial out to WhatsApp over Baileys and hold
+the connection. Nothing calls in, so no public URL, tunnel or Twilio account is
+needed, and there is no 24-hour session window. Baileys is an unofficial client
+that runs against WhatsApp's terms: pair a burner number only.
+
+    WA_MODE=baileys
+    WA_PHONE_MAP=919871724927:daniel      (optional: pin a demo phone to a persona)
+
+Pairing, first run only. Stop pm2 first so two processes never hold the socket:
+
+    pm2 stop xperion-v10
+    node server\server.js
+
+A QR prints after the boot banner. On the burner phone: WhatsApp → Settings →
+Linked Devices → Link a Device → scan (the QR refreshes every ~20 s). Expect
+`✓ WhatsApp connected via Baileys as +91…`. A `stream errored out (515)` right
+after pairing is WhatsApp forcing one reconnect; the transport reconnects on its
+own. Then Ctrl+C and:
+
+    pm2 restart xperion-v10 --update-env
+
+Credentials persist in `data/baileys-auth/` (gitignored; survives a database
+reset), so later starts reconnect silently with no QR. To re-pair:
+`Remove-Item -Recurse -Force data\baileys-auth`.
+
+Identity: a sender whose number matches a persona (or WA_PHONE_MAP) is served
+as that member; anyone else becomes an anonymous guest with a real user row and
+no member number, tier, points or history. Interactive templates are off in
+this mode; menus render as numbered text, reply with the number. The autonomy
+layer's proactive offers go out over the same socket.
+
+Verify: `/api/health` → `"whatsapp":"baileys — connected as +91…"`; self-test
+line **WhatsApp channel** reads the same; `node _baileys-test.mjs` → 16/16.
+Twilio remains available: any other WA_MODE keeps `/api/whatsapp/webhook`.

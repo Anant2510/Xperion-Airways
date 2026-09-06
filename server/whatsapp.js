@@ -37,7 +37,13 @@ const cityName = (c) => (AIRPORTS[c] && AIRPORTS[c].city) || c;
 const SID = () => process.env.TWILIO_ACCOUNT_SID;
 const AUTH = () => process.env.TWILIO_AUTH_TOKEN;
 const FROM = () => process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886"; // default sandbox number
-const CONFIGURED = () => !!(SID() && AUTH());
+const TWILIO = () => !!(SID() && AUTH());
+/* Pluggable transport (whatsapp-baileys.js injects its send at boot). When set, every outbound
+   goes through it and interactive templates are disabled so menus render as numbered text. */
+let TRANSPORT = null;
+function setTransport(t) { TRANSPORT = t && typeof t.send === "function" ? t : null; }
+const MODE = () => (TRANSPORT ? "baileys" : TWILIO() ? "twilio" : "off");
+const CONFIGURED = () => !!TRANSPORT || TWILIO();
 const PORT = () => process.env.PORT || 3000;
 
 // Normalise any number to Twilio's "whatsapp:+E164" form
@@ -62,8 +68,10 @@ const logWA = (direction, wa_id, type, body, payload, status) =>
 
 /* ── Outbound send (Twilio REST API) ─────────────────────────── */
 async function sendText(to, text) {
-  let status = "logged (Twilio not configured)";
-  if (CONFIGURED()) {
+  let status = "logged (no WhatsApp provider configured)";
+  if (TRANSPORT) {
+    try { status = await TRANSPORT.send(bareNumber(to), text); } catch (e) { status = "send failed: " + String(e?.message || e).slice(0, 120); }
+  } else if (TWILIO()) {
     try {
       const params = new URLSearchParams();
       params.append("From", FROM());
@@ -91,7 +99,7 @@ async function sendText(to, text) {
    we fall back to the numbered text menu — which always works. Either way we
    register the tappable labels in the menu context so a tapped reply (which
    arrives as the button's text/id) maps to the right action. ─────────────── */
-const INTERACTIVE = () => CONFIGURED() && process.env.WA_INTERACTIVE === "1";
+const INTERACTIVE = () => !TRANSPORT && TWILIO() && process.env.WA_INTERACTIVE === "1";
 
 // buttons: [{ id, title }] (title ≤ 20 chars, max 3). Falls back to "1/2/3" text.
 async function sendButtons(to, text, buttons, menuMap) {
@@ -735,7 +743,7 @@ Reply 1 to book this offer · 0 for menu`);
 
 
 
-async function handleIncoming({ from, text }) {
+async function handleIncoming({ from, text, pushName }) {
   if (!from) return;
   const bare = bareNumber(from);
 
@@ -743,7 +751,9 @@ async function handleIncoming({ from, text }) {
   // apiCall (via X-Session-Id) and every direct DB read acts as THIS user. Per-sender state
   // (draft/convo/menu/ctx) is already keyed by phone, so senders never collide. Unknown
   // sender → uid 1 (regression-safe default; cutover step 11 swaps default-to-1 for guest).
-  const uid = (session.userByPhone(from) || {}).id || session.SERVER_DEFAULT_UID;
+  const knownUser = session.userByPhone(from);
+  const guestMode = !!TRANSPORT || process.env.WA_GUESTS === "1";
+  const uid = (knownUser || {}).id || (guestMode ? session.guestForPhone(from, pushName).id : session.SERVER_DEFAULT_UID);
   session.bindSession("wa:" + phoneTail(from), uid, getDataSource());
 
   logWA("in", from, "text", text, { from, text }, "received");
@@ -1088,4 +1098,4 @@ ${recovery.message}
 Reply:  1 to ${keep}   ·   2 to ${move}`);
 }
 
-module.exports = { handleIncoming, pushDisruption, sendMainMenu, sendText, sendButtons, CONFIGURED, parseDate };
+module.exports = { handleIncoming, pushDisruption, sendMainMenu, sendText, sendButtons, CONFIGURED, MODE, setTransport, parseDate };

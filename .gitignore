@@ -22,5 +22,5 @@ server.bak/
 ngrok.exe
 ngrok.zip
 
-data.old/
-data.old-*/
+# WhatsApp pairing credentials (Baileys transport)
+data/baileys-auth/

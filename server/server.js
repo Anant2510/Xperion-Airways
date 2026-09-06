@@ -3049,7 +3049,7 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, version: "v10", db: DB_PATH,
     cdp: cdpCfg.configured ? `configured — live tenant (sandbox ${cdpCfg.sandbox}; streaming ${cdpCfg.streaming.configured ? "on" : "off"})` : "simulated (set ADOBE_CDP_ENABLED, ADOBE_IMS_ORG, ADOBE_CLIENT_ID, ADOBE_CLIENT_SECRET)",
     airline: { name: XperionAdapter.config.name, code: "XP", country: XperionAdapter.config.country, home: XperionAdapter.config.homeAirport, hubs: XperionAdapter.config.hubs, currency: XperionAdapter.config.currency, locale: XperionAdapter.config.locale },
-    network: NETWORK_FACTS, smtp: SMTP_READY ? "configured" : "not configured (emails logged to DB)", ai: hasKey() ? "live" : "fallback mode", whatsapp: waOn ? "configured — messages really send" : "not configured (messages logged to DB)" });
+    network: NETWORK_FACTS, smtp: SMTP_READY ? "configured" : "not configured (emails logged to DB)", ai: hasKey() ? "live" : "fallback mode", whatsapp: whatsapp.MODE() === "baileys" ? (() => { const st = require("./whatsapp-baileys").status(); return st.connected ? `baileys — connected as ${st.me}` : st.paired ? "baileys — paired, reconnecting" : "baileys — waiting for QR pairing"; })() : waOn ? "configured — messages really send" : "not configured (messages logged to DB)" });
 });
 
 /* ── Self-test: live system-health checks for the demo console ──
@@ -3096,7 +3096,11 @@ app.get("/api/admin/selftest", (req, res) => {
       : `simulated profile — set ${missing.join(", ")}` };
   });
   add("Email channel", "Integrations", () => ({ ok: true, detail: SMTP_READY ? "SMTP configured — really sends" : "logged to DB outbox" }));
-  add("WhatsApp channel", "Integrations", () => ({ ok: true, detail: whatsapp.CONFIGURED() ? "Twilio configured — really sends" : "logged to DB" }));
+  add("WhatsApp channel", "Integrations", () => {
+    const mode = whatsapp.MODE();
+    if (mode === "baileys") { const st = require("./whatsapp-baileys").status(); return { ok: true, detail: st.connected ? `Baileys connected as ${st.me} — really sends` : (st.paired ? "Baileys paired, reconnecting…" : "Baileys: waiting for QR pairing (see server log)") }; }
+    return { ok: true, detail: mode === "twilio" ? "Twilio configured — really sends" : "logged to DB" };
+  });
 
   // — Persistence —
   add("Payments recorded", "Persistence", () => { const c = count("SELECT COUNT(*) c FROM payments"); return { ok: c >= 10, detail: `${c} payment rows` }; });
@@ -3557,13 +3561,31 @@ const PORT = process.env.PORT || 3000;   // set PORT in .env (e.g. 7801 on the A
 const HOST = process.env.HOST || "0.0.0.0";   // 0.0.0.0 = reachable from the network, not just localhost
 /* Enterprise Autonomy: ontology + knowledge graph + tiered agent mesh */
 
+/* WhatsApp transport: WA_MODE=baileys dials out to WhatsApp (no webhook, no Twilio); anything
+   else keeps the Twilio webhook path at /api/whatsapp/webhook. */
+const WA_MODE = String(process.env.WA_MODE || "").toLowerCase();
+function bootWhatsAppTransport() {
+  if (WA_MODE !== "baileys") return;
+  const transport = require("./whatsapp-baileys");
+  whatsapp.setTransport(transport);
+  transport.start({
+    onMessage: async ({ from, text, pushName }) => {
+      await appCtx.run({ app: "v2" }, async () => {
+        const known = pss.resolveByPhone(from);
+        await whatsapp.handleIncoming({ from, text, pushName, app: "v2", identity: known || null });
+      });
+    },
+  }).catch((e) => console.error("   WhatsApp (Baileys) failed to start:", e.message));
+}
 app.listen(PORT, HOST, () => {
+  bootWhatsAppTransport();
   const suffix = BASE_PATH ? BASE_PATH + "/" : "/";
   console.log(`\n✈  MAR reference build v10 running`);
   console.log(`   Local:   http://localhost:${PORT}${suffix}`);
   console.log(`   Network: http://0.0.0.0:${PORT}${suffix}  (reachable via the VM's public host if the firewall/NSG allow ${PORT})`);
   console.log(`   DB:      ${DB_PATH}`);
-  console.log(`   SMTP:    ${SMTP_READY ? "configured — emails will really send" : "not configured — emails stored in DB outbox"}`);
+  console.log(`   SMTP:    ${SMTP_READY ? "configured — emails will really send" : "not configured — emails stored in DB outbox"}`)
+  console.log(`   WhatsApp: ${WA_MODE === "baileys" ? "Baileys transport (dials out; pair via QR below on first run)" : whatsapp.MODE() === "twilio" ? "Twilio webhook at /api/whatsapp/webhook" : "not configured — messages logged to DB"}`);
   console.log(`   AI:      ${hasKey() ? "live (API key found)" : "fallback responses (set ANTHROPIC_API_KEY for live AI)"}`);
   const tenants = listAirlines();
   console.log(`   Autonomy: ontology + knowledge graph mounted at /api/autonomy (ops page /autonomy/)`);
