@@ -23,7 +23,19 @@ const path = require("path");
 const AUTH_DIR = path.join(process.env.DATA_DIR || path.join(__dirname, "..", "data"), "baileys-auth");
 const state = { sock: null, connected: false, me: null, lastQrAt: null, attempts: 0, stopping: false };
 const jidBySender = new Map();   // bare phone digits → the JID their last message arrived on
+const sentIds = new Set();       // ids of messages this socket sent (never re-dispatched)
 let onInbound = null;            // async ({ from, text, pushName }) => void, injected by start()
+/* Self-chat test mode (default on; WA_SELF_CHAT=0 disables): a message typed on the paired
+   phone in its own "Message yourself" chat is treated as a customer message from the bot's own
+   number, so one phone can exercise the flow. The bot's own replies are never re-read. */
+const SELF_CHAT = () => process.env.WA_SELF_CHAT !== "0";
+function selfJids() {
+  const u = state.sock?.user || {};
+  const out = new Set();
+  if (u.id) out.add(digits(String(u.id).split(":")[0].split("@")[0]) + "@s.whatsapp.net");
+  if (u.lid) out.add(String(u.lid).split(":")[0].split("@")[0] + "@lid");
+  return out;
+}
 
 const digits = (s) => String(s || "").replace(/[^0-9]/g, "");
 const pnJid = (phone) => `${digits(phone)}@s.whatsapp.net`;
@@ -61,8 +73,12 @@ async function phoneFor(key) {
 
 /* Pure dispatcher (testable without a socket): normalise one upsert and hand it to the app. */
 async function dispatch(m, opts = {}) {
-  if (!m?.message || m.key?.fromMe) return null;
+  if (!m?.message) return null;
   const jid = m.key?.remoteJid || "";
+  if (m.key?.fromMe) {
+    const selfChat = SELF_CHAT() && selfJids().has(jid) && !sentIds.has(m.key.id);
+    if (!selfChat) return null;
+  }
   if (isGroup(jid) || isBroadcast(jid)) return null;
   const text = extractText(m.message);
   if (!text) return null;
@@ -80,7 +96,8 @@ async function send(to, text) {
   const raw = String(to || "");
   const jid = /@/.test(raw) ? raw : (jidBySender.get(digits(raw)) || pnJid(raw));
   try {
-    await state.sock.sendMessage(jid, { text });
+    const r = await state.sock.sendMessage(jid, { text });
+    if (r?.key?.id) { sentIds.add(r.key.id); if (sentIds.size > 5000) sentIds.delete(sentIds.values().next().value); }
     return "delivered via WhatsApp (Baileys)";
   } catch (e) { return "send failed: " + String(e?.message || e).slice(0, 120); }
 }
@@ -138,6 +155,6 @@ async function start({ onMessage, log = console.log } = {}) {
 }
 
 async function stop() { state.stopping = true; try { state.sock?.end?.(); } catch {} state.connected = false; }
-function status() { return { mode: "baileys", connected: state.connected, me: state.me, authDir: AUTH_DIR, paired: fs.existsSync(path.join(AUTH_DIR, "creds.json")), lastQrAt: state.lastQrAt }; }
+function status() { return { mode: "baileys", connected: state.connected, me: state.me, selfChat: SELF_CHAT(), authDir: AUTH_DIR, paired: fs.existsSync(path.join(AUTH_DIR, "creds.json")), lastQrAt: state.lastQrAt }; }
 
 module.exports = { start, stop, send, status, dispatch, extractText, _state: state, _jidBySender: jidBySender };

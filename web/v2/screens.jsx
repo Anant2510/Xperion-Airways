@@ -833,7 +833,7 @@ export function Home({ shared, go }) {
               <PersonalizedTag />
               <button onClick={() => setAiOn(v => !v)} className="inline-flex items-center gap-1.5 rounded-full bg-white shadow-sm text-ink-muted text-[12px] font-semibold pl-3.5 pr-2 py-2"><span className={cx("w-9 h-5 rounded-full relative transition-colors shrink-0", aiOn ? "bg-tap-green" : "bg-ink/15")}><span className={cx("absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow", aiOn ? "right-0.5" : "left-0.5")} /></span> Xperion AI</button>
             </div>
-            <div className="text-ink-muted text-[14px] mt-3">Bom dia, {u.first_name}.</div>
+            <div className="text-ink-muted text-[14px] mt-3">Good morning, {u.first_name}.</div>
             <h1 className="text-[32px] font-semibold tracking-[-0.8px] leading-none text-[rgba(15,20,16,1)]">{aiOn ? "Ask me anything about your trip." : "Ready for your usual trip?"}</h1>
             {aiOn
               ? <HomeAIPanel go={go} aiOn={aiOn} onToggle={() => setAiOn(false)} shared={shared} />

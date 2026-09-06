@@ -275,6 +275,11 @@ Credentials persist in `data/baileys-auth/` (gitignored; survives a database
 reset), so later starts reconnect silently with no QR. To re-pair:
 `Remove-Item -Recurse -Force data\baileys-auth`.
 
+One-phone testing: a message typed on the paired phone in its own "Message
+yourself" chat is handled as a customer message from the bot's number (the bot's
+replies there are never re-read, so no loop). WA_SELF_CHAT=0 disables this.
+Pin the burner itself to a persona for that: WA_PHONE_MAP=919625833782:daniel.
+
 Identity: a sender whose number matches a persona (or WA_PHONE_MAP) is served
 as that member; anyone else becomes an anonymous guest with a real user row and
 no member number, tier, points or history. Interactive templates are off in

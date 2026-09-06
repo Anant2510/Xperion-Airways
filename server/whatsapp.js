@@ -259,22 +259,23 @@ function resolvePick(t, flights) {
 /* ── Conversation logic ──────────────────────────────────────── */
 async function sendMainMenu(to) {
   const uid = waUid(to);
-  const u = db.prepare("SELECT first_name, miles, tier, affinity_label FROM users WHERE id=?").get(uid);
+  const u = db.prepare("SELECT first_name, miles, tier, affinity_label, member_no FROM users WHERE id=?").get(uid);
   const pat = db.prepare("SELECT flight_no FROM bookings WHERE user_id=? AND status='confirmed' ORDER BY id DESC LIMIT 1").get(uid);
   // If there's an unfinished cross-channel journey, surface a Resume row at the top.
   const j = await readJourney(to);
   // Usual route + recommended next date, so the express option shows what & when.
   const prof = await apiCall("GET", "/profile", null, to).catch(() => null);
   const P = prof?.pattern || {};
-  const usualDesc = (P.origin && P.dest)
+  const hasHistory = !!(P.origin && P.dest && (P.last || P.matching));
+  const usualDesc = hasHistory
     ? `${cityName(P.origin)}→${cityName(P.dest)}${P.recommendedLabel ? ` · ${P.recommendedLabel}` : ""} · one tap`
-    : "Your regular route, one tap";
+    : "Tell me where you want to go";
   const STAGE_WORD = { results: "choosing a flight", seat: "seat selection", extras: "extras", review: "review & pay" };
   const rows = [];
   const map = { "0": "MENU" };
   // Core options FIRST, at stable numbers (1-8) regardless of journey state.
   rows.push(
-    { id: "BOOK_USUAL", title: "⚡ Express · my usual flight", description: usualDesc },
+    { id: "BOOK_USUAL", title: hasHistory ? "⚡ Express · my usual flight" : "✈️ Book a flight", description: usualDesc },
     { id: "MADE_FOR_YOU", title: "Made for you", description: u.affinity_label ? `${u.affinity_label} package` : "A package picked for you" },
     { id: "OFFER", title: "💎 Offer of the week", description: "Your personalized deal" },
     { id: "MY_BOOKING", title: "My booking", description: "View your current trip" },
@@ -290,8 +291,10 @@ async function sendMainMenu(to) {
   rows.forEach((r, i) => { map[String(i + 1)] = r.id; });
   const resumeNo = (j && j.stage && j.dest) ? rows.length : null;
   const greeting = (resumeNo
-    ? `Olá ${u.first_name} 👋 You have a trip in progress (${cityName(j.origin)}→${cityName(j.dest)}). Reply ${resumeNo} (or "resume") to continue, or pick another option.`
-    : `Olá ${u.first_name} 👋 Linked to your Xperion Miles account (${u.tier}, ${u.miles.toLocaleString()} miles). Xperion an option below, or just type where you want to go (e.g. "flights to Madrid").`)
+    ? `Hi ${u.first_name} 👋 You have a trip in progress (${cityName(j.origin)}→${cityName(j.dest)}). Reply ${resumeNo} (or "resume") to continue, or pick another option.`
+    : (u.member_no
+      ? `Hi ${u.first_name} 👋 Linked to your Xperion Miles account (${u.tier}, ${(u.miles || 0).toLocaleString()} miles). Choose an option below, or just type where you want to go (e.g. "flights to New York").`
+      : `Hi ${u.first_name} 👋 You're chatting with Xperion Airways as a guest: book, check in and manage trips right here. Choose an option below, or just type where you want to go (e.g. "flights to New York"). Join Xperion Miles to earn on every flight.`))
     + (getDataSource() === "adobe" ? `\n\n🔗 Profile via Adobe Real-Time CDP.` : "");
   await sendList(to, `Xperion AI · ${u.first_name}`, greeting, "Main menu", rows.slice(0, 10), map);
 }
@@ -432,7 +435,7 @@ async function handleAction(to, id) {
   if (id === "START_FRESH") {
     await apiCall("POST", "/journey/clear", null, to);
     clearDraft(to);
-    await sendText(to, "Starting fresh. Where would you like to fly? (e.g. \"flights to Madrid\")");
+    await sendText(to, "Starting fresh. Where would you like to fly? (e.g. \"flights to New York\")");
     return;
   }
   if (id === "BOOK_USUAL") {
@@ -443,7 +446,7 @@ async function handleAction(to, id) {
     const dateQ = pat.recommendedDate ? `&date=${pat.recommendedDate}` : "";
     const flights = await apiCall("GET", `/flights?dest=${dest}&origin=${origin}${dateQ}`, null, to);
     const f = flights.find(x => x.flight_no === pat.topFlight) || flights[0];
-    if (!f) { await sendText(to, "Couldn't load your usual flight — try the menu."); return sendMainMenu(to); }
+    if (!f) { return sendText(to, "Where would you like to fly? Tell me the route and date, e.g. \"flights from Miami to New York on Friday\"."); }
     const seat = (prof?.prefs?.seat || "").split(" ")[0] || "";
     const d = getDraft(to); d.flight_no = f.flight_no; d.seat = seat; d.items = ["seat","bag","meal"];
     return startExpressReview(to, f);

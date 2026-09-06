@@ -341,7 +341,7 @@ app.get("/api/profile", (req, res) => {
   if (!topRoute) {
     const allCounts = {};
     history.forEach(h => { if (h.route) allCounts[h.route] = (allCounts[h.route] || 0) + 1; });
-    topRoute = Object.entries(allCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || `${home}→LIS`;
+    topRoute = Object.entries(allCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || `${home || "MIA"}→${home === "JFK" ? "MIA" : "JFK"}`;
   }
   const onTopRoute = history.filter(h => h.route === topRoute);
   const flightCounts = {};
@@ -1774,7 +1774,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "MIA";
     const row = db.prepare("SELECT route, COUNT(*) c FROM travel_history WHERE user_id=? AND route LIKE ? GROUP BY route ORDER BY c DESC LIMIT 1").get(uid, home + "→%")
       || db.prepare("SELECT route, COUNT(*) c FROM travel_history WHERE user_id=? GROUP BY route ORDER BY c DESC LIMIT 1").get(uid);
-    const topRoute = row?.route || `${home}→LIS`;
+    const topRoute = row?.route || `${home || "MIA"}→${home === "JFK" ? "MIA" : "JFK"}`;
     const [o, dst] = topRoute.split("→");
     const fr = db.prepare("SELECT flight_no, trip_date FROM travel_history WHERE user_id=? AND route=? GROUP BY flight_no ORDER BY COUNT(*) DESC LIMIT 1").get(uid, topRoute);
     const TODAY = new Date(searchToday() + "T00:00:00Z");

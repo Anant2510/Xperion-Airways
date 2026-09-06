@@ -510,7 +510,7 @@ function SeatMapModal({ pax = 1, cabin = "Economy", aircraft, initialType, onClo
             <div className="rounded-2xl border border-line p-4">
               <div className="text-[14px] font-bold">Your selection</div>
               <div className="mt-2 space-y-2">
-                {picks.length === 0 && <div className="text-[12px] text-ink-faint">Xperion a seat to assign it.</div>}
+                {picks.length === 0 && <div className="text-[12px] text-ink-faint">Tap a seat to assign it.</div>}
                 {picks.map((id, i) => (
                   <div key={id} className="flex items-center justify-between text-[12px]">
                     <span className="inline-flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-lime text-ink text-[10px] font-bold inline-flex items-center justify-center">{seatLabel(id)}</span><span>{SEAT_PAX_NAMES[i] || `Passenger ${i + 1}`} · {feeInfo(id).tag}</span></span>
@@ -2417,7 +2417,7 @@ export function Confirmation({ shared, go }) {
       `Flights subtotal: ${eur2((o?.price || 0) + (i?.price || 0))}`,
       ...trip.extras.map(e => `${e.name}: ${eur2(e.price * (e.qty || 1))}`),
       "", `Total paid: ${eur2(pay.total ?? t2.total)}`, `Payment method: ${pay.method || "Card"}`,
-      "", "This document serves as your receipt. Obrigado por voar Xperion.",
+      "", "This document serves as your receipt. Thank you for flying Xperion.",
     ];
     downloadFile(`invoice-${trip.pnr}.pdf`, buildInvoicePdf(rows), "application/pdf");
   };

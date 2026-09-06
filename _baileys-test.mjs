@@ -85,7 +85,18 @@ ok("WhatsApp reply '2' accepted the offer via the same saga", /Done, Daniel/.tes
 const b = db.prepare("SELECT status FROM bookings WHERE pnr='XPW01A'").get();
 ok("real booking updated from the WhatsApp acceptance", ["rebooked", "refund_pending"].includes(b?.status), b?.status);
 
-/* 7 · honest status when disconnected */
+/* 7 · self-chat test mode: typed on the paired phone in "Message yourself" → handled; bot echoes never re-read */
+transport._state.sock.user = { id: "919625833782:7@s.whatsapp.net", lid: "224466@lid" };
+sent.length = 0;
+const selfIn = await flow({ key: { remoteJid: "919625833782@s.whatsapp.net", fromMe: true, id: "typed-1" }, pushName: "Test", message: { conversation: "hi" } });
+ok("self-chat message from the paired phone is handled as a customer", selfIn?.from === "whatsapp:+919625833782" && sent.length >= 1, selfIn?.from);
+const echoId = sent.length ? "m" + sent.length : "m1";
+const echo = await dispatch({ key: { remoteJid: "919625833782@s.whatsapp.net", fromMe: true, id: echoId }, message: { conversation: sent[0]?.text || "x" } });
+ok("the bot's own reply in that chat is not re-dispatched (no loop)", echo === null);
+const other = await dispatch({ key: { remoteJid: "447700900999@s.whatsapp.net", fromMe: true, id: "typed-2" }, message: { conversation: "hello" } });
+ok("messages the burner sends to other people are still ignored", other === null);
+
+/* 8 · honest status when disconnected */
 transport._state.connected = false;
 ok("send reports queued when the socket is down", /queued/.test(await whatsapp.sendText("+15551234567", "x")));
 
