@@ -108,7 +108,7 @@ const TapLogo = ({ light = false, size = "text-xl" }) => (
     </svg>
     <div className={`font-display font-black tracking-tight ${size} leading-none`}>
       <span style={{ color: light ? "#ffffff" : "var(--tap-ink)" }}>Xperion</span>
-      <span className={`ml-1.5 font-semibold text-[10px] tracking-[0.18em] uppercase align-middle ${light ? "text-white/80" : "text-gray-500"}`}>Xperion Airways</span>
+      <span className={`ml-1.5 font-semibold text-[10px] tracking-[0.18em] uppercase align-middle ${light ? "text-white/80" : "text-gray-500"}`}>Airways</span>
     </div>
   </div>
 );
