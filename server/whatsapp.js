@@ -1182,7 +1182,7 @@ ${lines.join("\n")}
 
 /* ── Proactive push: portal disruption → WhatsApp text ───────── */
 async function pushDisruption(f, recovery, uid = session.SERVER_DEFAULT_UID) {
-  const to = process.env.WHATSAPP_DEFAULT_TO || db.prepare("SELECT wa_id FROM users WHERE id=?").get(uid)?.wa_id;
+  const to = session.pinnedPhoneFor(uid) || process.env.WHATSAPP_DEFAULT_TO || db.prepare("SELECT wa_id FROM users WHERE id=?").get(uid)?.wa_id;
   if (!to) { logWA("out", "", "skipped", "Disruption push skipped — no WhatsApp recipient known yet", {}, "no recipient"); return "no recipient"; }
   // Bind this user's wa:<tail> session so a follow-up REBOOK apiCall acts as THEM (not uid 1).
   session.bindSession("wa:" + phoneTail(to), uid, getDataSource());

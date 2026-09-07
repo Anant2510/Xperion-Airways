@@ -61,6 +61,17 @@ function pinnedUser(digitsIn) {
   }
   return null;
 }
+/* WA_PHONE_MAP read the other way: the phone pinned to this customer, for outbound messages */
+function pinnedPhoneFor(uid) {
+  const map = String(process.env.WA_PHONE_MAP || "").trim(); if (!map) return null;
+  const u = db.prepare("SELECT id, first_name FROM users WHERE id=?").get(uid); if (!u) return null;
+  for (const pair of map.split(",")) {
+    const [ph, who] = pair.split(":").map((x) => String(x || "").trim());
+    if (!ph || !who) continue;
+    if (String(who) === String(u.id) || who.toLowerCase() === String(u.first_name || "").toLowerCase()) return "+" + ph.replace(/[^0-9]/g, "");
+  }
+  return null;
+}
 function userByPhone(raw) {
   const all = String(raw || "").replace(/[^0-9]/g, "");
   const pinned = pinnedUser(all); if (pinned) return pinned;
@@ -91,4 +102,4 @@ function sessionSource(req, opts = {}) {
   return (s && s.source) || require("./db").getDataSource(); // global default if unbound
 }
 
-module.exports = { newSessionId, bindSession, getSession, unbindSession, resolveUid, sessionSource, isAdmin, userByPhone, guestForPhone, isGuest, SERVER_DEFAULT_UID, SYSTEM_UID, _sessions: sessions };
+module.exports = { newSessionId, bindSession, getSession, unbindSession, resolveUid, sessionSource, isAdmin, userByPhone, guestForPhone, isGuest, pinnedPhoneFor, SERVER_DEFAULT_UID, SYSTEM_UID, _sessions: sessions };

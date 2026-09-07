@@ -90,11 +90,27 @@ async function dispatch(m, opts = {}) {
   return { from, text, jid };
 }
 
+/* Outbox: anything sent while the socket is down waits here and goes out the moment the
+   connection is back, in order, so a restart or a reconnect never loses a proactive message. */
+const outbox = [];
+async function flushOutbox(log = console.log) {
+  let sent = 0;
+  while (outbox.length && state.sock && state.connected) {
+    const m = outbox.shift();
+    try { const r = await state.sock.sendMessage(m.jid, { text: m.text }); if (r?.key?.id) sentIds.add(r.key.id); sent++; }
+    catch (e) { log("   WhatsApp outbox send failed: " + String(e?.message || e).slice(0, 100)); }
+  }
+  if (sent) log(`   WhatsApp outbox: ${sent} queued message(s) delivered after reconnect`);
+  return sent;
+}
 /* Outbound: to may be "whatsapp:+91…", "+91…", digits, or a JID. Returns an honest status. */
 async function send(to, text) {
-  if (!state.sock || !state.connected) return "queued (WhatsApp not connected)";
   const raw = String(to || "");
   const jid = /@/.test(raw) ? raw : (jidBySender.get(digits(raw)) || pnJid(raw));
+  if (!state.sock || !state.connected) {
+    outbox.push({ jid, text, at: new Date().toISOString() }); if (outbox.length > 200) outbox.shift();
+    return `queued (WhatsApp reconnecting; ${outbox.length} waiting, sends on reconnect)`;
+  }
   try {
     const r = await state.sock.sendMessage(jid, { text });
     if (r?.key?.id) { sentIds.add(r.key.id); if (sentIds.size > 5000) sentIds.delete(sentIds.values().next().value); }
@@ -131,6 +147,7 @@ async function start({ onMessage, log = console.log } = {}) {
       state.connected = true; state.attempts = 0;
       state.me = "+" + digits((sock.user?.id || "").split(":")[0].split("@")[0]);
       log(`   ✓ WhatsApp connected via Baileys as ${state.me}`);
+      setTimeout(() => flushOutbox(log).catch(() => {}), 1500);
     }
     if (connection === "close") {
       state.connected = false;
@@ -160,6 +177,6 @@ async function start({ onMessage, log = console.log } = {}) {
 }
 
 async function stop() { state.stopping = true; try { state.sock?.end?.(); } catch {} state.connected = false; }
-function status() { return { mode: "baileys", connected: state.connected, me: state.me, selfChat: SELF_CHAT(), authDir: AUTH_DIR, paired: fs.existsSync(path.join(AUTH_DIR, "creds.json")), lastQrAt: state.lastQrAt }; }
+function status() { return { mode: "baileys", connected: state.connected, me: state.me, selfChat: SELF_CHAT(), outbox: outbox.length, authDir: AUTH_DIR, paired: fs.existsSync(path.join(AUTH_DIR, "creds.json")), lastQrAt: state.lastQrAt }; }
 
-module.exports = { start, stop, send, status, dispatch, extractText, _state: state, _jidBySender: jidBySender };
+module.exports = { start, stop, send, status, dispatch, extractText, flushOutbox, _state: state, _jidBySender: jidBySender, _outbox: outbox };

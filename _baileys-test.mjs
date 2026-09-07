@@ -96,9 +96,23 @@ ok("the bot's own reply in that chat is not re-dispatched (no loop)", echo === n
 const other = await dispatch({ key: { remoteJid: "447700900999@s.whatsapp.net", fromMe: true, id: "typed-2" }, message: { conversation: "hello" } });
 ok("messages the burner sends to other people are still ignored", other === null);
 
-/* 8 · honest status when disconnected */
+/* 8 · outbox: sent while down, delivered on reconnect; pinned phone wins for outbound */
 transport._state.connected = false;
-ok("send reports queued when the socket is down", /queued/.test(await whatsapp.sendText("+15551234567", "x")));
+const q1 = await whatsapp.sendText("+15551234567", "x");
+ok("send while the socket is down is queued, not dropped", /queued/.test(q1) && transport._outbox.length === 1, q1);
+sent.length = 0; transport._state.connected = true;
+const flushed = await transport.flushOutbox(() => {});
+ok("reconnect flushes the outbox in order", flushed === 1 && sent.length === 1 && transport._outbox.length === 0, `${flushed} delivered`);
+process.env.WA_PHONE_MAP = "919871724927:daniel";
+const pinned = session.pinnedPhoneFor(1);
+ok("WA_PHONE_MAP maps Daniel back to the pinned phone for outbound", pinned === "+919871724927", pinned);
+sent.length = 0;
+sim.reset(); bridge.link(); sim.t72(); sim.t48();
+await new Promise((r) => setTimeout(r, 300));
+const pinnedJid = transport._jidBySender.get("919871724927") || "919871724927@s.whatsapp.net";
+const toPinned = sent.find((m) => /tornado|weather/i.test(m.text || "") && m.jid === pinnedJid);
+const toProfile = sent.find((m) => /tornado|weather/i.test(m.text || "") && /13054427781/.test(m.jid));
+ok("the T-48 offer for Daniel goes to the pinned phone (on the JID it last used), not the profile number", !!toPinned && !toProfile, toPinned && toPinned.jid);
 
 const passed = results.filter(Boolean).length;
 console.log(`\n===== BAILEYS: ${passed}/${results.length} checks passed =====`);

@@ -203,7 +203,8 @@ async function deliver({ uid, pnr, channel, text, event, emailType, emailData })
   /* WhatsApp recipient, same precedence as the app's existing proactive push: the demo's
      configured number, then the real WhatsApp number that last spoke as this persona, then
      the profile phone. */
-  const waTo = process.env.WHATSAPP_DEFAULT_TO || u.wa_id || u.phone || null;
+  let pinned = null; try { pinned = require("../session").pinnedPhoneFor(uid); } catch {}
+  const waTo = pinned || process.env.WHATSAPP_DEFAULT_TO || u.wa_id || u.phone || null;
   const results = [];
   const push = async (ch, fn) => { try { results.push({ channel: ch, ...(await fn()) }); } catch (e) { results.push({ channel: ch, status: "send failed: " + e.message.slice(0, 60) }); } };
   if (channel === "whatsapp") {
