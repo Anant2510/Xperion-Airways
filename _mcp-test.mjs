@@ -55,6 +55,30 @@ const revoked = await fetch(BASE + `/api/admin/mcp/token/${sofia.token}`, { meth
 const after = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", Authorization: `Bearer ${sofia.token}` }, body: "{}" });
 ok("revoked token is refused", revoked.ok && after.status === 401);
 
+/* customer self-service: "Connect your AI" — toggles per assistant, key bound to the logged-in customer */
+const SID = "mcp-selfservice-" + Date.now().toString(36);
+const H = { "content-type": "application/json", "x-session-id": SID };
+await fetch(BASE + "/api/persona", { method: "POST", headers: H, body: JSON.stringify({ persona: "sofia", sessionId: SID }) });
+const before = await fetch(BASE + "/api/me/mcp", { headers: H }).then((r) => r.json());
+ok("self-service lists Claude, Gemini and Copilot, all off", before.ok && before.connections.length === 3 && before.connections.every((c) => !c.enabled), before.connections.map((c) => c.name).join(", "));
+const on = await fetch(BASE + "/api/me/mcp/gemini", { method: "POST", headers: H, body: "{}" }).then((r) => r.json());
+ok("switching Gemini on mints a key and returns that tool's config", on.ok && /^xp_/.test(on.token) && on.snippets.some((x) => /gemini/i.test(x.title) && /httpUrl/.test(x.code) && x.code.includes(on.token)), on.snippets.map((x) => x.title).join(" | "));
+const cg = await connect(on.token);
+const who = parse(await cg.callTool({ name: "get_my_profile", arguments: {} }));
+ok("the key acts as the customer who switched it on (Sofia), not Daniel", who.customer?.first_name === "Sofia");
+await cg.close();
+const claudeOn = await fetch(BASE + "/api/me/mcp/claude", { method: "POST", headers: H, body: "{}" }).then((r) => r.json());
+ok("Claude config includes the desktop bridge JSON and a Claude Code command", claudeOn.ok && claudeOn.snippets.some((x) => /Claude Desktop/.test(x.title) && /mcpServers/.test(x.code)) && claudeOn.snippets.some((x) => /claude mcp add/.test(x.code)));
+const cop = await fetch(BASE + "/api/me/mcp/copilot", { method: "POST", headers: H, body: "{}" }).then((r) => r.json());
+ok("Copilot config is the VS Code mcp.json shape", cop.ok && cop.snippets.some((x) => /"servers"/.test(x.code) && /"type": "http"/.test(x.code)));
+const mid = await fetch(BASE + "/api/me/mcp", { headers: H }).then((r) => r.json());
+ok("status shows all three on with masked keys", mid.connections.every((c) => c.enabled && /…/.test(c.token_masked)));
+const off = await fetch(BASE + "/api/me/mcp/gemini", { method: "DELETE", headers: H }).then((r) => r.json());
+const dead = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", Authorization: `Bearer ${on.token}` }, body: "{}" });
+ok("switching Gemini off revokes its key immediately", off.ok && dead.status === 401 && off.connections.find((c) => c.client === "gemini").enabled === false);
+const bridgeFile = await fetch(BASE + "/mcp/bridge.mjs");
+ok("the desktop bridge is downloadable from the server", bridgeFile.ok && /StdioServerTransport/.test(await bridgeFile.text()));
+
 /* the stdio bridge, spawned exactly as Claude Desktop spawns it */
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 const bridge = new Client({ name: "desktop-sim", version: "1.0" });

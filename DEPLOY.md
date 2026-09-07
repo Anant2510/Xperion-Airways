@@ -323,3 +323,13 @@ run `mcp/xperion-mcp.mjs` with `XPERION_URL` + `XPERION_TOKEN`; remote-capable c
 at `/mcp` with the Authorization header. Claude.ai custom connectors require https: put a TLS
 proxy or a tunnel (e.g. Cloudflare Tunnel) in front of the endpoint. Verify with
 `BASE=http://127.0.0.1:<port> node _mcp-test.mjs` → 17/17. `npm install` is required (SDK).
+
+## Customers connecting their own AI ("Connect your AI")
+
+Homepage top right → **Connect your AI** (v2: user menu → Settings → Connect your AI). One toggle
+per assistant — Claude, Gemini, Copilot. Switching one on mints a key bound to the signed-in
+customer and shows, once, the exact configuration for that tool (Claude Desktop bridge JSON and
+the `claude mcp add` command; Gemini `~/.gemini/settings.json`; Copilot `mcp.json`). Switching
+off revokes the key. Endpoints: `GET /api/me/mcp`, `POST|DELETE /api/me/mcp/:client`; the desktop
+bridge is served at `/mcp/bridge.mjs`. Set `PUBLIC_URL=https://…` once the server has a public
+https name so the snippets carry it.

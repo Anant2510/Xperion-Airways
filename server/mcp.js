@@ -16,6 +16,46 @@ const crypto = require("crypto");
 const { db, now } = require("./db");
 
 db.exec(`CREATE TABLE IF NOT EXISTS mcp_tokens (token TEXT PRIMARY KEY, user_id INTEGER, label TEXT, scopes TEXT, created_at TEXT, last_used_at TEXT, calls INTEGER DEFAULT 0);`);
+try { db.exec(`ALTER TABLE mcp_tokens ADD COLUMN client TEXT`); } catch {}
+
+/* ── customer self-service: one token per AI tool per customer, with the config for that tool ── */
+const CLIENTS = {
+  claude: { name: "Claude", vendor: "Anthropic", note: "Claude Desktop, Claude Code" },
+  gemini: { name: "Gemini", vendor: "Google", note: "Gemini CLI, Gemini Code Assist" },
+  copilot: { name: "Copilot", vendor: "GitHub / Microsoft", note: "VS Code, Visual Studio, JetBrains" },
+};
+function listFor(uid) {
+  const rows = db.prepare("SELECT token, client, created_at, last_used_at, calls FROM mcp_tokens WHERE user_id=? AND client IS NOT NULL ORDER BY created_at DESC").all(uid);
+  return Object.keys(CLIENTS).map((id) => { const r = rows.find((x) => x.client === id); return { client: id, ...CLIENTS[id], enabled: !!r, token_masked: r ? r.token.slice(0, 6) + "…" + r.token.slice(-4) : null, created_at: r?.created_at || null, last_used_at: r?.last_used_at || null, calls: r?.calls || 0 }; });
+}
+function enableFor(uid, client, label) {
+  if (!CLIENTS[client]) return null;
+  db.prepare("DELETE FROM mcp_tokens WHERE user_id=? AND client=?").run(uid, client);
+  const token = "xp_" + crypto.randomBytes(18).toString("hex");
+  db.prepare("INSERT INTO mcp_tokens (token,user_id,label,scopes,client,created_at) VALUES (?,?,?,?,?,?)").run(token, uid, label || `${CLIENTS[client].name} · self-service`, "customer", client, now());
+  return token;
+}
+function disableFor(uid, client) { return db.prepare("DELETE FROM mcp_tokens WHERE user_id=? AND client=?").run(uid, client).changes > 0; }
+/* the configuration a customer pastes into their tool: exact, copyable, per tool */
+function snippets(client, base, token) {
+  const url = `${base}/mcp`, bearer = `Bearer ${token}`;
+  if (client === "claude") return [
+    { title: "Claude Desktop", how: "Download the bridge file, install its one dependency, then add this to Settings → Developer → Edit Config (claude_desktop_config.json) and restart Claude Desktop.",
+      steps: [`Download ${base}/mcp/bridge.mjs and save it as ~/xperion/xperion-mcp.mjs`, "In that folder run: npm install @modelcontextprotocol/sdk", "Add the JSON below to claude_desktop_config.json, replacing <full path> with the file's location", "Quit and reopen Claude Desktop — Xperion Airways appears under connectors"],
+      code: JSON.stringify({ mcpServers: { "xperion-airways": { command: "node", args: ["<full path>/xperion-mcp.mjs"], env: { XPERION_URL: base, XPERION_TOKEN: token } } } }, null, 2), lang: "json" },
+    { title: "Claude Code (terminal)", how: "One command registers the remote server with your token.", code: `claude mcp add --transport http xperion-airways ${url} --header "Authorization: ${bearer}"`, lang: "bash" },
+  ];
+  if (client === "gemini") return [
+    { title: "Gemini CLI / Gemini Code Assist", how: "Add this to ~/.gemini/settings.json (create the file if needed), then start gemini and run /mcp to confirm the tools are listed.",
+      code: JSON.stringify({ mcpServers: { "xperion-airways": { httpUrl: url, headers: { Authorization: bearer } } } }, null, 2), lang: "json" },
+  ];
+  if (client === "copilot") return [
+    { title: "GitHub Copilot in VS Code", how: "Create .vscode/mcp.json in your workspace (or add to your user mcp.json via the MCP: Open User Configuration command), then start the server from the MCP panel and switch Copilot Chat to Agent mode.",
+      code: JSON.stringify({ servers: { "xperion-airways": { type: "http", url, headers: { Authorization: bearer } } } }, null, 2), lang: "json" },
+    { title: "Visual Studio / JetBrains", how: "Same server block; the file is named mcp.json in the solution or project root.", code: JSON.stringify({ servers: { "xperion-airways": { type: "http", url, headers: { Authorization: bearer } } } }, null, 2), lang: "json" },
+  ];
+  return [];
+}
 
 let deps = null;   // injected by server.js: { AGENT_TOOLS, toolsFor, agentRunTool, getSession, resolveTenant, autonomy, PERSONA_UID }
 function init(d) { deps = d; }
@@ -133,4 +173,4 @@ function info(req) {
     connect: { claude_desktop_stdio: { command: "node", args: ["mcp/xperion-mcp.mjs"], env: { XPERION_URL: base, XPERION_TOKEN: "<token>" } }, cursor_or_vscode_remote: { url: `${base}/mcp`, headers: { Authorization: "Bearer <token>" } }, note: "Claude.ai custom connectors need an https URL: put a TLS proxy or tunnel in front of the server." } };
 }
 
-module.exports = { init, handle, info, mint, lookup, list, revoke, toolList, EXTRA_TOOLS };
+module.exports = { init, handle, info, mint, lookup, list, revoke, toolList, EXTRA_TOOLS, CLIENTS, listFor, enableFor, disableFor, snippets };

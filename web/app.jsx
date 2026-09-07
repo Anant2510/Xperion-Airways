@@ -5,7 +5,7 @@ import {
   AlertTriangle, RefreshCw, Luggage, Armchair, Coffee, Wifi, Car, ChevronRight,
   X, Send, Bell, QrCode, CalendarClock, Laptop, Zap, ShieldCheck, ArrowRight, ArrowUpRight,
   Repeat, BadgeCheck, MessageCircle, Loader2, TimerReset, Database, Mail, Eye, EyeOff, RotateCcw,
-  Search, MapPin, Globe, ArrowLeftRight, Calendar, Info, Clock, Cloud, Layers
+  Search, MapPin, Globe, ArrowLeftRight, Calendar, Info, Clock, Cloud, Layers, Bot, Copy, Check
 } from "lucide-react";
 
 /* ── API client — every byte of personalization comes from the backend ──
@@ -19,6 +19,7 @@ const API_BASE = (() => {
 const api = {
   get: (p) => fetch(`${API_BASE}/api${p}`).then((r) => r.json()),
   post: (p, body) => fetch(`${API_BASE}/api${p}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) }).then((r) => r.json()),
+  del: (p) => fetch(`${API_BASE}/api${p}`, { method: "DELETE" }).then((r) => r.json()),
 };
 // Stable per-tab id so the agent keeps this chat's context (active route, selected flight) separate from other sessions.
 const WEB_SESSION_ID = "web-" + Math.random().toString(36).slice(2, 10);
@@ -484,7 +485,7 @@ function QuickBook({ go, bookDestination }) {
   );
 }
 
-function Home({ profile, destinations, go, openAssistant, toast, bookDestination, bookUsual, resumeJourney, startFresh, openExtras, openExpress }) {
+function Home({ profile, destinations, go, openAssistant, toast, bookDestination, bookUsual, resumeJourney, startFresh, openExtras, openExpress, openAiAccess}) {
   const [sendingOffer, setSendingOffer] = useState(false);
   const [tab, setTab] = useState("Flights");
   const [flex, setFlex] = useState(false);
@@ -595,6 +596,7 @@ function Home({ profile, destinations, go, openAssistant, toast, bookDestination
             <span className="hidden md:flex items-center gap-1 text-xs font-semibold text-gray-600"><Globe size={14}/> US · USD</span>
             <button onClick={() => toast("Wishlist", "Saved destinations live here.")} className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900"><Ticket size={15}/> Wishlist</button>
             <button onClick={() => go("manage")} className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900"><ShoppingBag size={15}/> My Trip Cart</button>
+            <button onClick={() => openAiAccess && openAiAccess()} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border" style={{ color: "#fff", background: "var(--tap-deep)", borderColor: "var(--tap-deep)" }} title="Let Claude, Gemini or Copilot manage your account"><Bot size={13} /> Connect your AI</button>
             <button onClick={() => go("console")} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border" style={{ color: "var(--tap-deep)", borderColor: "var(--tap-line)" }} title="Demo-only: live database view"><Database size={12}/> Demo</button>
             <button onClick={() => go("miles")} className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full border" style={{ borderColor: "var(--tap-line)" }}>
               <span className="w-7 h-7 rounded-full flex items-center justify-center font-display font-extrabold text-[11px] text-white" style={{ background: "var(--tap-deep)" }}>{initials}</span>
@@ -3180,7 +3182,92 @@ function ProactiveBanner({ active, onOpen }) {
   );
 }
 
+/* ── Connect your AI: the customer lets Claude / Gemini / Copilot manage their own Xperion account ── */
+function CopyBtn({ text, label = "Copy" }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button onClick={async () => { try { await navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 1500); } catch {} }} className="inline-flex items-center gap-1 text-[11px] font-bold rounded-full border px-2.5 py-1" style={{ borderColor: done ? "var(--tap-green)" : "var(--tap-line)", color: done ? "var(--tap-green)" : "var(--tap-ink)" }}>
+      {done ? <Check size={12} /> : <Copy size={12} />} {done ? "Copied" : label}
+    </button>
+  );
+}
+function AiAccessPanel({ onClose, toast }) {
+  const [state, setState] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const [reveal, setReveal] = useState({});
+  const load = async () => { try { setState(await api.get("/me/mcp")); } catch (e) { setState({ ok: false, error: e.message }); } };
+  useEffect(() => { load(); }, []);
+  const toggle = async (c) => {
+    if (busy) return; setBusy(c.client);
+    try {
+      if (c.enabled) { const r = await api.del(`/me/mcp/${c.client}`); setReveal((v) => ({ ...v, [c.client]: null })); setState((s) => ({ ...s, connections: r.connections })); }
+      else { const r = await api.post(`/me/mcp/${c.client}`, {}); setReveal((v) => ({ ...v, [c.client]: { token: r.token, snippets: r.snippets } })); setState((s) => ({ ...s, connections: r.connections })); }
+    } catch (e) { toast("AI access", "Could not update: " + e.message); }
+    setBusy(null);
+  };
+  const logo = { claude: "✳", gemini: "✦", copilot: "◎" };
+  return (
+    <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto" style={{ background: "rgba(10,20,16,0.45)" }} onClick={onClose}>
+      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl mt-10 mb-10 mx-3" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 pt-5 pb-4 border-b flex items-start justify-between gap-4" style={{ borderColor: "var(--tap-line)" }}>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--tap-deep)" }}>Connect your AI</div>
+            <h2 className="font-display font-extrabold text-2xl leading-tight mt-0.5" style={{ color: "var(--tap-ink)" }}>Let your AI assistant manage your Xperion account</h2>
+            <p className="text-sm text-gray-600 mt-1">Switch on the assistant you use. It gets its own key to your account — search and book, check in, see your trips, get destination briefs and act on a disruption offer — and you can switch it off any time.{state?.tools ? ` ${state.tools} tools, one contract, the same rules as the app.` : ""}</p>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 shrink-0" aria-label="Close"><X size={18} /></button>
+        </div>
+        <div className="px-6 py-4 space-y-3">
+          {!state && <div className="text-sm text-gray-500">Loading…</div>}
+          {state && state.ok === false && <div className="text-sm" style={{ color: "var(--tap-red)" }}>Could not load: {state.error}</div>}
+          {state?.connections?.map((c) => {
+            const shown = reveal[c.client];
+            return (
+              <div key={c.client} className="rounded-2xl border" style={{ borderColor: c.enabled ? "var(--tap-green)" : "var(--tap-line)" }}>
+                <div className="px-4 py-3 flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black text-white shrink-0" style={{ background: c.enabled ? "var(--tap-deep)" : "#9AA8A1" }}>{logo[c.client]}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold" style={{ color: "var(--tap-ink)" }}>{c.name} <span className="text-xs font-semibold text-gray-500">· {c.vendor}</span></div>
+                    <div className="text-[12px] text-gray-500">{c.note}{c.enabled ? ` · key ${c.token_masked} · ${c.calls} call${c.calls === 1 ? "" : "s"}${c.last_used_at ? ` · last used ${String(c.last_used_at).replace("T", " ").slice(5, 16)} UTC` : " · not used yet"}` : ""}</div>
+                  </div>
+                  <button role="switch" aria-checked={c.enabled} disabled={!!busy} onClick={() => toggle(c)} className="relative w-12 h-7 rounded-full transition-colors shrink-0" style={{ background: c.enabled ? "var(--tap-green)" : "#CBD5D0" }}>
+                    <span className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all" style={{ left: c.enabled ? 22 : 2 }} />
+                  </button>
+                </div>
+                {c.enabled && (
+                  <div className="px-4 pb-4 space-y-3 border-t" style={{ borderColor: "var(--tap-line)" }}>
+                    {shown ? (
+                      <>
+                        <div className="mt-3 rounded-xl px-3 py-2 flex items-center justify-between gap-2" style={{ background: "#FFF8E6" }}>
+                          <div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#8A6D12" }}>Your key — shown once, keep it private</div><code className="text-xs break-all" style={{ color: "var(--tap-ink)" }}>{shown.token}</code></div>
+                          <CopyBtn text={shown.token} label="Copy key" />
+                        </div>
+                        {shown.snippets.map((sn, i) => (
+                          <div key={i} className="rounded-xl border p-3" style={{ borderColor: "var(--tap-line)" }}>
+                            <div className="flex items-center justify-between gap-2"><div className="font-bold text-sm" style={{ color: "var(--tap-ink)" }}>{sn.title}</div><CopyBtn text={sn.code} /></div>
+                            <p className="text-[12px] text-gray-600 mt-1">{sn.how}</p>
+                            {sn.steps && <ol className="text-[12px] text-gray-600 mt-1 pl-4 list-decimal space-y-0.5">{sn.steps.map((st, k) => <li key={k}>{st}</li>)}</ol>}
+                            <pre className="mt-2 text-[11px] leading-snug rounded-lg p-3 overflow-x-auto" style={{ background: "#0F1F1A", color: "#DCEBE3" }}>{sn.code}</pre>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="mt-3 text-[12px] text-gray-600">Connected. The key was shown when you switched this on; to get a new key and the setup again, switch off and on. Your assistant keeps working until you switch it off.</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <div className="text-[11px] text-gray-500 pt-1">Each key is tied to your account only — an assistant using it sees your trips and nobody else's. Endpoint {state?.endpoint || "…"}. Switching off revokes the key immediately.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
+  const [aiAccess, setAiAccess] = useState(false);
   const [screen, setScreen] = useState(() => (typeof window !== "undefined" && window.location.hash === "#app") ? "home" : "login");
   const [profile, setProfile] = useState(null);
   const [flights, setFlights] = useState([]);
@@ -3444,7 +3531,8 @@ function App() {
   return (
     <div className="min-h-screen" style={{background: "var(--tap-mist)"}}>
       <Fonts/>
-      {isHome && <Home profile={profile} destinations={destinations} go={go} openAssistant={()=>setAssistantOpen(true)} toast={toast} bookDestination={bookDestination} bookUsual={bookUsual} resumeJourney={resumeJourney} startFresh={startFresh} openExtras={openExtras} openExpress={openExpress}/>}
+      {aiAccess && <AiAccessPanel onClose={() => setAiAccess(false)} toast={toast} />}
+      {isHome && <Home openAiAccess={() => setAiAccess(true)} profile={profile} destinations={destinations} go={go} openAssistant={()=>setAssistantOpen(true)} toast={toast} bookDestination={bookDestination} bookUsual={bookUsual} resumeJourney={resumeJourney} startFresh={startFresh} openExtras={openExtras} openExpress={openExpress}/>}
       {!isHome && (<>
       <header className="sticky top-0 z-40 border-b" style={{background: "#fff", borderColor: "var(--tap-line)"}}>
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">

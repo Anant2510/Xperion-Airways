@@ -84,9 +84,63 @@ function SearchOverlay({ go, upcoming = [], onClose }) {
   );
 }
 
+/* ── Connect your AI: the customer lets Claude / Gemini / Copilot manage their own Xperion account ── */
+function CopyBtn({ text, label = "Copy" }) {
+  const [done, setDone] = useState(false);
+  return <button onClick={async () => { try { await navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 1500); } catch {} }} className={cx("text-[11px] font-bold rounded-full border px-2.5 py-1", done ? "border-tap-green text-tap-green" : "border-line text-ink")}>{done ? "Copied" : label}</button>;
+}
+export function AiAccessModal({ onClose }) {
+  const [state, setState] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const [reveal, setReveal] = useState({});
+  useEffect(() => { api.get("/me/mcp").then(setState).catch((e) => setState({ ok: false, error: e.message })); }, []);
+  const toggle = async (c) => {
+    if (busy) return; setBusy(c.client);
+    try {
+      if (c.enabled) { const r = await api.del(`/me/mcp/${c.client}`); setReveal((v) => ({ ...v, [c.client]: null })); setState((s) => ({ ...s, connections: r.connections })); }
+      else { const r = await api.post(`/me/mcp/${c.client}`, {}); setReveal((v) => ({ ...v, [c.client]: { token: r.token, snippets: r.snippets } })); setState((s) => ({ ...s, connections: r.connections })); }
+    } catch {}
+    setBusy(null);
+  };
+  const logo = { claude: "✳", gemini: "✦", copilot: "◎" };
+  return (
+    <div className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-black/45" onClick={onClose}>
+      <div className="w-full max-w-3xl bg-surface rounded-2xl shadow-2xl mt-10 mb-10 mx-3" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 pt-5 pb-4 border-b border-line flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wide air-accent-deep">Connect your AI</div>
+            <h2 className="font-display font-extrabold text-2xl leading-tight mt-0.5 text-ink">Let your AI assistant manage your Xperion account</h2>
+            <p className="text-sm text-ink-muted mt-1">Switch on the assistant you use. It gets its own key to your account — search and book, check in, see your trips, get destination briefs and act on a disruption offer — and you can switch it off any time.</p>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface-mute shrink-0" aria-label="Close"><Icon name="x" size={18} /></button>
+        </div>
+        <div className="px-6 py-4 space-y-3">
+          {!state && <div className="text-sm text-ink-muted">Loading…</div>}
+          {state?.connections?.map((c) => { const shown = reveal[c.client]; return (
+            <div key={c.client} className={cx("rounded-2xl border", c.enabled ? "border-tap-green" : "border-line")}>
+              <div className="px-4 py-3 flex items-center gap-3">
+                <span className={cx("w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black text-white shrink-0", c.enabled ? "air-bg-accent" : "bg-ink-faint")}>{logo[c.client]}</span>
+                <div className="flex-1 min-w-0"><div className="font-bold text-ink">{c.name} <span className="text-xs font-semibold text-ink-muted">· {c.vendor}</span></div><div className="text-[12px] text-ink-muted">{c.note}{c.enabled ? ` · key ${c.token_masked} · ${c.calls} calls${c.last_used_at ? ` · last used ${String(c.last_used_at).replace("T", " ").slice(5, 16)} UTC` : " · not used yet"}` : ""}</div></div>
+                <button role="switch" aria-checked={c.enabled} disabled={!!busy} onClick={() => toggle(c)} className={cx("relative w-12 h-7 rounded-full transition-colors shrink-0", c.enabled ? "bg-tap-green" : "bg-line")}><span className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all" style={{ left: c.enabled ? 22 : 2 }} /></button>
+              </div>
+              {c.enabled && <div className="px-4 pb-4 space-y-3 border-t border-line">
+                {shown ? (<>
+                  <div className="mt-3 rounded-xl px-3 py-2 flex items-center justify-between gap-2 bg-amber-50"><div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-wide text-amber-800">Your key — shown once, keep it private</div><code className="text-xs break-all text-ink">{shown.token}</code></div><CopyBtn text={shown.token} label="Copy key" /></div>
+                  {shown.snippets.map((sn, i) => <div key={i} className="rounded-xl border border-line p-3"><div className="flex items-center justify-between gap-2"><div className="font-bold text-sm text-ink">{sn.title}</div><CopyBtn text={sn.code} /></div><p className="text-[12px] text-ink-muted mt-1">{sn.how}</p>{sn.steps && <ol className="text-[12px] text-ink-muted mt-1 pl-4 list-decimal space-y-0.5">{sn.steps.map((st, k) => <li key={k}>{st}</li>)}</ol>}<pre className="mt-2 text-[11px] leading-snug rounded-lg p-3 overflow-x-auto bg-[#0F1F1A] text-[#DCEBE3]">{sn.code}</pre></div>)}
+                </>) : <div className="mt-3 text-[12px] text-ink-muted">Connected. The key was shown when you switched this on; switch off and on for a new key and the setup again.</div>}
+              </div>}
+            </div>); })}
+          <div className="text-[11px] text-ink-faint pt-1">Each key is tied to your account only. Endpoint {state?.endpoint || "…"}. Switching off revokes the key immediately.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TopNav({ route, go, profile, loggedIn, onLogin, onLogout }) {
   const user = profile?.user;
   const [menu, setMenu] = useState(false);
+  const [aiAccess, setAiAccess] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);   // J2 — mobile primary-nav dropdown (hidden on lg+)
   const [searchOpen, setSearchOpen] = useState(false);   // #5 — inline smart-search overlay
   // #6 — the "My trips" dropdown summary must reflect the user's real bookings, not a fixed string.
@@ -119,6 +173,7 @@ export function TopNav({ route, go, profile, loggedIn, onLogin, onLogout }) {
   return (
     <header className="sticky top-0 z-40 bg-surface-mute/85 backdrop-blur border-b border-line">
       {searchOpen && <SearchOverlay go={go} upcoming={upcomingTrips} onClose={() => setSearchOpen(false)} />}
+      {aiAccess && <AiAccessModal onClose={() => setAiAccess(false)} />}
       <div className="mx-auto max-w-page px-4 sm:px-6 h-16 flex items-center gap-6">
         <button onClick={() => go("home")} className="shrink-0"><TapLogo /></button>
         <div className="relative lg:hidden">
@@ -172,12 +227,12 @@ export function TopNav({ route, go, profile, loggedIn, onLogin, onLogout }) {
                     <div className="max-h-[60vh] overflow-y-auto py-1">
                       {[["Account", [["user", "My profile", "Personal info, passport, contacts", "manage"], ["star", "Xperion Miles", `${miles(user.miles || 42180)} mi · ${user.tier || "Gold"} tier`, "miles"], ["doc", "Payment methods", "2 cards saved", "manage"]]],
                         ["Travel", [["plane", "My trips", tripsSummary, "manage"], ["check", "Check-in & boarding passes", "Opens 24h before departure", "manage"], ["seat", "Travel preferences", "Seat, meal, assistance", "manage"], ["globe", "Saved travelers", "3 companions", "manage"]]],
-                        ["Settings", [["info", "Notifications", "Push, SMS, email", "manage"], ["globe", "Language & region", "EN · United States (USD)", "manage"], ["info", "Help & support", "24/7 contact", "ai"]]]
+                        ["Settings", [["star", "Connect your AI", "Let Claude, Gemini or Copilot manage your account", "__ai"], ["info", "Notifications", "Push, SMS, email", "manage"], ["globe", "Language & region", "EN · United States (USD)", "manage"], ["info", "Help & support", "24/7 contact", "ai"]]]
                       ].map(([sec, items]) => (
                         <div key={sec}>
                           <div className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-ink-faint">{sec}</div>
                           {items.map(([ic, t, s, r]) => (
-                            <button key={t} onClick={() => { setMenu(false); go(r); }} className={cx("w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-mute", t === "Xperion Miles" && "bg-lime-tint/40")}>
+                            <button key={t} onClick={() => { setMenu(false); if (r === "__ai") return setAiAccess(true); go(r); }} className={cx("w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-mute", t === "Xperion Miles" && "bg-lime-tint/40")}>
                               <Icon name={ic} size={16} className="text-ink-muted shrink-0" />
                               <span className="flex-1 min-w-0"><span className="block font-semibold text-ink">{t}</span><span className="block text-[11px] text-ink-faint truncate">{s}</span></span>
                               <span className="text-ink-faint text-[12px]">›</span>

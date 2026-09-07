@@ -3682,6 +3682,19 @@ app.post("/api/admin/mcp/token", (req, res) => {
   res.json({ ok: true, ...t, endpoint: `${req.protocol}://${req.get("host")}/mcp` });
 });
 app.delete("/api/admin/mcp/token/:token", (req, res) => res.json({ ok: mcp.revoke(req.params.token) }));
+/* customer self-service: "let my AI assistant manage my Xperion account" */
+const mcpBase = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, "");
+app.get("/api/me/mcp", (req, res) => res.json({ ok: true, endpoint: `${mcpBase(req)}/mcp`, tools: mcp.toolList(resolveTenant(null).config).length, connections: mcp.listFor(req.uid) }));
+app.post("/api/me/mcp/:client", (req, res) => {
+  const client = String(req.params.client || "").toLowerCase();
+  const u = db.prepare("SELECT first_name FROM users WHERE id=?").get(req.uid);
+  const token = mcp.enableFor(req.uid, client, `${u?.first_name || "customer"} · ${client}`);
+  if (!token) return res.status(400).json({ ok: false, error: "unknown client" });
+  log("mcp_self_service_enabled", { uid: req.uid, client });
+  res.json({ ok: true, client, token, snippets: mcp.snippets(client, mcpBase(req), token), connections: mcp.listFor(req.uid) });
+});
+app.delete("/api/me/mcp/:client", (req, res) => { const client = String(req.params.client || "").toLowerCase(); const ok = mcp.disableFor(req.uid, client); log("mcp_self_service_disabled", { uid: req.uid, client }); res.json({ ok, connections: mcp.listFor(req.uid) }); });
+app.get("/mcp/bridge.mjs", (req, res) => { res.type("text/javascript").sendFile(path.join(__dirname, "..", "mcp", "xperion-mcp.mjs")); });
 
 app.get("/{*splat}", (req, res) => res.sendFile(path.join(__dirname, "..", "public", "index.html")));
 

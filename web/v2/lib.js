@@ -36,6 +36,7 @@ const _send = (p, init, opts) => {
 export const api = {
   get: (p, opts) => _send(p, { headers: hdrs() }, opts),
   post: (p, body, opts) => _send(p, { method: "POST", headers: hdrs({ "Content-Type": "application/json" }), body: JSON.stringify(body || {}) }, opts),
+  del: (p, opts) => _send(p, { method: "DELETE", headers: hdrs() }, opts),
 };
 
 // ── A7 · Multi-currency (merchant-controlled pricing) ───────────────────────
