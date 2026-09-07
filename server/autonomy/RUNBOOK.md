@@ -147,3 +147,14 @@ Verification: `node _brief-test.mjs` → 24/24 (mocked sources). Live: `GET /api
 - **On demand.** The assistant tool; the ops page (**Brief Daniel's next trip now** runs as a
   background job on the soonest trip only, and reports when done).
 - **Always.** Kill switch freezes Tier 0–1; Tier 2 waits for a human; everything is audited.
+
+## Reducing the chance of getting stuck (risk-aware alternatives)
+
+When a brief or the weather shows risk at the destination (impact medium/high or weather risk
+≥ .30), the alternatives agent scores every day around the trip and every served airport in the
+same country within reach, and the brief carries concrete options: go a day earlier or later
+(with the flight and price), fly into a nearby airport, or keep the plan with Flex. The customer
+takes one by tapping, by number on WhatsApp, or by saying "earlier"/"later"/"flex". Taking one
+runs SHIFT_TRIP_DATE / SWITCH_AIRPORT through the policy engine (reversible; original kept).
+The assistant surfaces the same options when a customer asks about their destination.
+Ops: `POST /api/autonomy/risk/assess {pnr}` and `GET /api/autonomy/risk/<pnr>`.

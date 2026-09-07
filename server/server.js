@@ -1590,7 +1590,13 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     const brief = await autonomy.research.build(code, from, to, { interest });
     const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "JFK";
     const packages = packagesIn(code, home).map(p => ({ id: p.id, event: p.event, venue: p.venue, date: p.date, city: p.city, total: p.total, affinity: p.affinity, local: !!p.local }));
-    return { ok: true, code, city: brief.city, from, to, interest, impact: brief.travel_impact, mode: brief.mode, summary: brief.summary, text: autonomy.research.briefText(brief), packages,
+    /* risk-aware alternatives for the customer's own booking to that city, when the brief or weather shows risk */
+    let alternatives = null, trip_risk = null;
+    const own = db.prepare("SELECT * FROM bookings WHERE user_id=? AND status IN ('confirmed','rebooked') AND flight_date >= date('now') ORDER BY flight_date").all(uid).find(b => { try { const m = JSON.parse(b.meta_json || "{}"); if (m.dest) return m.dest === code; } catch {} const f = db.prepare("SELECT dest FROM flights WHERE flight_no=?").get(b.flight_no); return f?.dest === code; });
+    if (own && (["medium", "high"].includes(brief.travel_impact) || (brief.weather?.risk || 0) >= 0.3)) {
+      try { const a = await autonomy.alternatives.assess(own, { brief }); if (a) { trip_risk = { level: a.trip_risk_label, score: a.trip_risk, reasons: a.trip_reasons, pnr: a.pnr, date: a.date }; alternatives = a.alternatives.map(x => ({ id: x.id, type: x.type, label: x.label, detail: x.detail, why: x.why, risk: x.risk_label, date: x.date, price: x.price, price_delta: x.price_delta ?? null })); } } catch {}
+    }
+    return { ok: true, code, city: brief.city, from, to, interest, impact: brief.travel_impact, mode: brief.mode, summary: brief.summary, text: autonomy.research.briefText(brief) + (alternatives ? `\n\nYour ${own.pnr} trip on ${own.flight_date} looks ${trip_risk.level}. Ways to lower the chance of getting stuck:\n` + alternatives.map((a, i) => `${i + 1}. ${a.label} — ${a.detail} · risk ${a.risk}`).join("\n") : ""), packages, trip_risk, alternatives,
       weather: { outlook: brief.weather.outlook, alerts: brief.weather.alerts.slice(0, 3), risk: brief.weather.risk }, events: brief.events.slice(0, 6), advisories: brief.advisories.slice(0, 3), news: brief.news.slice(0, 3), holidays: brief.holidays, sources: brief.sources.slice(0, 8), confidence: brief.confidence,
       message: `Brief for ${brief.city} ${from} to ${to}: ${brief.summary}` };
   },
@@ -2111,7 +2117,8 @@ function buildUI(toolCalls) {
       command = { action: "navigate", screen: "search" };
     } else if (tc.name === "get_destination_brief" && tc.result?.ok) {
       const r = tc.result;
-      cards = [{ type: "destination_brief", code: r.code, city: r.city, window: { from: r.from, to: r.to }, summary: r.summary, impact: r.impact, weather: r.weather, events: r.events, advisories: r.advisories, news: r.news, holidays: r.holidays, sources: r.sources, mode: r.mode, confidence: r.confidence, options: [] }];
+      cards = [{ type: "destination_brief", code: r.code, city: r.city, window: { from: r.from, to: r.to }, summary: r.summary, impact: r.impact, weather: r.weather, events: r.events, advisories: r.advisories, news: r.news, holidays: r.holidays, sources: r.sources, mode: r.mode, confidence: r.confidence, pnr: r.trip_risk?.pnr || null, risk: r.trip_risk ? { trip: r.trip_risk.score, label: r.trip_risk.level, reasons: r.trip_risk.reasons } : null,
+        options: r.alternatives ? [{ id: "keep", label: "Keep my trip as it is" }, ...r.alternatives.map(a => ({ id: a.id, label: a.label, detail: a.detail, why: a.why, risk_label: a.risk, type: a.type })), { id: "talk", label: "Talk to a person" }] : [] }];
     } else if (tc.name === "list_destinations" && tc.result?.ok) {
       cards = [{ type: "destinations", origin: tc.result.origin, originCity: tc.result.originCity, count: tc.result.count, destinations: tc.result.destinations }];
     } else if (tc.name === "select_flight" && tc.result?.ok) {
@@ -2672,6 +2679,7 @@ app.post("/api/ai/agent", async (req, res) => {
   if (session.selected) situ += ` Currently selected flight: ${session.selected.flight_no}.`;
   try { situ += autonomy.bridge.contextLine(req.uid); } catch {}   // Enterprise Autonomy: live disruption facts from the knowledge graph
   situ += " When the customer gives a week or a range (\"first week of October\", \"next week\", \"flexible\") call search_flights with days=7 from the start date; when they ask for cheapest, pass sort=price. Results from a window each carry their own date: pass it to select_flight."
+  situ += " When get_destination_brief returns alternatives for the customer's own trip, present them as the way to reduce the chance of getting stuck (each has a risk level and a reason) and let the customer choose; they take one by name or number and it is applied through the same tool flow."
   situ += " For weather, events, safety or news at any destination, call get_destination_brief (pass interest, e.g. football, when the customer asks about a kind of event) and report its contents with sources for THAT city and THOSE dates; never invent a forecast, never answer with a package for a different city, and mention a package only when the tool lists one there. Leave travel decisions with the customer.";
   situ += ")";
   // Stored history first, so the agent has context even on a fresh tab / after a reload,

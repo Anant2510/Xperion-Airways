@@ -25,7 +25,7 @@ const addDays = (n) => { const d = new Date(today + "T00:00:00Z"); d.setUTCDate(
 const calls = { geocode: 0, meteo: 0, nws: 0, nager: 0 };
 const mockFetch = async (url) => {
   const u = String(url);
-  if (u.includes("geocoding-api.open-meteo.com")) { calls.geocode++; return j({ results: [{ latitude: 28.61, longitude: 77.2, country_code: "IN", timezone: "Asia/Kolkata" }] }); }
+  if (u.includes("geocoding-api.open-meteo.com")) { calls.geocode++; const name = decodeURIComponent((u.match(/name=([^&]+)/) || [])[1] || ""); const h = [...name].reduce((a, c) => a + c.charCodeAt(0), 0); return j({ results: [{ latitude: name === "Mumbai" ? 28.61 : 36 + (h % 9), longitude: name === "Mumbai" ? 77.2 : -4 + (h % 7) * 0.4, country_code: name === "Mumbai" ? "IN" : "ES", timezone: "Europe/Madrid" }] }); }
   if (u.includes("api.open-meteo.com/v1/forecast")) { calls.meteo++; const days = [...Array(14)].map((_, i) => addDays(i)); const codes = days.map((d) => (d === addDays(4) ? 96 : 2)); return j({ daily: { time: days, weathercode: codes, temperature_2m_max: days.map(() => 34), temperature_2m_min: days.map(() => 27), precipitation_sum: days.map((d) => (d === addDays(4) ? 62 : 0)), windgusts_10m_max: days.map(() => 40), snowfall_sum: days.map(() => 0) } }); }
   if (u.includes("api.weather.gov/alerts")) { calls.nws++; return j({ features: [{ properties: { event: "Tornado Watch", headline: "Tornado Watch until 9 PM EDT", onset: "2026-09-06T14:00:00Z", ends: "2026-09-06T21:00:00Z", id: "https://api.weather.gov/alerts/x1" } }] }); }
   if (u.includes("date.nager.at")) { calls.nager++; return j([{ date: addDays(5), name: "Gandhi Jayanti", localName: "गांधी जयंती" }, { date: "2030-01-01", name: "far", localName: "far" }]); }
@@ -77,7 +77,7 @@ ok("Daniel's linked trip exists for the T-72 agent", !!daniel);
 const r = await briefs.runForBooking(daniel, { reason: "test" });
 ok("T-72 brief sent through the policy gate", r.ok === true && r.channel, `via ${r.channel}`);
 const inboxMsg = bridge.inboxList(1).find((m) => m.kind === "destination_brief");
-ok("brief landed in the assistant inbox as a card with three choices", inboxMsg?.card?.type === "destination_brief" && inboxMsg.card.options.length === 3 && /Your call/.test(inboxMsg.text));
+ok("brief landed in the assistant inbox as a card with choices", inboxMsg?.card?.type === "destination_brief" && inboxMsg.card.options.length >= 3 && /Your call/.test(inboxMsg.text), `${inboxMsg?.card?.options?.length} options`);
 const st = bridge.status(1);
 ok("banner status surfaces the brief", st.unseen >= 1 && st.latest?.kind === "destination_brief" && st.latest.city === "Miami", JSON.stringify(st.latest));
 const again = await briefs.runForBooking(daniel, { reason: "test" });
@@ -92,11 +92,11 @@ const alt = bridge.briefResponse(1, "alternatives");
 ok("'other dates' hands the assistant a flexible search", alt?.ok && alt.search?.dest === "MIA" && alt.search.flexible === true);
 
 /* 5 · kill switch freezes Tier-0 briefs like everything else */
-policy.setKill({ global: true, on: true });
+policy.setKill({ global: true });
 const sofia = db.prepare("SELECT * FROM bookings WHERE pnr='XPW02A'").get();
 const frozen = await briefs.runForBooking(sofia, { reason: "test" });
 ok("kill switch refuses the brief (Tier 0 frozen)", frozen.ok === false && frozen.refused === "kill_switch", frozen.refused);
-policy.setKill({ global: true, on: false });
+policy.setKill({ global: false });
 
 /* 6 · real trips in the graph: a Madrid booking gets scored by a live outlook */
 process.env.AUTONOMY_LIVE_TRIPS = "1";
@@ -110,7 +110,40 @@ await feeds.poll({ airports: ["MAD"] });   // mocked Open-Meteo has a thundersto
 const madPred = G.nodesByKind("DisruptionPrediction").find((p) => /XP777/.test(p.id));
 ok("live outlook at the destination scores the real trip", !!madPred && madPred.probability > 0, madPred && `${madPred.state} p=${madPred.probability}`);
 
-/* 7 · synthetic suite untouched */
+/* 7 · risk-aware alternatives: a metro strike on Daniel's Madrid day → safer dates, an alternate airport, flex */
+const alternatives = require("./server/autonomy/alternatives.js");
+const madBooking = db.prepare("SELECT * FROM bookings WHERE pnr='XPTRIP'").get();
+const strikeBrief = { id: "brief:MAD:test", city: "Madrid", code: "MAD", window: { from: madBooking.flight_date, to: addDays(7) }, travel_impact: "high",
+  weather: { risk: 0.05, alerts: [], days: [...Array(9)].map((_, i) => ({ date: addDays(i), label: i === 2 ? "thunderstorm" : "fair" })) },
+  events: [{ kind: "strike", title: "Metro and airport ground-staff strike", date: `${madBooking.flight_date}/${addDays(5)}`, impact: "high", note: "Closures at Barajas access", source: "https://example.org/strike" }], advisories: [], news: [], holidays: [] };
+const a = await alternatives.assess(madBooking, { brief: strikeBrief });
+ok("trip risk is high on the strike days with the reason named", a && a.trip_risk >= 0.5 && a.trip_risk_label === "high" && /strike/i.test(a.trip_reasons.join(" ")), a && `${a.trip_risk} · ${a.trip_reasons[0]}`);
+const shifts = a.alternatives.filter((x) => x.type === "SHIFT_DATE");
+ok("date shifts proposed all land on materially safer days, cheapest flight attached", shifts.length >= 1 && shifts.every((x) => x.risk < a.trip_risk - 0.1 && x.flight_no && x.price > 0), shifts.map((x) => `${x.date} ${x.risk_label} ${x.flight_no} $${x.price}`).join(" | "));
+ok("earlier days that dodge the strike come first (Sep window sorted by risk then proximity)", shifts[0].risk <= (shifts[1]?.risk ?? 1));
+const apt = a.alternatives.find((x) => x.type === "ALTERNATE_AIRPORT");
+ok("an alternate Spanish airport within reach is proposed with its own weather and transfer estimate", !!apt && apt.distance_km <= 350 && apt.transfer_min > 0 && apt.code !== "MAD", apt && `${apt.city} ${apt.code} ${apt.distance_km} km · risk ${apt.risk_label}`);
+ok("keep-with-flex is always the last option", a.alternatives[a.alternatives.length - 1].type === "KEEP_WITH_FLEX");
+ok("assessment stored in the graph with a BASED_ON edge to the brief", G.getNode("risk:XPTRIP")?.kind === "TripRiskAssessment");
+const taken = alternatives.take(1, shifts[0].id);
+const moved = db.prepare("SELECT flight_no, flight_date, status, meta_json FROM bookings WHERE pnr='XPTRIP'").get();
+ok("taking a date shift rebooks the real booking onto the safer day (Tier 1, reversible)", taken.ok && moved.flight_date === shifts[0].date && moved.status === "rebooked" && JSON.parse(moved.meta_json).original.flight_date === madBooking.flight_date, taken.reply?.slice(0, 90));
+const flexTake = alternatives.take(1, a.alternatives[a.alternatives.length - 1].id);
+ok("taking flex keeps the plan and records the add-on", flexTake.ok && JSON.parse(db.prepare("SELECT meta_json FROM bookings WHERE pnr='XPTRIP'").get().meta_json).flex);
+ok("someone else cannot take Daniel's alternative", alternatives.take(2, shifts[0].id).ok === false);
+const strikeDays = alternatives.eventDays({ date: "2026-09-04/2026-09-06" }, "2026-09-10");
+ok("event date ranges parse to days", strikeDays.length === 3 && strikeDays[0] === "2026-09-04" && alternatives.eventDays({ date: "Sept 10" }, "2026-09-01")[0] === "2026-09-10");
+
+/* 8 · the T-72 brief carries the alternatives when the brief shows risk */
+research.setLLM(async () => ({ text: "<brief>" + JSON.stringify({ summary: "A ground-staff strike is called for the arrival day.", events: [{ kind: "strike", title: "Ground-staff strike", date: addDays(4), impact: "high", note: "Airport access closures", source: "https://example.org/s" }], advisories: [], news: [], travel_impact: "high", confidence: 0.7 }) + "</brief>", cites: [] }));
+db.prepare("INSERT INTO bookings (pnr,user_id,flight_no,flight_date,seat,status,checked_in,items_json,created_at) VALUES ('XPTRP2',1,'XP777',?,'12B','confirmed',0,'[]',datetime('now'))").run(addDays(4));
+const r2 = await briefs.runForBooking(db.prepare("SELECT * FROM bookings WHERE pnr='XPTRP2'").get(), { reason: "test", force: true });
+const briefMsg = bridge.inboxList(1).filter((m) => m.kind === "destination_brief").pop();
+ok("the proactive brief carries risk-aware alternatives as one-tap options", r2.ok && ["elevated", "high"].includes(briefMsg?.card?.risk?.label) && briefMsg.card.options.some((o) => /^alt:/.test(o.id)), briefMsg && `risk ${briefMsg.card.risk?.label} (${briefMsg.card.risk?.trip}) · ` + briefMsg.card.options.map((o) => o.label).join(" | ").slice(0, 100));
+const viaChat = bridge.intercept(1, "2");
+ok("replying '2' on WhatsApp takes the second alternative", viaChat?.ok === true, viaChat?.reply?.slice(0, 80));
+
+/* 9 · synthetic suite untouched */
 const passed = results.filter(Boolean).length;
 console.log(`\n===== BRIEFS: ${passed}/${results.length} checks passed =====`);
 try { fs.rmSync("./data/brief-test.db", { force: true }); } catch {}

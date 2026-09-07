@@ -421,7 +421,13 @@ function DestinationBriefCard({ card, onChoice, resolved }) {
       </div>
       {card.options?.length > 0 && (
         <div className="px-3.5 pb-3 flex flex-wrap gap-2">
-          {card.options.map((o) => <button key={o.id} disabled={!!busy || resolved} onClick={() => go(o.id)} className={cx("text-[11px] font-semibold rounded-full border px-3 py-1.5", o.id === "keep" ? "air-bg-accent text-white border-transparent" : "border-line bg-surface text-ink hover:border-tap-green", resolved && "opacity-60")}>{busy === o.id ? "…" : o.label}</button>)}
+          {card.risk && <div className="w-full text-[11px] text-ink-muted mb-1">Your day looks <b>{card.risk.label}</b>{card.risk.reasons?.length ? ` — ${card.risk.reasons.slice(0, 2).join("; ")}` : ""}. Ways to lower the chance of getting stuck:</div>}
+          {card.options.map((o) => o.detail
+            ? <button key={o.id} disabled={!!busy || resolved} onClick={() => go(o.id)} className={cx("w-full text-left rounded-lg border p-2 flex items-center gap-2", resolved ? "border-line opacity-60" : "border-line bg-surface hover:border-tap-green")}>
+                <span className="flex-1 min-w-0"><span className="block text-[12px] font-bold text-ink">{o.label}</span><span className="block text-[11px] text-ink-faint">{o.detail}{o.why ? ` · ${o.why}` : ""}</span></span>
+                <span className="shrink-0 text-[10px] font-bold uppercase rounded-full px-2 py-0.5 text-white" style={{ background: o.risk_label === "clear" ? "#2E7D33" : o.risk_label === "low" ? "#5E9A8B" : o.risk_label === "elevated" ? "#B7791F" : "#B4192F" }}>{busy === o.id ? "…" : `risk ${o.risk_label}`}</span>
+              </button>
+            : <button key={o.id} disabled={!!busy || resolved} onClick={() => go(o.id)} className={cx("text-[11px] font-semibold rounded-full border px-3 py-1.5", o.id === "keep" ? "air-bg-accent text-white border-transparent" : "border-line bg-surface text-ink hover:border-tap-green", resolved && "opacity-60")}>{busy === o.id ? "…" : o.label}</button>)}
           {resolved && <span className="text-[11px] font-semibold air-accent-deep self-center">Noted ✓</span>}
         </div>
       )}

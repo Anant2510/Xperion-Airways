@@ -28,7 +28,7 @@ let llmImpl = null;                       // injectable for tests: async (prompt
 function setLLM(f) { llmImpl = f; }
 
 const TTL_MS = Number(process.env.RESEARCH_TTL_MS) || 12 * 60 * 60 * 1000;
-const MAX_PER_HOUR = Number(process.env.RESEARCH_MAX_PER_HOUR) || 20;
+const MAX_PER_HOUR = () => Number(process.env.RESEARCH_MAX_PER_HOUR) || 20;   // read live so the cap can be raised without a restart
 const calls = [];                          // timestamps of LLM calls (rate limit)
 const hasKey = () => !!process.env.ANTHROPIC_API_KEY && process.env.RESEARCH_ENABLED !== "0";
 const cityOf = (code) => { const c = AIRPORTS[code]?.city || code; return /^[A-Z0-9 .'-]+$/.test(c) && c.length > 3 ? c.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : c; };
@@ -111,7 +111,7 @@ async function repairJSON(findings) {
   if (!r.ok) throw new Error(`Anthropic ${r.status}: ${(j.error && j.error.message) || "repair failed"}`);
   return parseJSON((j.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n"));
 }
-function rateOk() { const now = Date.now(); while (calls.length && now - calls[0] > 3600000) calls.shift(); return calls.length < MAX_PER_HOUR; }
+function rateOk() { const now = Date.now(); while (calls.length && now - calls[0] > 3600000) calls.shift(); return calls.length < MAX_PER_HOUR(); }
 
 /* ── the brief ────────────────────────────────────────────────────────── */
 async function build(code, from, to, { force = false, interest = null } = {}) {
@@ -179,6 +179,6 @@ function briefText(b, { max = 4 } = {}) {
 }
 
 function list() { return G.nodesByKind("DestinationBrief").sort((a, b) => String(b.generated_at).localeCompare(String(a.generated_at))); }
-function status() { return { enabled: hasKey(), llm: hasKey() ? "claude + web search" : "facts-only (no ANTHROPIC_API_KEY)", ttl_ms: TTL_MS, max_per_hour: MAX_PER_HOUR, calls_last_hour: calls.filter((t) => Date.now() - t < 3600000).length, briefs: list().length }; }
+function status() { return { enabled: hasKey(), llm: hasKey() ? "claude + web search" : "facts-only (no ANTHROPIC_API_KEY)", ttl_ms: TTL_MS, max_per_hour: MAX_PER_HOUR(), calls_last_hour: calls.filter((t) => Date.now() - t < 3600000).length, briefs: list().length }; }
 
 module.exports = { build, briefText, list, status, facts, parseJSON, prompt, setFetch, setLLM, addDays, idFor };

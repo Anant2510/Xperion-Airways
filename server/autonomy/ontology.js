@@ -9,7 +9,7 @@
 const G = require("./graph");
 const { db } = require("../db");
 
-const KINDS = ["Passenger","PNR","FlightSchedule","FlightInstance","Airport","WeatherEvent","DestinationEvent","DestinationBrief",
+const KINDS = ["Passenger","PNR","FlightSchedule","FlightInstance","Airport","WeatherEvent","DestinationEvent","DestinationBrief","TripRiskAssessment",
   "DisruptionPrediction","RecoveryOption","Offer","Vendor","Policy","Action","AuditEvent"];
 
 /* ---------- audit: append-only ---------- */
@@ -72,6 +72,8 @@ const ACTIONS = [
   { name: "SEND_ALL_CLEAR",       tier: 0, preconditions: ["passenger_consented"], reversible: true, compensating: null },
   { name: "SOFT_HOLD_INVENTORY",  tier: 0, preconditions: ["prediction_in_act","hold_capacity_available"], reversible: true, compensating: "RELEASE_HOLD" },
   { name: "RELEASE_HOLD",         tier: 0, preconditions: [], reversible: true, compensating: null },
+  { name: "SHIFT_TRIP_DATE",      tier: 1, preconditions: ["is_reversible_context"], reversible: true, compensating: "RESTORE_ORIGINAL_SEGMENTS", description: "Move a booking to a customer-chosen safer date before any disruption; original kept on file" },
+  { name: "SWITCH_AIRPORT",       tier: 1, preconditions: ["is_reversible_context"], reversible: true, compensating: "RESTORE_ORIGINAL_SEGMENTS", description: "Move a booking to a customer-chosen alternate airport in the same country; original kept on file" },
   { name: "REBOOK_SAME_CABIN",    tier: 1, preconditions: ["offer_accepted","waiver_active"], reversible: true, compensating: "RESTORE_ORIGINAL_SEGMENTS" },
   { name: "ISSUE_HOTEL_VOUCHER",  tier: 1, preconditions: ["offer_accepted","within_cap"], capRef: "policy:cap_hotel", reversible: true, compensating: "VOID_HOTEL_VOUCHER" },
   { name: "BOOK_GROUND_TRANSPORT",tier: 1, preconditions: ["offer_accepted","within_cap"], capRef: "policy:cap_taxi",  reversible: true, compensating: "CANCEL_GROUND_TRANSPORT" },

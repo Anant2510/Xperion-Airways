@@ -49,7 +49,12 @@ async function runForBooking(b, { force = false, reason = "T-72" } = {}) {
   const channel = pax.preferred_channel || "push";
   const gate = policy.execute("SEND_DESTINATION_BRIEF", { passengerId: bridge.PAX(uid), channel }, { actor: "briefs", rationale: `${reason} brief for ${b.pnr} → ${brief.city} (${brief.travel_impact} impact)` });
   if (!gate.ok) return { ok: false, refused: gate.refused, failed: gate.failed, brief };
-  const card = bridge.onBrief({ uid, booking: b, brief, channel });
+  /* risk-aware alternatives when the brief or the weather says the trip could be disrupted */
+  let assessment = null;
+  if (["medium", "high"].includes(brief.travel_impact) || (brief.weather?.risk || 0) >= 0.3) {
+    try { assessment = await require("./alternatives").assess(b, { brief }); } catch (e) { O.audit({ actor: "alternatives", action: "RISK_ASSESSMENT_FAILED", rationale: String(e.message || e).slice(0, 120) }); }
+  }
+  const card = bridge.onBrief({ uid, booking: b, brief, channel, assessment });
   let meta = {}; try { meta = JSON.parse(b.meta_json || "{}"); } catch {}
   meta.brief_sent = new Date().toISOString(); meta.brief_id = brief.id || research.idFor(d.code, from, to);
   db.prepare("UPDATE bookings SET meta_json=? WHERE id=?").run(JSON.stringify(meta), b.id);

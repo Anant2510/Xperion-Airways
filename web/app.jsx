@@ -2394,7 +2394,13 @@ function ChatCards({ cards, onSelectFlight, cardBrand = "card" }) {
               </div>
               {c.options?.length > 0 && (
                 <div className="px-3.5 pb-3 flex flex-wrap gap-2">
-                  {c.options.map((o) => <button key={o.id} disabled={!!c._resolved} onClick={() => c._onBriefChoice?.(o.id, c)} className="text-[11px] font-semibold rounded-full border px-3 py-1.5" style={o.id === "keep" ? { background: "var(--tap-green)", color: "#fff", borderColor: "transparent" } : { borderColor: "var(--tap-line)" }}>{o.label}</button>)}
+                  {c.risk && <div className="w-full text-[11px] text-gray-600 mb-1">Your day looks <b>{c.risk.label}</b>{c.risk.reasons?.length ? ` — ${c.risk.reasons.slice(0, 2).join("; ")}` : ""}. Ways to lower the chance of getting stuck:</div>}
+                  {c.options.map((o) => o.detail
+                    ? <button key={o.id} disabled={!!c._resolved} onClick={() => c._onBriefChoice?.(o.id, c)} className="w-full text-left rounded-xl border p-2 flex items-center gap-2" style={{ borderColor: "var(--tap-line)" }}>
+                        <span className="flex-1 min-w-0"><span className="block text-xs font-bold" style={{ color: "var(--tap-ink)" }}>{o.label}</span><span className="block text-[11px] text-gray-500">{o.detail}{o.why ? ` · ${o.why}` : ""}</span></span>
+                        <span className="shrink-0 text-[10px] font-bold uppercase rounded-full px-2 py-0.5 text-white" style={{ background: o.risk_label === "clear" ? "#2E7D33" : o.risk_label === "low" ? "#5E9A8B" : o.risk_label === "elevated" ? "#B7791F" : "#B4192F" }}>risk {o.risk_label}</span>
+                      </button>
+                    : <button key={o.id} disabled={!!c._resolved} onClick={() => c._onBriefChoice?.(o.id, c)} className="text-[11px] font-semibold rounded-full border px-3 py-1.5" style={o.id === "keep" ? { background: "var(--tap-green)", color: "#fff", borderColor: "transparent" } : { borderColor: "var(--tap-line)" }}>{o.label}</button>)}
                   {c._resolved && <span className="text-[11px] font-bold self-center" style={{ color: "var(--tap-green)" }}>Noted ✓</span>}
                 </div>
               )}

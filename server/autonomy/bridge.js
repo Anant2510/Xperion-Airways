@@ -290,21 +290,25 @@ function onAccepted({ offerId, off, pax, pnr, opt, refs }) {
   return card;
 }
 /* Tier-0 destination brief: information with the decision left to the customer */
-function onBrief({ uid, booking, brief, channel }) {
+function onBrief({ uid, booking, brief, channel, assessment = null }) {
   const research = require("./research");
   const first = (db.prepare("SELECT first_name FROM users WHERE id=?").get(uid) || {}).first_name || "there";
   const impact = brief.travel_impact || "none";
+  const alts = (assessment?.alternatives || []);
+  const altOptions = alts.map((a) => ({ id: a.id, label: a.label, detail: a.detail, why: a.why, risk: a.risk, risk_label: a.risk_label, type: a.type, date: a.date, price: a.price, price_delta: a.price_delta ?? null }));
+  const altText = alts.length ? `\n\nTo lower the chance of getting stuck (your day looks ${assessment.trip_risk_label}):\n` + alts.map((a, i) => `${i + 1}. ${a.label} — ${a.detail} · risk ${a.risk_label}`).join("\n") : "";
   const lead = impact === "none"
     ? `${first}, a quick look ahead at ${brief.city} for your trip on ${booking.flight_date}: nothing that should get in your way. Here's what I found.`
     : `${first}, a heads-up before your trip to ${brief.city} on ${booking.flight_date}: there are things happening there worth knowing about (${impact} impact). Nothing has changed on your booking; you decide.`;
-  const text = `${lead}\n\n${research.briefText(brief)}\n\nYour call: keep the trip as it is, look at alternative dates, or talk to a person.`;
+  const text = `${lead}\n\n${research.briefText(brief)}${altText}\n\nYour call: keep the trip as it is${alts.length ? ", take one of the options above" : ", look at alternative dates"}, or talk to a person.`;
   const card = { type: "destination_brief", pnr: booking.pnr, flight: booking.flight_no, date: booking.flight_date, code: brief.code, city: brief.city, window: brief.window,
     summary: brief.summary, impact, weather: { outlook: brief.weather.outlook, alerts: brief.weather.alerts.slice(0, 3), risk: brief.weather.risk, days: (brief.weather.days || []).slice(0, 5).map((d) => ({ date: d.date, label: d.label, tmax: d.tmax, tmin: d.tmin })) },
     events: (brief.events || []).slice(0, 6), advisories: (brief.advisories || []).slice(0, 3), news: (brief.news || []).slice(0, 3), holidays: brief.holidays || [],
     sources: (brief.sources || []).slice(0, 8), mode: brief.mode, confidence: brief.confidence, generated_at: brief.generated_at,
-    options: [{ id: "keep", label: "Keep my trip as it is" }, { id: "alternatives", label: `See other dates to ${brief.city}` }, { id: "talk", label: "Talk to a person" }] };
+    risk: assessment ? { trip: assessment.trip_risk, label: assessment.trip_risk_label, reasons: assessment.trip_reasons, window: assessment.window } : null,
+    options: [{ id: "keep", label: "Keep my trip as it is" }, ...altOptions, ...(alts.length ? [] : [{ id: "alternatives", label: `See other dates to ${brief.city}` }]), { id: "talk", label: "Talk to a person" }] };
   inbox(uid, "destination_brief", text, card);
-  deliver({ uid, pnr: booking.pnr, channel, text: `${lead}\n\n${research.briefText(brief)}\n\nReply KEEP to keep the trip, DATES to see other dates, or TALK for a person.`, event: "destination_brief", emailType: "destination_brief", emailData: { brief, booking, first } })
+  deliver({ uid, pnr: booking.pnr, channel, text: `${lead}\n\n${research.briefText(brief)}${altText}\n\nReply KEEP to keep the trip${alts.length ? ", a number to take an option" : ", DATES to see other dates"}, or TALK for a person.`, event: "destination_brief", emailType: "destination_brief", emailData: { brief, booking, first } })
     .then((results) => O.audit({ actor: "bridge", action: "DELIVER_BRIEF", rationale: `customer ${uid} · ${results.map((r) => `${r.channel} ${r.status}`).join(", ")} · mirrored to assistant inbox` })).catch(() => {});
   return card;
 }
@@ -321,6 +325,11 @@ function briefResponse(uid, choice) {
     inbox(uid, "brief_ack", t, { type: "brief_ack", pnr: c.pnr, callback: qid }); return { ok: true, reply: t, queued: qid };
   }
   if (choice === "alternatives") return { ok: true, reply: `Let me look at other days to ${c.city} around ${c.date}.`, search: { dest: c.code, date: c.date, flexible: true } };
+  if (/^alt:/.test(choice)) {
+    const r = require("./alternatives").take(uid, choice);
+    if (r.ok) { inbox(uid, "brief_ack", r.reply, { type: "alternative_taken", pnr: c.pnr, booking: r.booking }); const last = inboxList(uid).pop(); return { ...r, inboxId: last?.id || null }; }
+    return { ok: false, error: r.error, reply: `I couldn't make that change: ${r.error}.` };
+  }
   return { ok: false, error: "unknown_choice" };
 }
 function onDeclined({ off, pax }) {
@@ -390,6 +399,11 @@ function intercept(uid, text) {
       if (/^(keep|keep (it|my trip)|leave it|no change|i'?ll keep it)\b/.test(t0)) return briefResponse(uid, "keep");
       if (/^(talk|call me|speak to (someone|a person|an agent)|talk to (someone|a person|an agent))\b/.test(t0)) return briefResponse(uid, "talk");
       if (/^(dates|other dates|alternatives|see other dates)\b/.test(t0)) return briefResponse(uid, "alternatives");
+      const alts = (lastBrief.card?.options || []).filter((o) => /^alt:/.test(o.id));
+      const num = t0.match(/^\s*(?:option\s*)?([1-9])\b/);
+      if (alts.length && num && alts[Number(num[1]) - 1]) return briefResponse(uid, alts[Number(num[1]) - 1].id);
+      if (alts.length && /\b(earlier|later|day before|day after)\b/.test(t0)) { const pick = alts.find((o) => (/earlier|before/.test(t0) ? /earlier/.test(o.label) : /later/.test(o.label))); if (pick) return briefResponse(uid, pick.id); }
+      if (alts.length && /\b(flex|free changes)\b/.test(t0)) { const pick = alts.find((o) => o.type === "KEEP_WITH_FLEX"); if (pick) return briefResponse(uid, pick.id); }
     }
     return null;
   }

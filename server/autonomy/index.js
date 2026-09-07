@@ -73,6 +73,9 @@ router.post("/briefs/next", (req, res) => {
 });
 router.get("/briefs/job/:id", (req, res) => { const j = jobs.get(req.params.id); res.json(j ? { ok: true, job: j } : { ok: false, error: "unknown_job" }); });
 router.post("/trips/sync", safe(async (_req, res) => res.json({ ok: true, ...(await bridge.syncTrips()) })));
+const alternatives = require("./alternatives");
+router.get("/risk/:pnr", (req, res) => { const a = alternatives.forBooking(req.params.pnr); res.json(a ? { ok: true, assessment: a } : { ok: false, error: "not_assessed" }); });
+router.post("/risk/assess", safe(async (req, res) => { const b = db.prepare("SELECT * FROM bookings WHERE pnr=?").get(req.body?.pnr || ""); if (!b) return res.json({ ok: false, error: "no_booking" }); res.json({ ok: true, assessment: await alternatives.assess(b) }); }));
 router.get("/briefs/due", (_req, res) => res.json({ ok: true, due: briefs.due().map((d) => ({ pnr: d.booking.pnr, uid: d.booking.user_id, dest: d.dest, hours: d.hoursToDeparture })) }));
 router.post("/feeds/poll", safe(async (req, res) => res.json({ ok: true, ...(await feeds.poll({ airports: req.body?.airports })) })));
 router.post("/customer/brief/:choice", (req, res) => res.json(bridge.briefResponse(req.uid, req.params.choice)));
@@ -98,4 +101,4 @@ router.post("/tier2/:id/approve", (req, res) => res.json(P.tier2Approve(req.para
 router.get("/kill", (_req, res) => res.json({ ok: true, kill: P.killState() }));
 router.post("/kill", (req, res) => res.json({ ok: true, kill: P.setKill(req.body || {}) }));
 
-module.exports = { router, bridge, research, briefs, feeds };
+module.exports = { router, bridge, research, briefs, feeds, alternatives };

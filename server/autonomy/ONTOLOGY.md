@@ -161,3 +161,23 @@ Customer-facing messages live in `ai_inbox` and are mirrored into
   explains and informs, and the customer decides (keep · other dates · talk to a person).
 - New AuditEvent actions: LIVE_WEATHER_INGEST, DESTINATION_BRIEF, BRIEF_SENT, DELIVER_BRIEF,
   CUSTOMER_CALLBACK. Political content is summarised neutrally and every item carries a source.
+
+## Risk-aware alternatives (alternatives.js)
+
+- **TripRiskAssessment** `risk:<pnr>` — for one booking: `trip_risk` (0–1) and label
+  (clear / low / elevated / high) with `trip_reasons`; a per-day `window` of risk around the
+  trip date; and `alternatives[]`, each with `type`, `risk`, `why`, the concrete flight and price:
+  - `SHIFT_DATE` — same route on a materially safer day (must reduce risk by ≥ 0.10), cheapest
+    real flight for that day, price delta vs the booked date
+  - `ALTERNATE_AIRPORT` — another served airport in the same country within ~350 km with its own
+    weather looked up and a ground-transfer estimate; city-specific events don't transfer
+  - `KEEP_WITH_FLEX` — keep the plan, add free changes (always offered last)
+  Edge `BASED_ON → DestinationBrief`.
+- **Risk window inputs**: brief events by kind and impact (strike .55, transport .50, civil .45,
+  political .40, health .25, festival .15, sport .10 × high 1.0 / medium .7 / low .35; strikes
+  and transport also taint the following day), weather day labels (thunderstorm .35, snow .35,
+  fog .30…), weather alerts (.45 across their validity), and any active DisruptionPrediction.
+- **Actions** `SHIFT_TRIP_DATE` and `SWITCH_AIRPORT` (Tier 1, reversible, compensating
+  RESTORE_ORIGINAL_SEGMENTS): the booking moves to the chosen flight, the original is kept on
+  file. Proposing is Tier 0; only the customer's choice executes. Audit: RISK_ASSESSMENT,
+  SHIFT_TRIP_DATE, SWITCH_AIRPORT, ADD_FLEX.
