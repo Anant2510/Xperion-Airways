@@ -1933,6 +1933,24 @@ function CdpProof() {
         ))}
       </div>
 
+      {ev && ev.mode === "batch" && (
+        <div className="rounded-xl border p-3 mb-4 flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: "var(--tap-gold)", background: "#FFFBF0" }}>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Events → Adobe RT-CDP · batch mode (no streaming inlet)</div>
+            <div className="text-xs text-gray-600 mt-0.5">{ev.queue?.queued || 0} queued · {ev.queue?.batched || 0} sent in batches{ev.queue?.lastBatch ? ` · last batch ${ev.queue.lastBatch.batch_id} (${ev.queue.lastBatch.n} events)` : ""} · auto-flush every {Math.round((ev.batchEveryMs || 900000) / 60000)} min</div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={async () => { try { const r = await api.post("/admin/cdp/events/flush", {}); toast("RT-CDP", r.ok ? (r.count ? `Batch ${r.batchId}: ${r.count} events sent — on the profile in a few minutes` : "Nothing queued") : ("Failed: " + r.error)); } catch (e) { toast("RT-CDP", "Flush failed: " + e.message); } }} className="text-xs font-bold rounded-full px-3 py-1.5 text-white" style={{ background: "var(--tap-green)" }}>Send queued events now</button>
+            <button onClick={async () => { toast("RT-CDP", "Creating the streaming inlet in AEP (four Flow Service calls)…"); try { const r = await api.post("/admin/cdp/streaming/provision", {}); if (r.ok) { toast("RT-CDP", `Real-time streaming is live · inlet ${r.inletUrl.split("/").pop()} · flow ${r.flowId}`); try { const e = await api.get("/admin/cdp/events"); setEv(e); } catch {} } else { toast("RT-CDP", `Could not create the inlet: ${r.error}${r.hint ? " — " + r.hint : ""}`); console.warn("streaming provision", r); } } catch (e) { toast("RT-CDP", "Provisioning failed: " + e.message); } }} className="text-xs font-bold rounded-full px-3 py-1.5 border" style={{ borderColor: "var(--tap-green)", color: "var(--tap-green)" }}>Enable real-time streaming (create inlet)</button>
+          </div>
+        </div>
+      )}
+      {ev && ev.mode === "streaming" && (!ev.recent || ev.recent.length === 0) && (
+        <div className="rounded-xl border p-3 mb-4" style={{ borderColor: "var(--tap-green)", background: "#FBFDFC" }}>
+          <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Streaming live to Adobe RT-CDP — server-side, real time</div>
+          <div className="text-xs text-gray-600 mt-0.5">Inlet {String(ev.inletUrl || "").replace(/^https?:\/\//, "")}{ev.flowId ? ` · flow ${ev.flowId}` : ""} · waiting for the first event</div>
+        </div>
+      )}
       {ev && ev.configured && ev.recent && ev.recent.length > 0 && (
         <div className="rounded-xl border p-3 mb-4" style={{ borderColor: "var(--tap-green)", background: "#FBFDFC" }}>
           <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-2">Streaming live to Adobe RT-CDP — {ev.sent} sent{ev.failed ? `, ${ev.failed} failed` : ""}{ev.syncValidation ? " · validated" : ""}</div>

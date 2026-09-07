@@ -3468,6 +3468,11 @@ app.get("/api/admin/cdp/namespaces", async (req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
 });
 // Live counter + recent log of events streamed to the CDP inlet (for the bridge panel).
+const cdpStreaming = require("./cdp-streaming");
+app.get("/api/admin/cdp/streaming", (req, res) => res.json({ ok: true, ...cdpStreaming.status() }));
+app.post("/api/admin/cdp/streaming/provision", async (req, res) => { try { res.json(await cdpStreaming.provision(req.body || {})); } catch (e) { res.status(502).json({ ok: false, error: e.message }); } });
+app.post("/api/admin/cdp/streaming/forget", (req, res) => res.json(cdpStreaming.forget()));
+app.post("/api/admin/cdp/events/flush", async (req, res) => { try { res.json(await cdpEvents.flushBatch()); } catch (e) { res.status(502).json({ ok: false, error: e.message }); } });
 app.get("/api/admin/cdp/events", (req, res) => { res.json(cdpEvents.eventsState()); });
 // Fire one test event (current persona) at the streaming inlet — verifies the pipe live.
 app.post("/api/admin/cdp/event/test", async (req, res) => {
@@ -3689,6 +3694,7 @@ app.listen(PORT, HOST, () => {
   bootWhatsAppTransport();
   /* destination intelligence: live weather feeds + T-72 briefs (schedulers; off with FEEDS_ENABLED=0 / BRIEFS_ENABLED=0) */
   try { autonomy.feeds.start({ log: console.log }); autonomy.briefs.start({ log: console.log }); } catch (e) { console.error("   Destination intelligence failed to start:", e.message); }
+  try { cdpEvents.startBatcher({ log: console.log }); } catch (e) { console.error("   CDP event batcher failed to start:", e.message); }
   const suffix = BASE_PATH ? BASE_PATH + "/" : "/";
   console.log(`\n✈  MAR reference build v10 running`);
   console.log(`   Local:   http://localhost:${PORT}${suffix}`);

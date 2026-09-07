@@ -296,3 +296,15 @@ No new dependencies or keys. Live weather feeds and T-72 briefs start automatica
 briefs use the existing `ANTHROPIC_API_KEY` (≈ $0.02–0.05 per brief, capped at 20/hour, cached
 12 h). To see it: `/autonomy/` → **Brief Daniel's next trip now**, or ask the assistant
 "what's happening in Delhi next week?". Turn off with `FEEDS_ENABLED=0` / `BRIEFS_ENABLED=0`.
+
+## Real-time event streaming into RT-CDP (server-side, no Web SDK)
+
+Events are queued and batched into the event dataset until a streaming inlet exists. To stream in
+real time, Demo Console → **Enable real-time streaming (create inlet)**: the server provisions an
+HTTP API streaming source, a source connection, a target connection on the event dataset and a
+dataflow through Flow Service with the credentials in `.env`, stores the inlet URL and flow id
+in the database, and switches over immediately (no restart, no env edit). If the credential
+lacks the *Manage Sources* role the exact rejection is shown; the fallback is to create the HTTP
+API source in the AEP UI and set `ADOBE_STREAMING_URL` + `ADOBE_EVENT_FLOW_ID`.
+Verify: `GET /api/admin/cdp/streaming`, then `POST /api/admin/cdp/event/test` (with
+`ADOBE_EVENT_SYNC_VALIDATION=1` the inlet validates the payload against the schema inline).

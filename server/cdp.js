@@ -18,6 +18,8 @@
 const { PERSONAS, DEFAULT_PERSONA } = require("./db");
 
 /* ── configuration (env-driven; all optional) ── */
+/* an inlet provisioned by the server (cdp-streaming.js) is stored in the database; env still wins */
+function storedStreaming() { try { return require("./cdp-streaming").stored(); } catch { return {}; } }
 function rawConfig() {
   const c = {
     enabled: /^(1|true|yes)$/i.test(process.env.ADOBE_CDP_ENABLED || ""),
@@ -43,8 +45,8 @@ function rawConfig() {
     profileDatasetId: process.env.ADOBE_PROFILE_DATASET_ID || "",
     eventDatasetId: process.env.ADOBE_EVENT_DATASET_ID || "",
     // Event STREAMING (DCS inlet) — real-time events into the event dataset:
-    streamingUrl: process.env.ADOBE_STREAMING_URL || "",
-    eventFlowId: process.env.ADOBE_EVENT_FLOW_ID || "",
+    streamingUrl: process.env.ADOBE_STREAMING_URL || storedStreaming().streamingUrl || "",
+    eventFlowId: process.env.ADOBE_EVENT_FLOW_ID || storedStreaming().eventFlowId || "",
     eventSyncValidation: /^(1|true|yes)$/i.test(process.env.ADOBE_EVENT_SYNC_VALIDATION || "1"),
     // Ingestion-direction config (writing profiles INTO CDP):
     loyaltyNs: process.env.ADOBE_LOYALTY_NS || "",
