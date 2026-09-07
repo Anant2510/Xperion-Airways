@@ -125,12 +125,15 @@ async function start({ onMessage, log = console.log } = {}) {
   const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys;
   fs.mkdirSync(AUTH_DIR, { recursive: true });
   const { state: auth, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-  let version; try { ({ version } = await fetchLatestBaileysVersion()); } catch {}
+  let version, versionSource = "library default";
+  try { const v = await fetchLatestBaileysVersion(); version = v.version; versionSource = v.isLatest ? "fetched (latest)" : "fetched"; } catch (e) { log("   WhatsApp: could not fetch the current web-client version (" + String(e?.message || e).slice(0, 60) + "); using the library default — pairing may be refused if it is stale"); }
+  log(`   WhatsApp web-client version ${version ? version.join(".") : "default"} (${versionSource})`);
   const pino = (() => { try { return require("pino")({ level: "silent" }); } catch { return undefined; } })();
 
   const sock = makeWASocket({
     version, auth, logger: pino, printQRInTerminal: false,
     browser: ["Xperion Airways", "Chrome", "1.0"], markOnlineOnConnect: false, syncFullHistory: false,
+    qrTimeout: 120000, connectTimeoutMs: 90000, defaultQueryTimeoutMs: 60000,   // keep an unpaired socket alive longer while the phone links
   });
   state.sock = sock; state.stopping = false;
   sock.ev.on("creds.update", saveCreds);
@@ -144,7 +147,7 @@ async function start({ onMessage, log = console.log } = {}) {
     if (qr && pairPhone && !pairingRequested && !sock.authState?.creds?.registered) {
       pairingRequested = true;
       setTimeout(async () => {
-        try { const code = await sock.requestPairingCode(pairPhone); const pretty = String(code).replace(/(.{4})(?=.)/g, "$1-"); log(`\n   WhatsApp pairing code for +${pairPhone}: ${pretty}\n   On the burner: WhatsApp → Settings → Linked Devices → Link a Device → "Link with phone number instead" → enter the code.\n`); }
+        try { const code = await sock.requestPairingCode(pairPhone); const pretty = String(code).replace(/(.{4})(?=.)/g, "$1-"); log(`\n   WhatsApp pairing code for +${pairPhone}: ${pretty}   (valid for about a minute; if a new code prints below, use the newest)\n   On the burner: WhatsApp → Settings → Linked Devices → Link a Device → "Link with phone number instead" → enter the code.\n`); }
         catch (e) { log("   Pairing code request failed: " + String(e?.message || e).slice(0, 120) + " — scan the QR instead"); }
       }, 1500);
       return;
