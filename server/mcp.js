@@ -130,7 +130,7 @@ async function handle(req, res) {
 function info(req) {
   const base = `${req.protocol}://${req.get("host")}`;
   return { name: "xperion-airways", protocol: "MCP · Streamable HTTP", endpoint: `${base}/mcp`, auth: "Authorization: Bearer <token>", tools: toolList(deps.resolveTenant(null).config).length, resources: RESOURCES.length, prompts: PROMPTS.length,
-    connect: { claude_desktop_stdio: { command: "node", args: ["mcp/xperion-mcp.js"], env: { XPERION_URL: base, XPERION_TOKEN: "<token>" } }, cursor_or_vscode_remote: { url: `${base}/mcp`, headers: { Authorization: "Bearer <token>" } }, note: "Claude.ai custom connectors need an https URL: put a TLS proxy or tunnel in front of the server." } };
+    connect: { claude_desktop_stdio: { command: "node", args: ["mcp/xperion-mcp.mjs"], env: { XPERION_URL: base, XPERION_TOKEN: "<token>" } }, cursor_or_vscode_remote: { url: `${base}/mcp`, headers: { Authorization: "Bearer <token>" } }, note: "Claude.ai custom connectors need an https URL: put a TLS proxy or tunnel in front of the server." } };
 }
 
 module.exports = { init, handle, info, mint, lookup, list, revoke, toolList, EXTRA_TOOLS };

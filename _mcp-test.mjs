@@ -55,6 +55,17 @@ const revoked = await fetch(BASE + `/api/admin/mcp/token/${sofia.token}`, { meth
 const after = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", Authorization: `Bearer ${sofia.token}` }, body: "{}" });
 ok("revoked token is refused", revoked.ok && after.status === 401);
 
+/* the stdio bridge, spawned exactly as Claude Desktop spawns it */
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+const bridge = new Client({ name: "desktop-sim", version: "1.0" });
+try {
+  await bridge.connect(new StdioClientTransport({ command: process.execPath, args: ["mcp/xperion-mcp.mjs"], env: { ...process.env, XPERION_URL: BASE, XPERION_TOKEN: minted.token } }));
+  const bt = await bridge.listTools();
+  const bme = parse(await bridge.callTool({ name: "get_my_profile", arguments: {} }));
+  ok("stdio bridge (Claude Desktop path) proxies tools/list and tools/call to the remote server", bt.tools.length >= 30 && bme.customer?.first_name === "Daniel", `${bt.tools.length} tools via stdio`);
+  await bridge.close();
+} catch (e) { ok("stdio bridge (Claude Desktop path) proxies tools/list and tools/call to the remote server", false, e.message); }
+
 const passed = results.filter(Boolean).length;
 console.log(`\n===== MCP: ${passed}/${results.length} checks passed =====`);
 process.exit(passed === results.length ? 0 : 1);

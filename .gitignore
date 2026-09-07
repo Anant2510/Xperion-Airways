@@ -25,3 +25,5 @@ ngrok.zip
 # WhatsApp pairing credentials (Baileys transport)
 data/baileys-auth/
 
+
+*.zip

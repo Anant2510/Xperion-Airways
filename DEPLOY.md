@@ -315,7 +315,7 @@ The server is an MCP server (Streamable HTTP at `/mcp`, discovery at `/mcp/info`
 (the assistant's contract plus profile, disruption status/accept, trip risk/alternatives),
 3 resources, 2 prompts. A bearer token identifies one customer; mint tokens on `/autonomy/`
 ("AI tool access") or `POST /api/admin/mcp/token {persona}`. Desktop tools that need stdio
-run `mcp/xperion-mcp.js` with `XPERION_URL` + `XPERION_TOKEN`; remote-capable clients point
+run `mcp/xperion-mcp.mjs` with `XPERION_URL` + `XPERION_TOKEN`; remote-capable clients point
 at `/mcp` with the Authorization header. Claude.ai custom connectors require https: put a TLS
 proxy or a tunnel (e.g. Cloudflare Tunnel) in front of the endpoint. Verify with
 `BASE=http://127.0.0.1:<port> node _mcp-test.mjs` → 17/17. `npm install` is required (SDK).

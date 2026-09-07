@@ -140,7 +140,7 @@ async function mintToken() {
   const snippet = `Token (shown once — copy it now): ${r.token}
 
 Claude Desktop (Settings → Developer → Edit Config):
-{ "mcpServers": { "xperion-airways": { "command": "node", "args": ["<path>/Xperion-Airways/mcp/xperion-mcp.js"], "env": { "XPERION_URL": "${base}", "XPERION_TOKEN": "${r.token}" } } } }
+{ "mcpServers": { "xperion-airways": { "command": "node", "args": ["<path>/Xperion-Airways/mcp/xperion-mcp.mjs"], "env": { "XPERION_URL": "${base}", "XPERION_TOKEN": "${r.token}" } } } }
 
 Cursor / VS Code / Windsurf (remote MCP):
 { "mcpServers": { "xperion-airways": { "url": "${base}/mcp", "headers": { "Authorization": "Bearer ${r.token}" } } } }
