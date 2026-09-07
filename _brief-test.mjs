@@ -98,7 +98,19 @@ const frozen = await briefs.runForBooking(sofia, { reason: "test" });
 ok("kill switch refuses the brief (Tier 0 frozen)", frozen.ok === false && frozen.refused === "kill_switch", frozen.refused);
 policy.setKill({ global: true, on: false });
 
-/* 6 · synthetic suite untouched */
+/* 6 · real trips in the graph: a Madrid booking gets scored by a live outlook */
+process.env.AUTONOMY_LIVE_TRIPS = "1";
+db.prepare("INSERT INTO flights (flight_no,origin,dest,dep,arr,duration,aircraft,price,seats_left,flight_date,status) VALUES ('XP777','MIA','MAD','20:00','10:15','8h 15m','A330',640,9,?, 'scheduled')").run(addDays(4));
+db.prepare("INSERT INTO bookings (pnr,user_id,flight_no,flight_date,seat,status,checked_in,items_json,created_at) VALUES ('XPTRIP',1,'XP777',?,'12A','confirmed',0,'[]',datetime('now'))").run(addDays(4));
+const sync = await bridge.syncTrips();
+ok("upcoming real booking becomes a FlightInstance + PNR in the graph", sync.synced >= 1 && G.getNode(`fi:XP777:${addDays(4)}`)?.kind === "FlightInstance" && G.getNode("pnr:trip:XPTRIP")?.app_uid === 1, sync.flights.join(", "));
+ok("its airports carry geo for haversine matching", !!G.getNode("ap:MAD")?.geo);
+const beforeP = G.nodesByKind("DisruptionPrediction").length;
+await feeds.poll({ airports: ["MAD"] });   // mocked Open-Meteo has a thunderstorm on day +4 → convective outlook at MAD
+const madPred = G.nodesByKind("DisruptionPrediction").find((p) => /XP777/.test(p.id));
+ok("live outlook at the destination scores the real trip", !!madPred && madPred.probability > 0, madPred && `${madPred.state} p=${madPred.probability}`);
+
+/* 7 · synthetic suite untouched */
 const passed = results.filter(Boolean).length;
 console.log(`\n===== BRIEFS: ${passed}/${results.length} checks passed =====`);
 try { fs.rmSync("./data/brief-test.db", { force: true }); } catch {}

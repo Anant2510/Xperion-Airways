@@ -77,7 +77,7 @@ async function callClaude(text) {
   const r = await fetchImpl("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: process.env.RESEARCH_MODEL || process.env.CLAUDE_MODEL || "claude-sonnet-5", max_tokens: 1800,
+    body: JSON.stringify({ model: process.env.RESEARCH_MODEL || process.env.CLAUDE_MODEL || "claude-sonnet-5", max_tokens: 4000,
       tools: [{ type: "web_search_20250305", name: "web_search", max_uses: Number(process.env.RESEARCH_MAX_SEARCHES) || 7 }],
       messages: [{ role: "user", content: text }] }),
   });
@@ -142,7 +142,12 @@ async function build(code, from, to, { force = false, interest = null } = {}) {
     weather: f.weather, holidays: f.holidays,
     events: analysis?.events || [], advisories: analysis?.advisories || [], news: analysis?.news || [],
     travel_impact: analysis?.travel_impact || (f.weather.risk >= 0.5 ? "medium" : f.weather.risk >= 0.3 ? "low" : "none"),
-    summary: analysis?.summary || defaultSummary(code, from, to, f),
+    summary: (() => {
+      const a = analysis || {}; const empty = !(a.events || []).length && !(a.advisories || []).length && !(a.news || []).length;
+      const vague = /insufficient|limited (specific )?research|no (specific |concrete )?(research|findings|information)|could not (find|identify)|were provided/i.test(a.summary || "");
+      if (analysis && empty && (vague || !a.summary)) return `${cityOf(code)}, ${from.slice(5)} to ${to.slice(5)}: no notable events, strikes or advisories found for these dates. ${defaultSummary(code, from, to, f).split(":").slice(1).join(":").replace(/ No live analysis[^.]*\./, "").trim()}`;
+      return a.summary || defaultSummary(code, from, to, f);
+    })(),
     confidence: analysis?.confidence ?? (f.weather.days.length ? 0.6 : 0.3),
     sources, source_count: sources.length,
   };

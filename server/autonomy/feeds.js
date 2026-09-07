@@ -98,6 +98,8 @@ function watchedAirports() {
 /* ── one poll ─────────────────────────────────────────────────────────── */
 const lastPoll = { at: null, airports: 0, alerts: 0, ingested: 0, deduped: 0, evaluated: null, errors: 0 };
 async function poll({ airports } = {}) {
+  const bridge = require("./bridge");
+  if (bridge.liveTrips()) { try { await bridge.syncTrips(); } catch (e) { console.error("[feeds] trip sync:", e.message); } }
   const codes = airports || watchedAirports();
   let alerts = 0, ingested = 0, deduped = 0, errors = 0;
   for (const code of codes) {
@@ -128,6 +130,6 @@ function start({ intervalMs = Number(process.env.FEEDS_INTERVAL_MS) || 30 * 60 *
   return timer;
 }
 function stop() { if (timer) clearInterval(timer); timer = null; }
-function status() { return { enabled: process.env.FEEDS_ENABLED !== "0", lastPoll: { ...lastPoll }, watching: watchedAirports() }; }
+function status() { const bridge = require("./bridge"); return { enabled: process.env.FEEDS_ENABLED !== "0", live_trips: bridge.liveTrips(), lastPoll: { ...lastPoll }, watching: watchedAirports() }; }
 
 module.exports = { poll, start, stop, status, nwsAlerts, openMeteoDaily, outlookAlerts, classifyNWS, watchedAirports, setFetch };

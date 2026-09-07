@@ -43,7 +43,7 @@ router.get("/outbox", (_req, res) => res.json({ ok: true, sent: V.sent().slice(-
 
 /* every world reset in the server runtime links the app's real customers into the graph
    (the in-process acceptance suite calls sim.reset() directly and stays synthetic-only) */
-const resetLinked = () => { const seeded = sim.reset(); const { linked } = bridge.link(); return { ...seeded, linked }; };
+const resetLinked = () => { const seeded = sim.reset(); const { linked } = bridge.link(); if (bridge.liveTrips()) bridge.syncTrips().catch(() => {}); return { ...seeded, linked }; };
 const ensureLinked = () => { if (!bridge.isLinked()) bridge.link(); };
 router.post("/sim/reset", safe((_req, res) => res.json({ ok: true, ...resetLinked() })));
 router.post("/sim/t72", safe(async (_req, res) => { ensureLinked(); const r = sim.t72(); const briefed = await briefLinked("T-72 (sim)"); res.json({ ok: true, ...r, pred: G.getNode(sim.state.predId), briefs: { sent: briefed.filter((b) => b.ok).length, of: briefed.length } }); }));
@@ -60,6 +60,19 @@ router.post("/sim/golden", safe(async (_req, res) => {
 router.get("/briefs", (_req, res) => res.json({ ok: true, research: research.status(), feeds: feeds.status(), briefs: research.list().map((b) => ({ id: b.id, city: b.city, code: b.code, window: b.window, impact: b.travel_impact, mode: b.mode, sources: b.source_count, generated_at: b.generated_at, summary: b.summary, error: b.error || null })) }));
 router.get("/brief/:code", safe(async (req, res) => { const from = req.query.from || new Date().toISOString().slice(0, 10); const to = req.query.to || research.addDays(from, 3); res.json({ ok: true, brief: await research.build(req.params.code, from, to, { force: req.query.force === "1" }) }); }));
 router.post("/briefs/run", safe(async (req, res) => res.json({ ok: true, ...(await briefs.run({ uids: req.body?.uids || (req.body?.uid ? [Number(req.body.uid)] : null), force: !!req.body?.force, reason: req.body?.reason || "manual" })) })));
+/* brief the customer's NEXT trip only, as a background job the ops page can poll */
+const jobs = new Map();
+router.post("/briefs/next", (req, res) => {
+  const uid = Number(req.body?.uid) || 1;
+  const b = db.prepare("SELECT * FROM bookings WHERE user_id=? AND status IN ('confirmed','rebooked') AND flight_date >= date('now') ORDER BY flight_date, id LIMIT 1").get(uid);
+  if (!b) return res.json({ ok: false, error: "no_upcoming_trip" });
+  const id = "job" + Date.now().toString(36); const job = { id, uid, pnr: b.pnr, flight_no: b.flight_no, date: b.flight_date, status: "running", started_at: new Date().toISOString() };
+  jobs.set(id, job);
+  briefs.runForBooking(b, { force: !!req.body?.force, reason: "ops" }).then((r) => Object.assign(job, { status: r.ok ? "done" : "refused", result: { ok: r.ok, city: r.brief?.city, impact: r.brief?.travel_impact, mode: r.brief?.mode, sources: r.brief?.source_count, channel: r.channel, refused: r.refused || null } })).catch((e) => Object.assign(job, { status: "failed", error: e.message }));
+  res.json({ ok: true, job: { id, pnr: b.pnr, flight_no: b.flight_no, date: b.flight_date, status: "running" } });
+});
+router.get("/briefs/job/:id", (req, res) => { const j = jobs.get(req.params.id); res.json(j ? { ok: true, job: j } : { ok: false, error: "unknown_job" }); });
+router.post("/trips/sync", safe(async (_req, res) => res.json({ ok: true, ...(await bridge.syncTrips()) })));
 router.get("/briefs/due", (_req, res) => res.json({ ok: true, due: briefs.due().map((d) => ({ pnr: d.booking.pnr, uid: d.booking.user_id, dest: d.dest, hours: d.hoursToDeparture })) }));
 router.post("/feeds/poll", safe(async (req, res) => res.json({ ok: true, ...(await feeds.poll({ airports: req.body?.airports })) })));
 router.post("/customer/brief/:choice", (req, res) => res.json(bridge.briefResponse(req.uid, req.params.choice)));

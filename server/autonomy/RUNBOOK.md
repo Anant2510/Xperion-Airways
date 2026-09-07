@@ -130,3 +130,20 @@ happening / is it safe in <city>" from the same brief, live and offline, web and
 
 Verification: `node _brief-test.mjs` → 24/24 (mocked sources). Live: `GET /api/autonomy/briefs`,
 `GET /api/autonomy/brief/DEL?force=1`, `POST /api/autonomy/feeds/poll`.
+
+## Normal-operation cadence (what runs without anyone pressing a button)
+
+- **Every 30 min — feeds.** NWS alerts and Open-Meteo outlooks for the arrival airport of every
+  flight in the graph and every upcoming booking → `sensing.ingestAlert()` → scorecard →
+  predictions: WATCH at p ≥ .40 (seats held, no contact), ACT at p ≥ .60 (impact → recovery →
+  offer, through the policy gates), stand-down when the risk clears.
+- **Which flights get scored.** The demo flight and the linked customers always. Real upcoming
+  bookings only when `AUTONOMY_LIVE_TRIPS=1`: then `bridge.syncTrips()` mirrors every booking
+  in the next 10 days into the graph as FlightInstance + PNR before each poll (and after each
+  world reset). With it on, a real alert can produce real offers on real trips at any hour, so
+  it is off by default and should be switched on deliberately.
+- **Every 30 min — briefs.** Every booking 60–84 h before departure gets its destination brief
+  once (Tier-0, policy-gated), regardless of the flag above.
+- **On demand.** The assistant tool; the ops page (**Brief Daniel's next trip now** runs as a
+  background job on the soonest trip only, and reports when done).
+- **Always.** Kill switch freezes Tier 0–1; Tier 2 waits for a human; everything is audited.

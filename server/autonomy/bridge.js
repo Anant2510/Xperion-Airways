@@ -49,7 +49,7 @@ const email = () => { try { return _email || (_email = require("../email")); } c
 
 /* ─────────────────────────── world lookups ─────────────────────────── */
 function disruptedFlight() {
-  return G.nodesByKind("FlightInstance").find((n) => n.flight_no === "XP201" && !n.recovery) || null;
+  return G.nodesByKind("FlightInstance").find((n) => n.flight_no === "XP201" && n.origin === "DEL" && n.dest === "MIA" && !n.recovery) || null;
 }
 function activePrediction() {
   return G.nodesByKind("DisruptionPrediction")
@@ -127,6 +127,40 @@ function link() {
   O.audit({ actor: "bridge", action: "LINK_APP_CUSTOMERS", rationale: `${linked.length} real customers linked to ${fi.id} as Passenger/PNR nodes with live bookings` });
   return { linked };
 }
+/* Every upcoming real booking becomes a FlightInstance + PNR in the graph, so the live weather
+   feeds can score it and the disruption agents can act on it exactly as they do for the demo
+   flight. Runs after each world reset and before each feed poll (AUTONOMY_LIVE_TRIPS=1). */
+async function syncTrips({ horizonDays = Number(process.env.AUTONOMY_TRIP_HORIZON_DAYS) || 10 } = {}) {
+  const geo = require("./geo");
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = db.prepare("SELECT * FROM bookings WHERE status IN ('confirmed','rebooked') AND flight_date >= ? AND flight_date <= date(?, '+' || ? || ' days')").all(today, today, horizonDays);
+  let synced = 0; const flights = [];
+  for (const b of rows) {
+    if (/^XPW/.test(b.pnr || "")) continue;                       // the linked demo trip already lives in the graph
+    let meta = {}; try { meta = JSON.parse(b.meta_json || "{}"); } catch {}
+    const f = db.prepare("SELECT origin, dest, dep, arr FROM flights WHERE flight_no=? AND flight_date=?").get(b.flight_no, b.flight_date) || db.prepare("SELECT origin, dest, dep, arr FROM flights WHERE flight_no=?").get(b.flight_no) || {};
+    const origin = meta.origin || f.origin, dest = meta.dest || f.dest, dep = meta.dep || f.dep || "12:00", arr = meta.arr || f.arr || null;
+    if (!origin || !dest || origin === dest) continue;
+    for (const code of [origin, dest]) {
+      const id = `ap:${code}`; const ex = G.getNode(id);
+      if (!ex || !ex.geo) { const g = await geo.geocode(code).catch(() => null); G.upsertNode(id, "Airport", { iata: code, code, city: city(code), ...(g ? { geo: { lat: g.lat, lon: g.lon } } : {}) }); }
+    }
+    const depIso = `${b.flight_date}T${/^\d{2}:\d{2}$/.test(dep) ? dep : "12:00"}:00Z`;
+    let arrIso; if (arr && /^\d{2}:\d{2}$/.test(arr)) { const a = new Date(`${b.flight_date}T${arr}:00Z`); if (a < new Date(depIso)) a.setUTCDate(a.getUTCDate() + 1); arrIso = a.toISOString(); } else arrIso = new Date(Date.parse(depIso) + 3 * 3600000).toISOString();
+    const fiId = `fi:${b.flight_no}:${b.flight_date}`;
+    G.upsertNode(fiId, "FlightInstance", { flight_no: b.flight_no, date: b.flight_date, sched_dep: depIso, sched_arr: arrIso, origin, dest, aircraft_type: "A321", status: "scheduled", app_trip: true });
+    G.upsertEdge(fiId, "DEPARTS_FROM", `ap:${origin}`); G.upsertEdge(fiId, "ARRIVES_AT", `ap:${dest}`);
+    if (!G.getNode(PAX(b.user_id))) link();
+    const pnrId = `pnr:trip:${b.pnr}`;
+    G.upsertNode(pnrId, "PNR", { record_locator: b.pnr, party_size: 1, fare_class: "Y", segments: [{ f: b.flight_no }], app_uid: b.user_id, app_booking_id: b.id, source: "app-booking" });
+    G.upsertEdge(fiId, "CARRIES", pnrId); G.upsertEdge(pnrId, "BELONGS_TO", PAX(b.user_id));
+    synced++; flights.push(`${b.flight_no} ${origin}→${dest} ${b.flight_date}`);
+  }
+  if (synced) O.audit({ actor: "bridge", action: "SYNC_APP_TRIPS", rationale: `${synced} upcoming real trip(s) in the graph for live sensing: ${flights.slice(0, 6).join(", ")}${flights.length > 6 ? "…" : ""}` });
+  return { synced, flights };
+}
+const liveTrips = () => process.env.AUTONOMY_LIVE_TRIPS === "1";
+
 function linked() {
   return G.nodesByKind("PNR").filter((p) => p.app_uid).map((p) => {
     const pax = G.getNode(PAX(p.app_uid)) || {};
@@ -380,4 +414,4 @@ function contextLine(uid) {
   return ` The customer holds booking ${LOC(uid)} on XP201 Delhi→Miami; the autonomy layer is monitoring it.`;
 }
 
-module.exports = { link, linked, isLinked, onOffer, onAccepted, onDeclined, onAllClear, onBrief, briefResponse, deliver, pending, inboxList, markSeen, status, acceptForUser, declineForUser, intercept, contextLine, LOC, PAX, PNR };
+module.exports = { link, linked, isLinked, syncTrips, liveTrips, onOffer, onAccepted, onDeclined, onAllClear, onBrief, briefResponse, deliver, pending, inboxList, markSeen, status, acceptForUser, declineForUser, intercept, contextLine, LOC, PAX, PNR };
