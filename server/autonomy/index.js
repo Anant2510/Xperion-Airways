@@ -64,8 +64,10 @@ router.post("/briefs/run", safe(async (req, res) => res.json({ ok: true, ...(awa
 const jobs = new Map();
 router.post("/briefs/next", (req, res) => {
   const uid = Number(req.body?.uid) || 1;
-  const b = db.prepare("SELECT * FROM bookings WHERE user_id=? AND status IN ('confirmed','rebooked') AND flight_date >= date('now') ORDER BY flight_date, id LIMIT 1").get(uid);
-  if (!b) return res.json({ ok: false, error: "no_upcoming_trip" });
+  const b = req.body?.pnr
+    ? db.prepare("SELECT * FROM bookings WHERE pnr=? AND status IN ('confirmed','rebooked') ORDER BY id DESC LIMIT 1").get(String(req.body.pnr).toUpperCase())
+    : db.prepare("SELECT * FROM bookings WHERE user_id=? AND status IN ('confirmed','rebooked') AND flight_date >= date('now') ORDER BY flight_date, id LIMIT 1").get(uid);
+  if (!b) return res.json({ ok: false, error: req.body?.pnr ? "no_such_booking" : "no_upcoming_trip" });
   const id = "job" + Date.now().toString(36); const job = { id, uid, pnr: b.pnr, flight_no: b.flight_no, date: b.flight_date, status: "running", started_at: new Date().toISOString() };
   jobs.set(id, job);
   briefs.runForBooking(b, { force: !!req.body?.force, reason: "ops" }).then((r) => Object.assign(job, { status: r.ok ? "done" : "refused", result: { ok: r.ok, city: r.brief?.city, impact: r.brief?.travel_impact, mode: r.brief?.mode, sources: r.brief?.source_count, channel: r.channel, refused: r.refused || null } })).catch((e) => Object.assign(job, { status: "failed", error: e.message }));

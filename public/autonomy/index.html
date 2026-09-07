@@ -72,6 +72,7 @@
         <button onclick="pollWeather()">Poll live weather now</button>
         <button onclick="briefNow()">Brief Daniel's next trip now</button>
         <button onclick="briefCity()">Brief a city…</button>
+        <button onclick="briefPnr()">Brief a trip by PNR…</button>
       </div>
       <table id="briefs"><thead><tr><th>city</th><th>window</th><th>impact</th><th>mode</th><th>sources</th><th>generated</th><th>summary</th></tr></thead><tbody></tbody></table>
     </div>
@@ -102,15 +103,16 @@ const P = (u, body) => J(u, { method: "POST", headers: { "content-type": "applic
 let kill = { global: false };
 
 async function pollWeather() { const r = await J("/api/autonomy/feeds/poll", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }); alert(`Polled ${r.airports} airport(s): ${r.alerts} alert(s), ${r.ingested} new, ${r.deduped} duplicates, ${r.errors} error(s)`); refresh(); }
-async function briefNow() {
-  const r = await P("/api/autonomy/briefs/next", { uid: 1 });
-  if (!r.ok) return alert(r.error === "no_upcoming_trip" ? "Daniel has no upcoming trip to brief." : ("Could not start: " + r.error));
+async function briefPnr() { const pnr = prompt("PNR of the trip to brief (e.g. XPX43K):"); if (!pnr) return; return briefNow({ pnr: pnr.trim().toUpperCase(), force: true }); }
+async function briefNow(body) {
+  const r = await P("/api/autonomy/briefs/next", body || { uid: 1 });
+  if (!r.ok) return alert(r.error === "no_upcoming_trip" ? "Daniel has no upcoming trip to brief." : r.error === "no_such_booking" ? "No confirmed booking with that PNR." : ("Could not start: " + r.error));
   const el = document.getElementById("intel"); const base = el.textContent;
   const tick = async () => {
     const j = (await J(`/api/autonomy/briefs/job/${r.job.id}`)).job || {};
     if (j.status === "running") { el.textContent = `Briefing Daniel's next trip: ${j.flight_no} on ${j.date} (${j.pnr}) — researching with web search, ~20–30 s…`; return setTimeout(tick, 2000); }
     el.textContent = base; refresh();
-    if (j.status === "done") alert(`Brief sent for ${j.flight_no} on ${j.date} → ${j.result.city}: ${j.result.impact} impact (${j.result.mode}, ${j.result.sources} sources) via ${j.result.channel}. It is now in Daniel's assistant inbox, WhatsApp and email.`);
+    if (j.status === "done") alert(`Brief sent for ${j.flight_no} on ${j.date} → ${j.result.city}: ${j.result.impact} impact (${j.result.mode}, ${j.result.sources} sources) via ${j.result.channel}. It is now in the customer's assistant inbox, WhatsApp and email${["medium", "high"].includes(j.result.impact) ? " — with risk-aware alternatives (safer dates, alternate airport, flex)" : ""}.`);
     else if (j.status === "refused") alert(`Policy refused the brief: ${j.result.refused}`);
     else alert(`Brief failed: ${j.error}`);
   };
