@@ -19,6 +19,7 @@ const { callClaude, callClaudeAgent, FALLBACKS, hasKey } = require("./claude");
 const { generateFlights, getRoute } = require("./search");
 const { AIRPORTS } = require("./routes-data");
 const { packageFor, packagesIn } = require("./packages");
+const countries = require("./countries");
 const { createAirlineAdapter, registerAirline, getAirline, resolveTenant, listAirlines, REQUIRED_TOOLS } = require("./airline");
 const whatsapp = require("./whatsapp");
 const notify = require("./notify");
@@ -1521,6 +1522,17 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     // Never guess a destination — tell the agent to ask or list instead.
     if (!dest) return { ok: false, need: "destination", message: "No destination was given. Ask the customer where they want to go, or call list_destinations to show the options from their origin. Do not assume a destination." };
     const date = input.date || searchToday();
+    /* a country as the destination: offer the airports we serve there and let the customer choose */
+    if (!AIRPORTS[dest]) {
+      const iso = countries.countryCode(input.dest || "");
+      if (iso) {
+        const { list, more, total } = countries.listServed(iso, 8);
+        if (!total) return { ok: false, message: `Sorry — Xperion doesn't fly to ${countries.nameOf(iso)} yet.` };
+        if (total === 1) return XperionAdapter.tools.search_flights({ ...input, dest: list[0].code }, ctx);
+        return { ok: false, need: "airport", country: countries.nameOf(iso), options: list.map(a => ({ code: a.code, city: a.city })), more, message: `Xperion flies to ${total} airports in ${countries.nameOf(iso)}: ${list.map(a => `${a.city} (${a.code})`).join(", ")}${more ? ` and ${more} more` : ""}. Ask the customer which one, then search again with that code.` };
+      }
+      return { ok: false, message: `Sorry — Xperion doesn't fly to "${input.dest}". Ask the customer for another city, an airport code, or a country and offer to list what we serve there.` };
+    }
     const route = getRoute(origin, dest);
     if (!route) {
       const dests = (db.prepare("SELECT dest FROM routes WHERE origin=?").all(origin) || []).map(r => r.dest);
@@ -2483,6 +2495,19 @@ function deterministicAgent(text, session) {
     const ls = session.lastSearch;
     if (!dest && ls && ls.dest) { origin = ls.origin; dest = ls.dest; } // keep active route when only the date changed
     const date = whatsapp.parseDate(q) || searchToday();
+    if (!dest) {
+      /* a country, or a place we don't serve: say so honestly instead of listing 1,500 cities */
+      const place = ((q.match(/\b(?:to|for)\s+([a-zà-ÿ][a-zà-ÿ .'-]{1,30}?)(?:\s+(?:in|on|next|this|tomorrow|today|early|late|mid|around|from|by|for|during|first|last|the)\b|[?.,!]|$)/) || [])[1] || "").trim();
+      const iso = place ? countries.countryCode(place) : null;
+      if (iso) {
+        const { list, more, total } = countries.listServed(iso, 8);
+        if (!total) return done(`Sorry — Xperion doesn't fly to ${countries.nameOf(iso)} yet. Another city or country?`);
+        if (total === 1) { dest = list[0].code; }
+        else return done(`Xperion flies to ${total} airports in ${countries.nameOf(iso)}: ${list.map(a => `${a.city} (${a.code})`).join(", ")}${more ? ` and ${more} more` : ""}. Which one would you like${date !== searchToday() ? ` for ${date}` : ""}?`);
+      } else if (place && !/^(the|a|an|my|our|be|go|get|see|do|it|that|this|me|us|there|here)$/.test(place.split(/\s+/)[0])) {
+        return done(`Sorry — Xperion doesn't fly to ${place.replace(/\b\w/g, m => m.toUpperCase())}. Tell me another city, an airport code, or a country and I'll list what we serve there.`);
+      }
+    }
     if (!dest) {
       const r = run("list_destinations", { origin });
       return done(r.ok ? `From ${r.originCity} you can fly to ${r.count} cities — ${r.destinations.slice(0, 6).map(d => d.city).join(", ")} and more. Which destination?` : "Where would you like to fly to?");

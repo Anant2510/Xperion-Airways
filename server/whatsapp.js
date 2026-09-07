@@ -16,6 +16,7 @@
    ────────────────────────────────────────────────────────────── */
 const { db, now, searchToday, currentBooking, getDataSource } = require("./db");
 const { AIRPORTS } = require("./routes-data");
+const countries = require("./countries");
 const { phraseFromFacts } = require("./claude");
 const session = require("./session");   // step-1 seam: phone→uid + wa:<tail> session binding (no cycle)
 
@@ -453,6 +454,13 @@ async function handleAction(to, id) {
   }
 
   /* Pick a flight returned by a search → go to SEAT selection */
+  if (id.startsWith("DEST_")) {
+    const code = id.slice(5); const c = getCtx(to) || {}; const pd = c.pendingDest || {};
+    const uid = (session.userByPhone(to) || {}).id || session.SERVER_DEFAULT_UID;
+    const home = pd.home || (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "MIA";
+    clearPendingDest(to);
+    return searchRoute(to, home, code, pd.date || searchToday(), null, { scanDays: pd.scanDays || 0, sort: pd.sort || null });
+  }
   if (id.startsWith("PICK_")) {
     const [fno, pickDate] = id.slice(5).split("@");
     const f = (pickDate && db.prepare("SELECT * FROM flights WHERE flight_no=? AND flight_date=?").get(fno, pickDate)) || flightByNo(fno);
@@ -813,9 +821,17 @@ async function handleIncoming({ from, text, pushName }) {
         await sendText(from, `${cityName(home)} is your home airport — tell me where you'd like to fly to from ${home}.`);
         return sendMainMenu(from);
       }
-      return searchRoute(from, home, destFromText, parsed || searchToday(), text);
+      return searchRoute(from, home, destFromText, parsed || searchToday(), text, { scanDays: wantsWeekScan(t) ? 7 : 0, sort: wantsCheapest(t) ? "price" : null });
     }
-    return handleAction(from, "BOOK_USUAL");
+    if (toM) {
+      const place = toM[1].trim().replace(/\s+(next|this|on|in|for|tomorrow|today|early|late|mid|from|around|by)$/, "");
+      const home = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "MIA";
+      const iso = countries.countryCode(place);
+      if (iso) return askAirport(from, iso, { home, date: parseDate(t), scanDays: wantsWeekScan(t) ? 7 : 0, sort: wantsCheapest(t) ? "price" : null, userText: text, when: parseDate(t) ? fmtDay(parseDate(t)) : null });
+      return cannotFly(from, place, null);
+    }
+    if (/\b(usual|express|same as (always|usual|last time)|my regular)\b/.test(t)) return handleAction(from, "BOOK_USUAL");
+    return runAgent(from, text);
   }
   if (/^cancel\b/.test(t)) return handleAction(from, "CANCEL");
   if (/^(resume|continue|carry on|pick up|where was i|where were we|finish (my )?booking)\b/.test(t) || /\bcontinue where (i|we) left\b/.test(t)) return handleAction(from, "RESUME");
@@ -843,8 +859,19 @@ async function handleIncoming({ from, text, pushName }) {
     const vals = Object.values(menu);
     const seatOpts = Object.keys(menu).filter(k => /^\d+$/.test(k) && String(menu[k]).startsWith("SEAT_")).sort((a, b) => +a - +b).map(k => menu[k]);
 
+    // (0) an open "which airport in <country>?" question answered by a typed city, airport or country
+    const pd0 = (getCtx(from) || {}).pendingDest;
+    if (pd0 && Date.now() - (pd0.asked_at || 0) < 15 * 60000 && !/^\d+$/.test(t)) {
+      const homeP = pd0.home || (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "MIA";
+      const typed = detectDest(t);
+      if (typed) { clearPendingDest(from); return searchRoute(from, homeP, typed, pd0.date || searchToday(), text, { scanDays: pd0.scanDays || 0, sort: pd0.sort || null }); }
+      const isoTyped = countries.countryCode(t);
+      if (isoTyped) return askAirport(from, isoTyped, { ...pd0, home: homeP });
+      if (t.split(/\s+/).length <= 3 && !/\b(menu|cancel|status|check|help|book|hi|hello)\b/.test(t)) return cannotFly(from, text.trim(), pd0.iso);
+      clearPendingDest(from);
+    }
     // (a) pick a flight from the last shown list ("the second one", "cheapest", "XP1927", "the 9:05")
-    if (vals.some(v => String(v).startsWith("PICK_"))) {
+    if (vals.some(v => String(v).startsWith("PICK_")) && !/\b(flights?|fly|book|trip)\b.*\bto\s+[a-z]|\bto\s+[a-z]+.*\b(flights?|fly|book)\b/.test(t)) {   // a message naming a new destination is a new search, not a pick
       const c = getCtx(from);
       const pick = c && c.flights && resolvePick(t, c.flights);
       if (pick) { const cf = c.flights.find(x => x.flight_no === pick); return handleAction(from, `PICK_${pick}${cf?.date ? "@" + cf.date : ""}`); }
@@ -872,7 +899,9 @@ async function handleIncoming({ from, text, pushName }) {
     const c = getCtx(from);
     const looksLikeDateFollowup = parsedDate && (/\b(how about|what about|and|same|that route|those|again|instead|change.*date|different date)\b/.test(t) || t.split(/\s+/).length <= 6);
     // Make sure it's NOT a fresh route request (no new city named other than the active one)
-    const namesNewCity = /\bto\s+[a-zà-ÿ]/.test(t) && detectDest((t.match(/\bto\s+([a-zà-ÿ]+(?:\s+[a-zà-ÿ]+)?)/)||[])[1] || "");
+    /* a message that names any place after "to" (city, airport or country) is a new request, never a date follow-up */
+    const toPlace = (t.match(/\bto\s+([a-zà-ÿ-]+(?:\s+[a-zà-ÿ-]+)?)/) || [])[1] || "";
+    const namesNewCity = !!toPlace && !/^(the|a|an|my|our|be|go|get|see|do|it|that|this)$/.test(toPlace.split(/\s+/)[0]) && (detectDest(toPlace) || countries.countryCode(toPlace) || /^[a-z-]{3,}/.test(toPlace));
     if (c && c.dest && looksLikeDateFollowup && !namesNewCity) {
       return searchRoute(from, c.origin, c.dest, parsedDate, text);
     }
@@ -902,6 +931,13 @@ async function handleIncoming({ from, text, pushName }) {
     const parsedDate = parseDate(t);
 
     // Only fire the deterministic search when we have a real destination.
+    if (!destCode && toMatch) {
+      const place = toMatch[1].trim().replace(/\s+(next|this|on|in|for|tomorrow|today|early|late|mid|from|around|by)$/, "");
+      const iso = countries.countryCode(place);
+      const home0 = (db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid) || {}).home_airport || "MIA";
+      if (iso) return askAirport(from, iso, { home: originCode || home0, date: parsedDate, scanDays: wantsWeekScan(t) ? 7 : 0, sort: wantsCheapest(t) ? "price" : null, userText: text, when: parsedDate ? fmtDay(parsedDate) : null });
+      if (/\b(flights?|fly|book|trip|travel)\b/.test(t)) return cannotFly(from, place, null);
+    }
     if (destCode && destCode !== originCode) {
       const home = db.prepare("SELECT home_airport FROM users WHERE id=?").get(uid)?.home_airport || "MIA";
       return searchRoute(from, originCode || home, destCode, parsedDate || searchToday(), text, { scanDays: wantsWeekScan(t) ? 7 : 0, sort: wantsCheapest(t) ? "price" : null });
@@ -978,6 +1014,27 @@ function detectDest(t) {
   }
   return null;
 }
+/* "flights to Denmark": a country is a question, not a destination — list the airports we serve
+   there and let the customer choose by number, city or airport name */
+const FLAG = (iso) => String(iso || "").toUpperCase().replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)));
+async function askAirport(to, iso, opts = {}) {
+  const { list, more, total } = countries.listServed(iso, 8);
+  const name = countries.nameOf(iso);
+  if (!total) { clearPendingDest(to); return sendText(to, `Sorry — Xperion doesn't fly to ${name} yet. Tell me another city or country and I'll look.`); }
+  if (total === 1) { clearPendingDest(to); return searchRoute(to, opts.home, list[0].code, opts.date || searchToday(), opts.userText || null, { scanDays: opts.scanDays || 0, sort: opts.sort || null }); }
+  const map = { "0": "MENU" }; const lines = [];
+  list.forEach((a, i) => { const k = String(i + 1); map[k] = `DEST_${a.code}`; lines.push(`${NUM[i] || k}  ${a.city} (${a.code})`); });
+  setMenu(to, map);
+  setCtx(to, { pendingDest: { iso, date: opts.date || null, scanDays: opts.scanDays || 0, sort: opts.sort || null, home: opts.home || null, asked_at: Date.now() } });
+  return sendText(to, `${FLAG(iso)} We fly to ${total} airports in ${name}${opts.when ? ` (${opts.when})` : ""} — reply with a number, or type the city or airport:\n\n${lines.join("\n")}${more ? `\n…and ${more} more — just type the city name.` : ""}\n\n0 for menu`);
+}
+const NUM = ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣"];
+const clearPendingDest = (to) => { const c = getCtx(to); if (c && c.pendingDest) { delete c.pendingDest; } };
+/* the customer typed a place we could not resolve: apologise honestly and, if we know the country, show what we do serve */
+async function cannotFly(to, place, iso) {
+  if (iso) { const { list, total } = countries.listServed(iso, 6); return sendText(to, `Sorry — Xperion doesn't fly to ${place}. In ${countries.nameOf(iso)} we serve ${list.map((a) => `${a.city} (${a.code})`).join(", ")}${total > list.length ? " and more" : ""} — tell me which one.`); }
+  return sendText(to, `Sorry — Xperion doesn't fly to ${place.replace(/\b\w/g, (m) => m.toUpperCase())}. Tell me another city, an airport code, or a country and I'll list what we serve there.`);
+}
 
 /* Parse a date phrase → YYYY-MM-DD. "Today" is the demo anchor (2026-06-15) but
    rolls forward to the real current date (see searchToday) so relative dates and
@@ -989,7 +1046,7 @@ function detectDest(t) {
    channels resolve dates identically. */
 /* "cheapest options" / "over the coming week": sort by price, scan a 7-day window */
 const wantsCheapest = (t) => /\b(cheap(est|er)?|lowest|budget|best price|least expensive|affordable)\b/i.test(t || "");
-const wantsWeekScan = (t) => /\b(next|upcoming|coming|following|this) (week|few days|\d days)\b|\bweek ahead\b|\bany ?day\b|\bflexible\b/i.test(t || "");
+const wantsWeekScan = (t) => /\b(next|upcoming|coming|following|this) (week|few days|\d days)\b|\bweek ahead\b|\bany ?day\b|\bflexible\b|\b(first|1st|second|2nd|third|3rd|last|final) week (of )?[a-z]+\b|\b(early|mid|middle of|late|beginning of|start of|end of) [a-z]+\b|\bin (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i.test(t || "");
 const fmtDay = (iso) => { try { const d = new Date(iso + "T00:00:00Z"); return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }); } catch { return iso; } };
 function parseDate(t) {
   const TODAY = new Date(searchToday() + "T00:00:00Z");
@@ -999,6 +1056,23 @@ function parseDate(t) {
   const TM = "(?:tomorrow|tomorow|tommorow|tommorrow|tomoz|tomm|tmrw|tmw|2moro|2morrow)";
   const explicit = t.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
   if (explicit) return explicit[1];
+  /* month phrases: "first week of October", "early/mid/late October", "in October", "October 5", "5 October" */
+  const MONTHS = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+  const monthRe = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
+  const monthIdx = (m) => MONTHS.findIndex((x) => x.startsWith(m.slice(0, 3)));
+  const nextOf = (mi, day) => { const y = TODAY.getUTCFullYear(); let d = new Date(Date.UTC(y, mi, day)); if (d < TODAY) d = new Date(Date.UTC(y + 1, mi, day)); return iso(d); };
+  let m;
+  if ((m = t.match(new RegExp(`\\b(first|1st|second|2nd|third|3rd|last|final)\\s+week\\s+(?:of\\s+)?${monthRe}\\b`)))) {
+    const day = /first|1st/.test(m[1]) ? 1 : /second|2nd/.test(m[1]) ? 8 : /third|3rd/.test(m[1]) ? 15 : 24; return nextOf(monthIdx(m[2]), day);
+  }
+  if ((m = t.match(new RegExp(`\\b(early|beginning of|start of|mid|middle of|late|end of)\\s+${monthRe}\\b`)))) {
+    const day = /early|beginning|start/.test(m[1]) ? 3 : /mid/.test(m[1]) ? 15 : 25; return nextOf(monthIdx(m[2]), day);
+  }
+  if ((m = t.match(new RegExp(`\\b${monthRe}\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b`))) || (m = t.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?${monthRe}\\b`)))) {
+    const mon = MONTHS.some((x) => x.startsWith(String(m[1]).slice(0, 3))) ? m[1] : m[2]; const day = Number(MONTHS.some((x) => x.startsWith(String(m[1]).slice(0, 3))) ? m[2] : m[1]);
+    if (day >= 1 && day <= 31) return nextOf(monthIdx(mon), day);
+  }
+  if ((m = t.match(new RegExp(`\\bin\\s+${monthRe}\\b`)))) return nextOf(monthIdx(m[1]), 1);
   if (new RegExp(`\\bday after ${TM}\\b`).test(t)) return add(2);
   if (new RegExp(`\\b${TM}\\b`).test(t)) return add(1);
   if (/\btoday\b|\btonight\b/.test(t)) return add(0);
@@ -1063,8 +1137,12 @@ async function searchRoute(to, origin, dest, date = searchToday(), userText, opt
   let r;
   if (scan > 0) {
     /* week scan: every day from tomorrow, flights tagged with their date, best 5 across the window */
-    const days = []; const base = new Date(searchToday() + "T00:00:00Z");
-    for (let i = 1; i <= scan; i++) { const d = new Date(base); d.setUTCDate(d.getUTCDate() + i); days.push(d.toISOString().slice(0, 10)); }
+    /* the window starts at the requested date when one was given ("first week of October"),
+       otherwise tomorrow ("upcoming week") */
+    const startFromDate = date && date > searchToday();
+    const base = new Date((startFromDate ? date : searchToday()) + "T00:00:00Z");
+    const days = [];
+    for (let i = startFromDate ? 0 : 1; i < (startFromDate ? scan : scan + 1); i++) { const d = new Date(base); d.setUTCDate(d.getUTCDate() + i); days.push(d.toISOString().slice(0, 10)); }
     const all = [];
     for (const d of days) { const rr = await apiCall("GET", `/search?origin=${origin}&dest=${dest}&date=${d}`, null, to).catch(() => null); if (rr?.ok) for (const f of rr.flights || []) all.push({ ...f, date: d }); }
     all.sort(opts.sort === "price" ? ((a, b) => a.price - b.price) : ((a, b) => (a.date + a.dep).localeCompare(b.date + b.dep)));
