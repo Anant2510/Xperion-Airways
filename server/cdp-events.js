@@ -27,7 +27,8 @@ const _state = { sent: 0, failed: 0, recent: [] };
 function eventsState() {
   const q = queueState();
   const c0 = cdp.rawConfig();
-  return { ...eventsStateBase(), queue: q, mode: c0.streamingUrl ? "streaming" : (c0.configured ? "batch" : "off"), inletUrl: c0.streamingUrl || null, flowId: c0.eventFlowId || null, batchEveryMs: Number(process.env.CDP_EVENT_BATCH_MS) || 15 * 60 * 1000 };
+  let provisionError = null; try { provisionError = require("./cdp-streaming").status().lastError; } catch {}
+  return { ...eventsStateBase(), queue: q, mode: c0.streamingUrl ? "streaming" : (c0.configured ? "batch" : "off"), inletUrl: c0.streamingUrl || null, flowId: c0.eventFlowId || null, batchEveryMs: Number(process.env.CDP_EVENT_BATCH_MS) || 15 * 60 * 1000, provisionError };
 }
 function eventsStateBase() {
   const c = cdp.rawConfig();

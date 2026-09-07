@@ -43,11 +43,19 @@ async function provision({ name = "Xperion Airways · server-side events" } = {}
   if (!c.configured) return { ok: false, error: "Adobe credentials not configured" };
   if (!c.eventDatasetId || !c.eventSchemaId) return { ok: false, error: "ADOBE_EVENT_DATASET_ID and ADOBE_EVENT_SCHEMA_ID are required" };
   const steps = [];
+  const fail = (e) => { const out = { ok: false, error: e.message, status: e.status || null, response: e.body || null, steps, hint: e.status === 403 ? "The credential lacks permission to manage Sources/Dataflows: add the 'Manage Sources' role to its product profile in Admin Console, or create the HTTP API source in the AEP UI and set ADOBE_STREAMING_URL + ADOBE_EVENT_FLOW_ID." : "The exact rejection from Adobe is above." }; setSetting("adobe_stream_last_error", JSON.stringify({ at: new Date().toISOString(), error: out.error, status: out.status, response: out.response, steps })); return out; };
   try {
     const token = await cdp.imsToken(c);
-    /* 1 · base connection (the inlet) */
-    const base = await call(c, token, "POST", "/connections", { name, description: "Server-side XDM ExperienceEvents from the Xperion Airways app (no Web SDK)", connectionSpec: { id: SPEC.httpApiSource, version: "1.0" }, auth: { specName: "Streaming Connection", params: { sourceId: `xperion-${Date.now().toString(36)}`, dataType: "xdm", name } } });
-    const baseId = firstId(base); steps.push({ step: "base connection", id: baseId });
+    /* 1 · base connection (the inlet) — reuse one from a previous attempt (stored, or by name) */
+    let baseId = getSetting("adobe_stream_base_id") || null;
+    if (!baseId) {
+      try { const found = await call(c, token, "GET", `/connections?property=name==${encodeURIComponent(name)}`); const hit = (found.items || []).find((x) => x.connectionSpec?.id === SPEC.httpApiSource); if (hit) baseId = hit.id; } catch {}
+    }
+    if (!baseId) {
+      const base = await call(c, token, "POST", "/connections", { name, description: "Server-side XDM ExperienceEvents from the Xperion Airways app (no Web SDK)", connectionSpec: { id: SPEC.httpApiSource, version: "1.0" }, auth: { specName: "Streaming Connection", params: { sourceId: `xperion-${Date.now().toString(36)}`, dataType: "xdm", name } } });
+      baseId = firstId(base);
+    }
+    setSetting("adobe_stream_base_id", baseId); steps.push({ step: "base connection", id: baseId });
     const baseGet = await call(c, token, "GET", `/connections/${baseId}`);
     const item = (baseGet.items && baseGet.items[0]) || baseGet;
     const inletUrl = item.inletUrl || item.details?.inletUrl || item.auth?.params?.inletUrl || null;
@@ -62,13 +70,11 @@ async function provision({ name = "Xperion Airways · server-side events" } = {}
     /* 4 · dataflow */
     const flow = await call(c, token, "POST", "/flows", { name: `${name} · dataflow`, flowSpec: { id: SPEC.streamNoTransform, version: "1.0" }, sourceConnectionIds: [srcId], targetConnectionIds: [tgtId], transformations: [] });
     const flowId = firstId(flow); steps.push({ step: "dataflow", id: flowId });
-    setSetting("adobe_streaming_url", inletUrl); setSetting("adobe_event_flow_id", flowId); setSetting("adobe_stream_base_id", baseId); setSetting("adobe_stream_provisioned_at", new Date().toISOString());
+    setSetting("adobe_streaming_url", inletUrl); setSetting("adobe_event_flow_id", flowId); setSetting("adobe_stream_provisioned_at", new Date().toISOString()); db.prepare("DELETE FROM settings WHERE k='adobe_stream_last_error'").run();
     return { ok: true, inletUrl, flowId, baseConnectionId: baseId, sourceConnectionId: srcId, targetConnectionId: tgtId, steps, note: "Real-time streaming is live: events now go to the inlet as they happen. Allow a minute for the dataflow to become active in AEP." };
-  } catch (e) {
-    return { ok: false, error: e.message, status: e.status || null, response: e.body || null, steps, hint: e.status === 403 ? "The credential lacks permission to manage Sources/Dataflows: add the 'Manage Sources' role to its product profile in Admin Console, or create the HTTP API source in the AEP UI and set ADOBE_STREAMING_URL + ADOBE_EVENT_FLOW_ID." : "Compare the response with the AEP Flow Service docs; the exact rejection is above." };
-  }
+  } catch (e) { return fail(e); }
 }
-function forget() { for (const k of ["adobe_streaming_url", "adobe_event_flow_id", "adobe_stream_base_id", "adobe_stream_provisioned_at"]) db.prepare("DELETE FROM settings WHERE k=?").run(k); return { ok: true }; }
-function status() { const c = cdp.rawConfig(); const s = stored(); return { streaming: !!c.streamingUrl, inletUrl: c.streamingUrl || null, flowId: c.eventFlowId || null, source: process.env.ADOBE_STREAMING_URL ? "env" : (s.streamingUrl ? "provisioned" : "none"), provisionedAt: s.provisionedAt }; }
+function forget() { for (const k of ["adobe_streaming_url", "adobe_event_flow_id", "adobe_stream_base_id", "adobe_stream_provisioned_at", "adobe_stream_last_error"]) db.prepare("DELETE FROM settings WHERE k=?").run(k); return { ok: true }; }
+function status() { const c = cdp.rawConfig(); const s = stored(); let lastError = null; try { lastError = JSON.parse(getSetting("adobe_stream_last_error") || "null"); } catch {} return { streaming: !!c.streamingUrl, inletUrl: c.streamingUrl || null, flowId: c.eventFlowId || null, source: process.env.ADOBE_STREAMING_URL ? "env" : (s.streamingUrl ? "provisioned" : "none"), provisionedAt: s.provisionedAt, baseConnectionId: s.baseConnectionId || null, lastError }; }
 
 module.exports = { provision, forget, status, stored };

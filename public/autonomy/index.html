@@ -80,6 +80,19 @@
 
   <div class="row" style="margin-top:14px">
     <div class="card" style="flex:1">
+      <div class="k">AI tool access (MCP) · Claude Desktop, Claude.ai, Cursor, Copilot, agents</div>
+      <div class="mono" id="mcpinfo" style="font-size:12px;color:var(--sageD);margin-bottom:8px">—</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <select id="mcppersona" style="padding:8px;border:1px solid var(--line);border-radius:8px"><option value="daniel">Daniel</option><option value="sofia">Sofia</option><option value="lars">Lars</option><option value="maria">Maria</option><option value="james">James</option></select>
+        <button onclick="mintToken()">Mint a token for this customer</button>
+      </div>
+      <pre id="mcpsnippet" class="mono" style="font-size:11px;white-space:pre-wrap;background:#f4f7f6;padding:10px;border-radius:8px;display:none"></pre>
+      <table id="mcptokens"><thead><tr><th>label</th><th>customer</th><th>token</th><th>created</th><th>last used</th><th>calls</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <div class="card" style="flex:1">
       <div class="k">Real customers on this flight (live app · the same rules, the same saga)</div>
       <div class="mono" style="font-size:12px;color:var(--sageD);margin-bottom:6px">Every app customer holds a real booking on XP201. Their offers go through the app's own channels: WhatsApp, push, SMS, email, and the Xperion AI assistant. Log in as one of them to watch it land.</div>
       <table id="linked"><thead><tr><th>customer</th><th>tier</th><th>PNR</th><th>channel</th><th>offer</th><th>delivery</th></tr></thead><tbody></tbody></table>
@@ -119,7 +132,34 @@ async function briefNow(body) {
   tick();
 }
 async function briefCity() { const code = prompt("Airport code (e.g. DEL, LHR, GRU):"); if (!code) return; const r = await J(`/api/autonomy/brief/${code.toUpperCase()}?force=1`); alert(`${r.brief.city}: ${r.brief.travel_impact} impact (${r.brief.mode}, ${r.brief.source_count} sources)${r.brief.error ? "\n\nAnalyst error: " + r.brief.error : ""}\n\n${r.brief.summary}`); refresh(); }
+async function mintToken() {
+  const persona = document.getElementById("mcppersona").value;
+  const r = await P("/api/admin/mcp/token", { persona, client: "ops page" });
+  if (!r.ok) return alert("Could not mint: " + r.error);
+  const base = location.origin;
+  const snippet = `Token (shown once — copy it now): ${r.token}
+
+Claude Desktop (Settings → Developer → Edit Config):
+{ "mcpServers": { "xperion-airways": { "command": "node", "args": ["<path>/Xperion-Airways/mcp/xperion-mcp.js"], "env": { "XPERION_URL": "${base}", "XPERION_TOKEN": "${r.token}" } } } }
+
+Cursor / VS Code / Windsurf (remote MCP):
+{ "mcpServers": { "xperion-airways": { "url": "${base}/mcp", "headers": { "Authorization": "Bearer ${r.token}" } } } }
+
+Claude.ai custom connector: needs https — put a TLS proxy or tunnel in front of ${base}/mcp.`;
+  const el = document.getElementById("mcpsnippet"); el.textContent = snippet; el.style.display = "block";
+  refreshMcp();
+}
+async function refreshMcp() {
+  try {
+    const i = await J("/mcp/info"); const t = await J("/api/admin/mcp/tokens");
+    document.getElementById("mcpinfo").textContent = `Endpoint ${i.endpoint} · ${i.tools} tools, ${i.resources} resources, ${i.prompts} prompts · the same contract the in-app assistant uses · bearer token = one customer`;
+    const tb = document.querySelector("#mcptokens tbody"); tb.innerHTML = "";
+    for (const x of t.tokens || []) tb.insertAdjacentHTML("beforeend", `<tr><td>${x.label || ""}</td><td>uid ${x.user_id}</td><td class="mono">${x.token}</td><td class="mono" style="font-size:11px">${String(x.created_at).replace("T", " ").slice(5, 16)}</td><td class="mono" style="font-size:11px">${x.last_used_at ? String(x.last_used_at).replace("T", " ").slice(5, 16) : "—"}</td><td>${x.calls || 0}</td></tr>`);
+    if (!(t.tokens || []).length) tb.insertAdjacentHTML("beforeend", `<tr><td colspan="6" style="color:var(--sageD)">No tokens yet — mint one to connect an AI tool.</td></tr>`);
+  } catch {}
+}
 async function refreshIntel() {
+  refreshMcp();
   try {
     const b = await J("/api/autonomy/briefs");
     const lp = b.feeds.lastPoll || {};

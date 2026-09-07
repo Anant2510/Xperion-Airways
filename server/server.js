@@ -3668,6 +3668,21 @@ app.use("/pss", express.static(path.join(__dirname, "..", "pss-app")));
 /* Enterprise Autonomy router — mounted BEFORE the SPA catch-all so its GET routes are reachable */
 const autonomy = require("./autonomy");
 app.use("/api/autonomy", autonomy.router);
+/* ── MCP: Xperion Airways for any AI tool (Claude Desktop, Cursor, Copilot, agents) ─────────── */
+const mcp = require("./mcp");
+mcp.init({ AGENT_TOOLS, toolsFor, agentRunTool, getSession, resolveTenant, autonomy, uidForPersona });
+app.get("/mcp/info", (req, res) => res.json(mcp.info(req)));
+app.all("/mcp", (req, res) => mcp.handle(req, res).catch((e) => { if (!res.headersSent) res.status(500).json({ error: e.message }); }));
+app.get("/api/admin/mcp/tokens", (req, res) => res.json({ ok: true, tokens: mcp.list() }));
+app.post("/api/admin/mcp/token", (req, res) => {
+  const persona = String(req.body?.persona || "daniel").toLowerCase();
+  const uid = Number(req.body?.uid) || uidForPersona(persona);
+  if (!uid) return res.status(400).json({ ok: false, error: "unknown persona" });
+  const t = mcp.mint({ uid, label: req.body?.label || `${persona} · ${req.body?.client || "AI tool"}` });
+  res.json({ ok: true, ...t, endpoint: `${req.protocol}://${req.get("host")}/mcp` });
+});
+app.delete("/api/admin/mcp/token/:token", (req, res) => res.json({ ok: mcp.revoke(req.params.token) }));
+
 app.get("/{*splat}", (req, res) => res.sendFile(path.join(__dirname, "..", "public", "index.html")));
 
 const PORT = process.env.PORT || 3000;   // set PORT in .env (e.g. 7801 on the Azure VM)

@@ -308,3 +308,14 @@ lacks the *Manage Sources* role the exact rejection is shown; the fallback is to
 API source in the AEP UI and set `ADOBE_STREAMING_URL` + `ADOBE_EVENT_FLOW_ID`.
 Verify: `GET /api/admin/cdp/streaming`, then `POST /api/admin/cdp/event/test` (with
 `ADOBE_EVENT_SYNC_VALIDATION=1` the inlet validates the payload against the schema inline).
+
+## MCP — Xperion Airways for any AI tool
+
+The server is an MCP server (Streamable HTTP at `/mcp`, discovery at `/mcp/info`): 33 tools
+(the assistant's contract plus profile, disruption status/accept, trip risk/alternatives),
+3 resources, 2 prompts. A bearer token identifies one customer; mint tokens on `/autonomy/`
+("AI tool access") or `POST /api/admin/mcp/token {persona}`. Desktop tools that need stdio
+run `mcp/xperion-mcp.js` with `XPERION_URL` + `XPERION_TOKEN`; remote-capable clients point
+at `/mcp` with the Authorization header. Claude.ai custom connectors require https: put a TLS
+proxy or a tunnel (e.g. Cloudflare Tunnel) in front of the endpoint. Verify with
+`BASE=http://127.0.0.1:<port> node _mcp-test.mjs` → 17/17. `npm install` is required (SDK).
