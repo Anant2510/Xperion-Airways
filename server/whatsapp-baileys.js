@@ -122,7 +122,7 @@ async function start({ onMessage, log = console.log } = {}) {
   onInbound = onMessage || onInbound;
   const baileys = require("baileys");
   const makeWASocket = baileys.default || baileys.makeWASocket;
-  const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys;
+  const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = baileys;
   fs.mkdirSync(AUTH_DIR, { recursive: true });
   const { state: auth, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   let version, versionSource = "library default";
@@ -132,7 +132,10 @@ async function start({ onMessage, log = console.log } = {}) {
 
   const sock = makeWASocket({
     version, auth, logger: pino, printQRInTerminal: false,
-    browser: ["Xperion Airways", "Chrome", "1.0"], markOnlineOnConnect: false, syncFullHistory: false,
+    /* a standard browser identity: WhatsApp accepts custom names for QR scans but refuses them for
+       pairing-code linking; the device shows as "Chrome (Ubuntu)" in Linked Devices */
+    browser: (Browsers && Browsers.ubuntu) ? Browsers.ubuntu("Chrome") : ["Ubuntu", "Chrome", "22.04.4"],
+    markOnlineOnConnect: false, syncFullHistory: false,
     qrTimeout: 120000, connectTimeoutMs: 90000, defaultQueryTimeoutMs: 60000,   // keep an unpaired socket alive longer while the phone links
   });
   state.sock = sock; state.stopping = false;
