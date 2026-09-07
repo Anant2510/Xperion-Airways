@@ -158,3 +158,18 @@ takes one by tapping, by number on WhatsApp, or by saying "earlier"/"later"/"fle
 runs SHIFT_TRIP_DATE / SWITCH_AIRPORT through the policy engine (reversible; original kept).
 The assistant surfaces the same options when a customer asks about their destination.
 Ops: `POST /api/autonomy/risk/assess {pnr}` and `GET /api/autonomy/risk/<pnr>`.
+
+## Cost controls (what can spend money, and when)
+
+Only the research analyst (Claude + web search, ≈ $0.02–0.05 a call) costs anything; the
+weather feeds, geocoding and holidays are free. Defaults:
+
+- `RESEARCH_MODE=on-demand` — the analyst runs when someone is using the site (a request in the
+  last 30 min) or when explicitly asked: ops buttons, the assistant, the simulation. The T-72
+  scheduler on an idle server sends facts-only briefs (forecast + holidays) and says so.
+- `RESEARCH_DAILY_MAX=15` — hard cap per UTC day in every mode; `RESEARCH_MAX_PER_HOUR=20` burst.
+- Briefs are cached 12 h per city and window; the golden T-72 briefs all linked customers from
+  one call.
+- The free feeds slow from every 30 min to every 3 h after an hour without use.
+
+The ops page shows mode, whether the site counts as in use, calls today and the estimated spend.

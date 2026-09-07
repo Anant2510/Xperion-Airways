@@ -67,7 +67,7 @@ const session = require("./session");
 // constant — never a literal 1 (Risk B: keeps agent and request on the same default).
 const SERVER_DEFAULT_UID = session.SERVER_DEFAULT_UID;
 const SYSTEM_UID = session.SYSTEM_UID;
-app.use((req, _res, next) => { req.uid = session.resolveUid(req); req.profileSource = session.sessionSource(req); req.isAdmin = session.isAdmin(req); const s = appCtx.getStore(); if (s) s.uid = req.uid; next(); });
+app.use((req, _res, next) => { if (!/^\/api\/health/.test(req.path)) global.__xpLastActivity = Date.now(); req.uid = session.resolveUid(req); req.profileSource = session.sessionSource(req); req.isAdmin = session.isAdmin(req); const s = appCtx.getStore(); if (s) s.uid = req.uid; next(); });
 // Cache-bust the v2 SPA: serve the shell with a version stamp derived from app.js's
 // mtime, and force revalidation. When app.js changes on deploy, its version query
 // changes, so every browser fetches the fresh bundle on the next load — no hard-refresh

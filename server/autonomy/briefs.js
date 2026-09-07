@@ -45,7 +45,7 @@ async function runForBooking(b, { force = false, reason = "T-72" } = {}) {
   if (!G.getNode(bridge.PAX(uid))) bridge.link();
   const pax = G.getNode(bridge.PAX(uid)) || {};
   const from = b.flight_date, to = research.addDays(b.flight_date, 3);
-  const brief = await research.build(d.code, from, to, { force });
+  const brief = await research.build(d.code, from, to, { force, trigger: reason === "scheduler" ? "scheduler" : "on-demand" });
   const channel = pax.preferred_channel || "push";
   const gate = policy.execute("SEND_DESTINATION_BRIEF", { passengerId: bridge.PAX(uid), channel }, { actor: "briefs", rationale: `${reason} brief for ${b.pnr} → ${brief.city} (${brief.travel_impact} impact)` });
   if (!gate.ok) return { ok: false, refused: gate.refused, failed: gate.failed, brief };
@@ -73,7 +73,7 @@ let timer = null;
 function start({ intervalMs = Number(process.env.BRIEFS_INTERVAL_MS) || 30 * 60 * 1000, log = console.log } = {}) {
   if (process.env.BRIEFS_ENABLED === "0") { log("   Briefs:  T-72 destination briefs OFF (BRIEFS_ENABLED=0)"); return null; }
   log(`   Briefs:  T-72 destination briefs ON for every booked trip (${research.status().llm})`);
-  const tick = () => run().catch(() => {});
+  const tick = () => run({ reason: "scheduler" }).catch(() => {});
   setTimeout(tick, 25000);
   timer = setInterval(tick, intervalMs); if (timer.unref) timer.unref();
   return timer;

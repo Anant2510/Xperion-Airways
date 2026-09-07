@@ -31,6 +31,25 @@ const TTL_MS = Number(process.env.RESEARCH_TTL_MS) || 12 * 60 * 60 * 1000;
 const MAX_PER_HOUR = () => Number(process.env.RESEARCH_MAX_PER_HOUR) || 20;   // read live so the cap can be raised without a restart
 const calls = [];                          // timestamps of LLM calls (rate limit)
 const hasKey = () => !!process.env.ANTHROPIC_API_KEY && process.env.RESEARCH_ENABLED !== "0";
+/* Cost control. RESEARCH_MODE=on-demand (default): the analyst runs only when the site is in use
+   (any request in the last RESEARCH_ACTIVE_MIN minutes) or when explicitly asked (ops buttons,
+   the assistant, the simulation). Scheduled briefs while idle are facts-only, which is free.
+   RESEARCH_MODE=always lets the scheduler research unattended. RESEARCH_DAILY_MAX caps calls
+   per UTC day in every mode. */
+const MODE = () => (process.env.RESEARCH_MODE || "on-demand").toLowerCase();
+const ACTIVE_MIN = () => Number(process.env.RESEARCH_ACTIVE_MIN) || 30;
+const DAILY_MAX = () => Number(process.env.RESEARCH_DAILY_MAX) || 15;
+const COST_PER_CALL = Number(process.env.RESEARCH_COST_PER_CALL) || 0.04;
+const siteInUse = () => Date.now() - (global.__xpLastActivity || 0) < ACTIVE_MIN() * 60000;
+function dailyCount() { const k = G.getNode("policy:research_budget") || {}; const today = new Date().toISOString().slice(0, 10); return k.date === today ? (k.calls || 0) : 0; }
+function bumpDaily() { const today = new Date().toISOString().slice(0, 10); const k = G.getNode("policy:research_budget") || {}; G.upsertNode("policy:research_budget", "Policy", { date: today, calls: (k.date === today ? (k.calls || 0) : 0) + 1 }); }
+/* may the analyst run for this request? null when yes, else the reason it must not */
+function analystBlocked(trigger) {
+  if (!hasKey()) return "no ANTHROPIC_API_KEY";
+  if (dailyCount() >= DAILY_MAX()) return `daily research budget reached (${DAILY_MAX()} calls)`;
+  if (MODE() === "on-demand" && trigger === "scheduler" && !siteInUse()) return "site idle: scheduled briefs are facts-only (RESEARCH_MODE=on-demand)";
+  return null;
+}
 const cityOf = (code) => { const c = AIRPORTS[code]?.city || code; return /^[A-Z0-9 .'-]+$/.test(c) && c.length > 3 ? c.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : c; };
 const countryOf = (code) => AIRPORTS[code]?.country || null;
 const addDays = (iso, n) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -114,17 +133,19 @@ async function repairJSON(findings) {
 function rateOk() { const now = Date.now(); while (calls.length && now - calls[0] > 3600000) calls.shift(); return calls.length < MAX_PER_HOUR(); }
 
 /* ── the brief ────────────────────────────────────────────────────────── */
-async function build(code, from, to, { force = false, interest = null } = {}) {
+async function build(code, from, to, { force = false, interest = null, trigger = "on-demand" } = {}) {
   code = String(code || "").toUpperCase();
   const id = idFor(code, from, to, interest);
   const cached = G.getNode(id);
   if (cached && !force && cached.expires_at > clock.nowIso()) return { ...cached, cached: true };
   const f = await facts(code, from, to);
   let analysis = null, mode = "facts-only", sources = [], error = null;
-  if (hasKey()) {
-    if (!rateOk()) error = `research rate limit (${MAX_PER_HOUR}/h) reached`;
+  const blocked = analystBlocked(trigger);
+  if (blocked && hasKey()) error = blocked;
+  if (!blocked) {
+    if (!rateOk()) error = `research rate limit (${MAX_PER_HOUR()}/h) reached`;
     else {
-      calls.push(Date.now());
+      calls.push(Date.now()); bumpDaily();
       try {
         const out = await callClaude(prompt(code, from, to, f, interest));
         const res = typeof out === "string" ? { text: out, cites: [] } : out;
@@ -179,6 +200,11 @@ function briefText(b, { max = 4 } = {}) {
 }
 
 function list() { return G.nodesByKind("DestinationBrief").sort((a, b) => String(b.generated_at).localeCompare(String(a.generated_at))); }
-function status() { return { enabled: hasKey(), llm: hasKey() ? "claude + web search" : "facts-only (no ANTHROPIC_API_KEY)", ttl_ms: TTL_MS, max_per_hour: MAX_PER_HOUR(), calls_last_hour: calls.filter((t) => Date.now() - t < 3600000).length, briefs: list().length }; }
+function status() {
+  const today = dailyCount();
+  return { enabled: hasKey(), llm: hasKey() ? "claude + web search" : "facts-only (no ANTHROPIC_API_KEY)", mode: MODE(), site_in_use: siteInUse(), active_window_min: ACTIVE_MIN(),
+    ttl_ms: TTL_MS, max_per_hour: MAX_PER_HOUR(), calls_last_hour: calls.filter((t) => Date.now() - t < 3600000).length,
+    daily_max: DAILY_MAX(), calls_today: today, est_cost_today_usd: Number((today * COST_PER_CALL).toFixed(2)), briefs: list().length };
+}
 
 module.exports = { build, briefText, list, status, facts, parseJSON, prompt, setFetch, setLLM, addDays, idFor };

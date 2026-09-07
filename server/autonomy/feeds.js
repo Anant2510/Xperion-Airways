@@ -124,7 +124,13 @@ let timer = null;
 function start({ intervalMs = Number(process.env.FEEDS_INTERVAL_MS) || 30 * 60 * 1000, log = console.log } = {}) {
   if (process.env.FEEDS_ENABLED === "0") { log("   Feeds:   live weather OFF (FEEDS_ENABLED=0)"); return null; }
   log(`   Feeds:   live weather ON — NWS alerts + Open-Meteo outlooks every ${Math.round(intervalMs / 60000)} min for booked destinations`);
-  const run = () => poll().catch(() => {});
+  /* free sources, but when nobody has used the site for an hour, poll every 3 h instead */
+  const idleEvery = Number(process.env.FEEDS_IDLE_INTERVAL_MS) || 3 * 60 * 60 * 1000;
+  const run = () => {
+    const idle = Date.now() - (global.__xpLastActivity || 0) > 60 * 60000;
+    if (idle && lastPoll.at && Date.now() - Date.parse(lastPoll.at) < idleEvery) return;
+    poll().catch(() => {});
+  };
   setTimeout(run, 15000);
   timer = setInterval(run, intervalMs); if (timer.unref) timer.unref();
   return timer;

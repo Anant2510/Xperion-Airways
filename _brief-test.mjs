@@ -143,7 +143,27 @@ ok("the proactive brief carries risk-aware alternatives as one-tap options", r2.
 const viaChat = bridge.intercept(1, "2");
 ok("replying '2' on WhatsApp takes the second alternative", viaChat?.ok === true, viaChat?.reply?.slice(0, 80));
 
-/* 9 · synthetic suite untouched */
+/* 9 · cost control: idle scheduler is facts-only; use or an explicit ask allows the analyst; daily cap holds */
+let costCalls = 0;
+research.setLLM(async () => { costCalls++; return { text: "<brief>" + JSON.stringify({ summary: "Quiet week.", events: [], advisories: [], news: [], travel_impact: "none", confidence: 0.6 }) + "</brief>", cites: [] }; });
+global.__xpLastActivity = 0;                       // nobody has touched the site
+const llmBefore = costCalls;
+const idle = await research.build("BLR", addDays(8), addDays(11), { trigger: "scheduler", force: true });
+ok("idle scheduler brief is facts-only and says why (no analyst call)", idle.mode === "facts-only" && /idle/.test(idle.error || "") && costCalls === llmBefore, idle.error);
+global.__xpLastActivity = Date.now();              // someone is using the site
+const active = await research.build("BLR", addDays(8), addDays(11), { trigger: "scheduler", force: true });
+ok("scheduler brief while the site is in use runs the analyst", active.mode === "llm+facts" && costCalls === llmBefore + 1);
+global.__xpLastActivity = 0;
+const asked = await research.build("HYD", addDays(8), addDays(11), { trigger: "on-demand", force: true });
+ok("an explicit ask always runs the analyst, idle or not", asked.mode === "llm+facts" && costCalls === llmBefore + 2);
+process.env.RESEARCH_DAILY_MAX = "1";
+const capped = await research.build("MAA", addDays(8), addDays(11), { trigger: "on-demand", force: true });
+ok("daily budget caps the analyst with an honest reason", capped.mode === "facts-only" && /daily research budget/.test(capped.error || ""), capped.error);
+process.env.RESEARCH_DAILY_MAX = "15";
+const rst = research.status();
+ok("status reports mode, use, calls today and an estimated cost", rst.mode === "on-demand" && typeof rst.calls_today === "number" && typeof rst.est_cost_today_usd === "number", `${rst.calls_today} calls ≈ $${rst.est_cost_today_usd}`);
+
+/* 10 · synthetic suite untouched */
 const passed = results.filter(Boolean).length;
 console.log(`\n===== BRIEFS: ${passed}/${results.length} checks passed =====`);
 try { fs.rmSync("./data/brief-test.db", { force: true }); } catch {}
