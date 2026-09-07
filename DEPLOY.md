@@ -256,7 +256,9 @@ needed, and there is no 24-hour session window. Baileys is an unofficial client
 that runs against WhatsApp's terms: pair a burner number only.
 
     WA_MODE=baileys
-    WA_PHONE_MAP=919871724927:daniel      (optional: pin a demo phone to a persona)
+    WA_PAIRING_PHONE=918595960365         (burner digits; prints a code instead of a QR)
+    WA_PHONE_MAP=919871724927:daniel      (pin the demo phone to a persona)
+    WA_SELF_CHAT=0                        (with a pinned second account, self-chat is off)
 
 Pairing, first run only. Stop pm2 first so two processes never hold the socket:
 
@@ -279,10 +281,22 @@ Credentials persist in `data/baileys-auth/` (gitignored; survives a database
 reset), so later starts reconnect silently with no QR. To re-pair:
 `Remove-Item -Recurse -Force data\baileys-auth`.
 
-One-phone testing: a message typed on the paired phone in its own "Message
-yourself" chat is handled as a customer message from the bot's number (the bot's
-replies there are never re-read, so no loop). WA_SELF_CHAT=0 disables this.
-Pin the burner itself to a persona for that: WA_PHONE_MAP=919625833782:daniel.
+Two accounts on one handset (the preferred demo rig): the burner runs as a second
+WhatsApp account (dual SIM / eSIM) alongside the personal account. Baileys links
+to the burner; the bot then messages the personal number, so offers arrive as an
+ordinary incoming chat and replies go back as ordinary outgoing ones. Pin it with
+WA_PHONE_MAP=919871724927:daniel and set WA_SELF_CHAT=0. Warm the thread once
+before the first demo: message the burner from the personal account, so the bot's
+first send is a reply rather than a cold outbound from a brand-new number.
+
+One-phone fallback (no second account): a message typed on the paired phone in its
+own "Message yourself" chat is handled as a customer message from the bot's number
+(the bot's replies there are never re-read, so no loop). Leave WA_SELF_CHAT unset
+and pin the burner itself: WA_PHONE_MAP=918595960365:daniel.
+
+Opt-in: the bot never messages a number that has not messaged it first, unless it is pinned in
+`WA_PHONE_MAP` or listed in `WA_ALLOWED_NUMBERS`; those sends report `skipped` and the customer
+still gets the app inbox and email. Unsolicited sends are what gets a number restricted.
 
 Identity: a sender whose number matches a persona (or WA_PHONE_MAP) is served
 as that member; anyone else becomes an anonymous guest with a real user row and

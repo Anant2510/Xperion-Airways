@@ -103,9 +103,27 @@ async function flushOutbox(log = console.log) {
   if (sent) log(`   WhatsApp outbox: ${sent} queued message(s) delivered after reconnect`);
   return sent;
 }
+/* Opt-in rule: the bot only messages numbers that have messaged it (this run or ever, per the
+   wa_messages log), numbers pinned in WA_PHONE_MAP, numbers listed in WA_ALLOWED_NUMBERS, or its
+   own number. Unsolicited sends to strangers are what gets a number restricted — and persona
+   phone numbers are fictional and may belong to real people. WA_ALLOW_ALL=1 overrides. */
+function optedIn(d) {
+  if (!d) return false;
+  if (process.env.WA_ALLOW_ALL === "1") return true;
+  if (state.me && digits(state.me) === d) return true;
+  if (jidBySender.has(d)) return true;
+  const pinned = String(process.env.WA_PHONE_MAP || "").split(",").map((x) => digits(x.split(":")[0])).filter(Boolean);
+  if (pinned.includes(d)) return true;
+  const allowed = String(process.env.WA_ALLOWED_NUMBERS || "").split(",").map(digits).filter(Boolean);
+  if (allowed.includes(d)) return true;
+  try { const { db } = require("./db"); const tail = d.slice(-9); const row = db.prepare("SELECT 1 FROM wa_messages WHERE direction='in' AND wa_id LIKE ? LIMIT 1").get(`%${tail}`); if (row) return true; } catch {}
+  return false;
+}
 /* Outbound: to may be "whatsapp:+91…", "+91…", digits, or a JID. Returns an honest status. */
 async function send(to, text) {
   const raw = String(to || "");
+  const d = /@/.test(raw) ? digits(raw.split("@")[0]) : digits(raw);
+  if (!optedIn(d)) return "skipped (no WhatsApp opt-in: this number has never messaged the bot; app inbox and email still delivered)";
   const jid = /@/.test(raw) ? raw : (jidBySender.get(digits(raw)) || pnJid(raw));
   if (!state.sock || !state.connected) {
     outbox.push({ jid, text, at: new Date().toISOString() }); if (outbox.length > 200) outbox.shift();
@@ -197,4 +215,4 @@ async function start({ onMessage, log = console.log } = {}) {
 async function stop() { state.stopping = true; try { state.sock?.end?.(); } catch {} state.connected = false; }
 function status() { return { mode: "baileys", connected: state.connected, me: state.me, selfChat: SELF_CHAT(), outbox: outbox.length, authDir: AUTH_DIR, paired: fs.existsSync(path.join(AUTH_DIR, "creds.json")), lastQrAt: state.lastQrAt }; }
 
-module.exports = { start, stop, send, status, dispatch, extractText, flushOutbox, _state: state, _jidBySender: jidBySender, _outbox: outbox };
+module.exports = { start, stop, send, status, dispatch, extractText, flushOutbox, optedIn, _state: state, _jidBySender: jidBySender, _outbox: outbox };

@@ -17,7 +17,7 @@ const results = []; const ok = (n, p, d = "") => { results.push(!!p); console.lo
 /* mock socket: records sends, exposes a lid→pn store */
 const sent = [];
 transport._state.sock = { sendMessage: async (jid, content) => { sent.push({ jid, text: content.text }); return { key: { id: "m" + sent.length } }; }, signalRepository: { lidMapping: { getPNForLID: async (lid) => (lid === "120280659804249@lid" ? "919871724927@s.whatsapp.net" : null) } } };
-transport._state.connected = true; transport._state.me = "+919625833782";
+transport._state.connected = true; transport._state.me = "+918595960365";
 whatsapp.setTransport(transport);
 ok("conversation module reports baileys mode", whatsapp.MODE() === "baileys" && whatsapp.CONFIGURED() === true, whatsapp.MODE());
 
@@ -86,19 +86,29 @@ const b = db.prepare("SELECT status FROM bookings WHERE pnr='XPW01A'").get();
 ok("real booking updated from the WhatsApp acceptance", ["rebooked", "refund_pending"].includes(b?.status), b?.status);
 
 /* 7 · self-chat test mode: typed on the paired phone in "Message yourself" → handled; bot echoes never re-read */
-transport._state.sock.user = { id: "919625833782:7@s.whatsapp.net", lid: "224466@lid" };
+transport._state.sock.user = { id: "918595960365:7@s.whatsapp.net", lid: "224466@lid" };
 sent.length = 0;
-const selfIn = await flow({ key: { remoteJid: "919625833782@s.whatsapp.net", fromMe: true, id: "typed-1" }, pushName: "Test", message: { conversation: "hi" } });
-ok("self-chat message from the paired phone is handled as a customer", selfIn?.from === "whatsapp:+919625833782" && sent.length >= 1, selfIn?.from);
+const selfIn = await flow({ key: { remoteJid: "918595960365@s.whatsapp.net", fromMe: true, id: "typed-1" }, pushName: "Test", message: { conversation: "hi" } });
+ok("self-chat message from the paired phone is handled as a customer", selfIn?.from === "whatsapp:+918595960365" && sent.length >= 1, selfIn?.from);
 const echoId = sent.length ? "m" + sent.length : "m1";
-const echo = await dispatch({ key: { remoteJid: "919625833782@s.whatsapp.net", fromMe: true, id: echoId }, message: { conversation: sent[0]?.text || "x" } });
+const echo = await dispatch({ key: { remoteJid: "918595960365@s.whatsapp.net", fromMe: true, id: echoId }, message: { conversation: sent[0]?.text || "x" } });
 ok("the bot's own reply in that chat is not re-dispatched (no loop)", echo === null);
 const other = await dispatch({ key: { remoteJid: "447700900999@s.whatsapp.net", fromMe: true, id: "typed-2" }, message: { conversation: "hello" } });
 ok("messages the burner sends to other people are still ignored", other === null);
 
+/* 7b · opt-in: strangers are never messaged; people who wrote in, pinned and allow-listed numbers are */
+sent.length = 0;
+const stranger = await whatsapp.sendText("+14155550199", "hello?");
+ok("a number that never messaged the bot is skipped, not spammed", /skipped/.test(stranger) && sent.length === 0, stranger.slice(0, 60));
+ok("a number that wrote in is opted in", transport.optedIn("919871724927") === true);
+process.env.WA_ALLOWED_NUMBERS = "15550001111";
+ok("an allow-listed number is opted in", transport.optedIn("15550001111") === true);
+delete process.env.WA_ALLOWED_NUMBERS;
+ok("the bot's own number is opted in (self-chat)", transport.optedIn("918595960365") === true);
+
 /* 8 · outbox: sent while down, delivered on reconnect; pinned phone wins for outbound */
 transport._state.connected = false;
-const q1 = await whatsapp.sendText("+15551234567", "x");
+const q1 = await whatsapp.sendText("+919871724927", "x");
 ok("send while the socket is down is queued, not dropped", /queued/.test(q1) && transport._outbox.length === 1, q1);
 sent.length = 0; transport._state.connected = true;
 const flushed = await transport.flushOutbox(() => {});
