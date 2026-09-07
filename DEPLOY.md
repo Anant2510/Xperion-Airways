@@ -271,6 +271,10 @@ own. Then Ctrl+C and:
 
     pm2 restart xperion-v10 --update-env
 
+If the QR won't scan ("Check your connection and try again" usually means it rotated), set
+`WA_PAIRING_PHONE=<burner digits>` and the server prints an 8-character code instead; on the
+phone choose "Link with phone number instead". `WA_QR_LARGE=1` prints a full-size QR.
+
 Credentials persist in `data/baileys-auth/` (gitignored; survives a database
 reset), so later starts reconnect silently with no QR. To re-pair:
 `Remove-Item -Recurse -Force data\baileys-auth`.

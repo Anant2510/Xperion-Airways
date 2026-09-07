@@ -135,12 +135,24 @@ async function start({ onMessage, log = console.log } = {}) {
   state.sock = sock; state.stopping = false;
   sock.ev.on("creds.update", saveCreds);
 
+  /* Pairing by code instead of QR: WA_PAIRING_PHONE=<burner digits with country code>. The phone
+     chooses "Link with phone number instead" and types the code the server prints. */
+  let pairingRequested = false;
   sock.ev.on("connection.update", (u) => {
     const { connection, lastDisconnect, qr } = u;
+    const pairPhone = digits(process.env.WA_PAIRING_PHONE || "");
+    if (qr && pairPhone && !pairingRequested && !sock.authState?.creds?.registered) {
+      pairingRequested = true;
+      setTimeout(async () => {
+        try { const code = await sock.requestPairingCode(pairPhone); const pretty = String(code).replace(/(.{4})(?=.)/g, "$1-"); log(`\n   WhatsApp pairing code for +${pairPhone}: ${pretty}\n   On the burner: WhatsApp → Settings → Linked Devices → Link a Device → "Link with phone number instead" → enter the code.\n`); }
+        catch (e) { log("   Pairing code request failed: " + String(e?.message || e).slice(0, 120) + " — scan the QR instead"); }
+      }, 1500);
+      return;
+    }
     if (qr) {
       state.lastQrAt = new Date().toISOString();
       log("\n   WhatsApp pairing — scan with the burner phone: WhatsApp → Settings → Linked Devices → Link a Device");
-      try { require("qrcode-terminal").generate(qr, { small: true }); } catch { log("   (qrcode-terminal missing; raw QR data) " + qr); }
+      try { require("qrcode-terminal").generate(qr, { small: process.env.WA_QR_LARGE !== "1" }); } catch { log("   (qrcode-terminal missing; raw QR data) " + qr); }
       log("   The QR refreshes about every 20 seconds.\n");
     }
     if (connection === "open") {
