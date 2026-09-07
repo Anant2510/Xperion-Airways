@@ -44,8 +44,8 @@ npm run build:all && npm run build:v3
 npm start
 ```
 
-Open `http://localhost:7810/` for the airline app and
-`http://localhost:7810/autonomy/` for the autonomy ops console.
+Open `http://localhost:7811/` for the airline app and
+`http://localhost:7811/autonomy/` for the autonomy ops console.
 
 ```bash
 # 5. fresh git repository
@@ -72,7 +72,7 @@ cd C:\apps\xperion-autonomy
 node -v                                  # >= v22.5.0
 npm install
 copy .env.example .env
-notepad .env                             # PORT=7810, DB_PATH=./data/xperion-v10.db
+notepad .env                             # PORT=7811, DB_PATH=./data/xperion-v10.db
 npm run build:all
 npm run build:v3
 npm start
@@ -82,15 +82,22 @@ Open the port once:
 
 ```powershell
 New-NetFirewallRule -DisplayName "Xperion v10" -Direction Inbound `
-  -LocalPort 7810 -Protocol TCP -Action Allow
+  -LocalPort 7811 -Protocol TCP -Action Allow
 ```
 
-If the VM is on Azure or similar, also add an inbound rule for 7810 in the
+If the VM is on Azure or similar, also add an inbound rule for 7811 in the
 network security group. Confirm nothing else holds the port:
 
 ```powershell
-netstat -ano | findstr :7810
+netstat -ano | findstr :7811
 ```
+
+Why 7811 and not 7810: on the shared Coforge VM, 7810 is taken by an unrelated
+Windows service, `AABackend` ("AA Backend API", wrapped with NSSM, runs
+`node scripts\serve.js`). It is not part of this project and NSSM restarts it
+whenever it is killed, so leave it alone. It means a healthy VM shows THREE
+node processes, not two; see "Process hygiene" in TRANSITION.md for the check
+that tells them apart.
 
 ### Run it as a service (survives logoff and reboot)
 
@@ -110,11 +117,11 @@ pm2 inherits the `.env` because the app loads it itself via dotenv.
 ## 3 · Verify the deployment
 
 ```bash
-curl http://<host>:7810/api/health
+curl http://<host>:7811/api/health
 # {"ok":true,"version":"v10","db":".../xperion-v10.db", ...}
 
-curl http://<host>:7810/api/autonomy/status          # KPIs + graph stats
-curl -X POST http://<host>:7810/api/autonomy/sim/golden   # full DEL->MIA timeline
+curl http://<host>:7811/api/autonomy/status          # KPIs + graph stats
+curl -X POST http://<host>:7811/api/autonomy/sim/golden   # full DEL->MIA timeline
 ```
 
 Boot banner should read:
@@ -136,7 +143,7 @@ node _autonomy-test.mjs      # 51 checks — disruption autonomy (in-process)
 Both read `.env`, so they use the same `PORT` and `DB_PATH` as the server. The
 retail suite drives the server over HTTP, so start it first; the autonomy
 suite runs in-process and needs no server. To point the retail suite somewhere
-else: `BASE=http://127.0.0.1:7810 node _retail-test.mjs`.
+else: `BASE=http://127.0.0.1:7811 node _retail-test.mjs`.
 
 Two of the retail checks exercise offer expiry, which is slow at production
 TTL. To run those, start the server with a short TTL and tell the suite:
@@ -167,7 +174,7 @@ BASE_PATH=/xperion-v10
 
 The server strips the prefix internally and serves static assets at both the
 prefix and root, so no other change is needed. Point your reverse proxy at
-`http://127.0.0.1:7810`.
+`http://127.0.0.1:7811`.
 
 ---
 
@@ -177,7 +184,7 @@ The build ships at rollout gate Phase C (`policy:autonomy_gate` in the graph).
 For a first deployment, start in shadow mode:
 
 ```bash
-curl -X POST http://<host>:7810/api/autonomy/kill \
+curl -X POST http://<host>:7811/api/autonomy/kill \
   -H "content-type: application/json" -d '{"global":true}'
 ```
 
@@ -185,7 +192,7 @@ Tier 0/1 actions freeze; prediction, ranking and package preparation continue,
 and the Tier-2 queue still works. Lift it when you are ready:
 
 ```bash
-curl -X POST http://<host>:7810/api/autonomy/kill \
+curl -X POST http://<host>:7811/api/autonomy/kill \
   -H "content-type: application/json" -d '{"global":false}'
 ```
 
