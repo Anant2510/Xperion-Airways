@@ -2257,7 +2257,7 @@ function ChatCards({ cards, onSelectFlight, cardBrand = "card" }) {
                     {f.flight_no} {f.recommended && <span className="text-[9px] px-1.5 py-0.5 rounded-full text-white" style={{background:"var(--tap-green)"}}>For you</span>}
                     {f.status==="delayed" && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">delayed</span>}
                   </div>
-                  <div className="text-xs text-gray-500">{f.dep}–{f.arr}</div>
+                  <div className="text-xs text-gray-500">{f.date ? `${f.date} · ` : ""}{f.dep}–{f.arr}</div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="font-bold text-sm" style={{color:"var(--tap-ink)"}}>{EUR(f.price)}</span>

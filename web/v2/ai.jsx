@@ -74,11 +74,13 @@ function ConfirmationCard({ card, act, go }) {
 }
 
 function FlightCard({ card, onPick }) {
+  const fmtD = (d) => { try { return new Date(d + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }); } catch { return d; } };
   return (
     <div className="rounded-xl border border-line overflow-hidden mt-2">
-      {(card.flights || []).slice(0, 3).map((f, i) => (
+      {card.window && <div className="px-3 py-1.5 text-[11px] font-semibold text-ink-muted bg-surface-mute">{card.sort === "price" ? "Cheapest across " : "Flights across "}{fmtD(card.window.from)} to {fmtD(card.window.to)} · each with its own date</div>}
+      {(card.flights || []).slice(0, card.window ? 5 : 3).map((f, i) => (
         <button key={f.flight_no} onClick={() => onPick(f)} className={cx("w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-surface-mute", i > 0 && "border-t border-line")}>
-          <div className="text-[15px] font-bold v2-num w-14">{f.dep}</div>
+          <div className="w-14"><div className="text-[15px] font-bold v2-num">{f.dep}</div>{f.date && <div className="text-[10px] text-ink-faint">{fmtD(f.date)}</div>}</div>
           <div className="flex-1"><div className="text-[12px] font-semibold">{f.flight_no} → {f.arr}</div><div className="text-[11px] text-ink-faint">{f.duration} · Direct · Classic</div></div>
           {(f.recommended || f.lowest) && <Pill tone="lime">{f.recommended ? "Recommended" : "Lowest"}</Pill>}
           <div className="text-right"><div className="text-[13px] font-bold v2-num">{money(f.price)}</div>{f.miles_price && <div className="text-[10px] air-accent-deep v2-num">or {miles(f.miles_price)} mi</div>}</div>
@@ -569,7 +571,7 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
       setMsgs([...next, { role: "assistant", content: "I'm having trouble reaching the assistant right now — please try again in a moment." }]);
     } finally { setBusy(false); }
   }
-  const pickFlight = (f) => send(`Book ${f.flight_no} departing ${f.dep}`);
+  const pickFlight = (f) => send(`Book ${f.flight_no} departing ${f.dep}${f.date ? ` on ${f.date}` : ""}`);
 
   const Composer = (
     <div className="flex items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-2">

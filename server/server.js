@@ -1395,6 +1395,8 @@ const AGENT_TOOLS = [
   { name: "search_flights", description: `Search {{airline}} flights for a SPECIFIC route (origin + destination) and date. Only call this when you know BOTH the origin and the destination. If the customer hasn't said where they want to go, do NOT call this — call list_destinations or ask them first. Never assume or default the destination. Dates like 'next Friday' resolve to YYYY-MM-DD (today is ${searchToday()}).`,
     input_schema: { type: "object", properties: {
       origin: { type: "string", description: "Origin IATA code, e.g. MIA. If the customer didn't specify an origin, use the customer's home airport." },
+      days: { type: "integer", description: "Optional window in days starting at date (1-14). Use 7 when the customer says a week, 'first week of October', 'flexible', 'any day'; results then come from across the window, each with its own date." },
+      sort: { type: "string", enum: ["price", "time"], description: "Optional. 'price' when the customer asks for cheapest / lowest / budget." },
       dest: { type: "string", description: "Destination IATA code, e.g. LIS, MAD, CDG. REQUIRED — never guess this. If unknown, call list_destinations instead." },
       date: { type: "string", description: `Travel date YYYY-MM-DD. Defaults to today (${searchToday()}) if the customer gave no date.` },
     }, required: ["origin", "dest"] } },
@@ -1412,7 +1414,7 @@ const AGENT_TOOLS = [
   { name: "get_suggestions", description: "Get the customer's personalized suggested destinations, computed from their real flown/booked/searched history. Use when they ask 'where should I go' or for ideas (NOT for factual 'where do we fly from X' questions — use list_destinations for those).",
     input_schema: { type: "object", properties: {} } },
   { name: "select_flight", description: "Select a specific flight by its flight number (from a prior search) and put it in the basket. Use when the customer picks one.",
-    input_schema: { type: "object", properties: { flight_no: { type: "string" } }, required: ["flight_no"] } },
+    input_schema: { type: "object", properties: { flight_no: { type: "string" }, date: { type: "string", description: "Optional YYYY-MM-DD when the results spanned several days (each flight in the list carries its date)." } }, required: ["flight_no"] } },
   { name: "get_flight_info", description: "Look up details and seat availability for a SPECIFIC flight number the customer mentions (e.g. 'does XP1481 have availability tomorrow', 'tell me about XP501'). Use this instead of asking the customer which destination — the flight number already identifies the route. Returns the flight's route, times, price, cabin classes and seat availability.",
     input_schema: { type: "object", properties: {
       flight_no: { type: "string", description: "The flight number, e.g. XP1481." },
@@ -1538,9 +1540,31 @@ const XperionAdapter = createAirlineAdapter("xperion", {
       const dests = (db.prepare("SELECT dest FROM routes WHERE origin=?").all(origin) || []).map(r => r.dest);
       return { ok: false, message: `Xperion doesn't fly ${cityName(origin)}→${cityName(dest)} in this network.`, available_destinations: dests.map(c => ({ code: c, city: cityName(c) })) };
     }
+    const days = Math.max(1, Math.min(14, Number(input.days) || 1));
+    const sortBy = input.sort === "price" ? "price" : null;
+    /* window search: every day from `date`, each flight tagged with its date, best 8 across the window */
+    if (days > 1) {
+      const all = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date(date + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + i); const di = d.toISOString().slice(0, 10);
+        persistFlights(generateFlights(origin, dest, di));
+        for (const f of db.prepare("SELECT * FROM flights WHERE origin=? AND dest=? AND flight_date=? ORDER BY dep").all(origin, dest, di)) all.push(f);
+      }
+      all.sort(sortBy === "price" ? ((a, b) => a.price - b.price) : ((a, b) => (a.flight_date + a.dep).localeCompare(b.flight_date + b.dep)));
+      const picked = all.slice(0, 8);
+      const last = new Date(date + "T00:00:00Z"); last.setUTCDate(last.getUTCDate() + days - 1);
+      const window = { from: date, to: last.toISOString().slice(0, 10) };
+      db.prepare(`INSERT INTO searches (user_id,origin,dest,travel_date,pax,results,device,created_at) VALUES (?,?,?,?,?,?,?,?)`).run(uid, origin, dest, date, 1, picked.length, "Chat agent", now());
+      saveJourney({ origin, dest, date, device: "Chat agent", stage: "results" }, uid);
+      log("agent_search_window", { origin, dest, window, days, sort: sortBy, results: picked.length });
+      session.lastSearch = { origin, dest, date, window, flights: picked };
+      return { ok: true, origin, dest, date, window, days, sort: sortBy, city: cityName(dest),
+        flights: picked.map(f => ({ flight_no: f.flight_no, date: f.flight_date, dep: f.dep, arr: f.arr, price: f.price, status: f.status, recommended: !!f.recommended })) };
+    }
     const flights = generateFlights(origin, dest, date);
     persistFlights(flights);
-    const stored = db.prepare("SELECT * FROM flights WHERE origin=? AND dest=? AND flight_date=? ORDER BY dep").all(origin, dest, date);
+    let stored = db.prepare("SELECT * FROM flights WHERE origin=? AND dest=? AND flight_date=? ORDER BY dep").all(origin, dest, date);
+    if (sortBy === "price") stored = stored.slice().sort((a, b) => a.price - b.price);
     db.prepare(`INSERT INTO searches (user_id,origin,dest,travel_date,pax,results,device,created_at) VALUES (?,?,?,?,?,?,?,?)`)
       .run(uid, origin, dest, date, 1, stored.length, "Chat agent", now());
     // Live "continue your last search" banner — record journey at the RESULTS stage
@@ -1548,7 +1572,7 @@ const XperionAdapter = createAirlineAdapter("xperion", {
     scheduleSearchFollowup(origin, dest, date, stored, uid);
     log("agent_search", { origin, dest, date, results: stored.length });
     session.lastSearch = { origin, dest, date, flights: stored };
-    return { ok: true, origin, dest, date, city: cityName(dest),
+    return { ok: true, origin, dest, date, sort: sortBy, city: cityName(dest),
       flights: stored.map(f => ({ flight_no: f.flight_no, dep: f.dep, arr: f.arr, price: f.price, status: f.status, recommended: !!f.recommended })) };
   },
   async get_destination_brief(input, ctx) {
@@ -1595,7 +1619,10 @@ const XperionAdapter = createAirlineAdapter("xperion", {
   },
   select_flight(input, ctx) {
     const { uid, session } = ctx;
-    const f = flightByNo((input.flight_no || "").toUpperCase());
+    const no = (input.flight_no || "").toUpperCase();
+    const fromList = (session.lastSearch?.flights || []).find(x => x.flight_no === no);   // window results carry their own date
+    const want = input.date || fromList?.flight_date || null;
+    const f = (want && db.prepare("SELECT * FROM flights WHERE flight_no=? AND flight_date=?").get(no, want)) || flightByNo(no);
     if (!f) return { ok: false, message: "That flight number isn't in the latest results — search the route first." };
     const auto = db.prepare("SELECT code FROM ancillaries WHERE auto=1").all().map(a => a.code);
     db.prepare("UPDATE baskets SET status='superseded' WHERE user_id=? AND status='open'").run(uid);
@@ -2074,7 +2101,7 @@ function buildUI(toolCalls) {
   let cards = [], command = null;
   for (const tc of toolCalls) {
     if (tc.name === "search_flights" && tc.result?.ok) {
-      cards = [{ type: "flights", origin: tc.result.origin, dest: tc.result.dest, city: tc.result.city, date: tc.result.date, flights: tc.result.flights }];
+      cards = [{ type: "flights", origin: tc.result.origin, dest: tc.result.dest, city: tc.result.city, date: tc.result.date, window: tc.result.window || null, sort: tc.result.sort || null, flights: tc.result.flights }];
       command = { action: "show_search", origin: tc.result.origin, dest: tc.result.dest, date: tc.result.date };
     } else if (tc.name === "add_extras" && tc.result?.ok) {
       // v35 extras A2UI: add_extras previously emitted no card.
@@ -2347,7 +2374,7 @@ function deterministicAgent(text, session) {
     return done(`You have ${r.miles.toLocaleString()} miles (≈ $${r.miles_value_eur}).${v} Any booking can be split across miles, voucher and your ${r.card}.`);
   }
   // personalized package / what to do
-  if (has("package", "recommend", "what should i do", "things to do", "weekend", "anything fun", "what to do")) {
+  if (has("package", "recommend", "what should i do", "things to do", "anything fun", "what to do") && !/\b(flights?|fly|book|search)\b.*\bto\s+[a-zà-ÿ]/.test(q)) {
     const r = run("get_recommendation");
     if (r.package) { const p = r.package; return done(`Because of your ${r.affinity_label} card spend, I'd suggest the ${p.event} at ${p.venue} — ticket + ${p.hotel_nights} nights at ${p.hotel} + return flight, $${p.total} all-in.`); }
     return done("Let me pull a package tailored to you.");
@@ -2495,16 +2522,21 @@ function deterministicAgent(text, session) {
     const ls = session.lastSearch;
     if (!dest && ls && ls.dest) { origin = ls.origin; dest = ls.dest; } // keep active route when only the date changed
     const date = whatsapp.parseDate(q) || searchToday();
+    const scanDays = whatsapp.wantsWeekScan(q) ? 7 : 1;
+    const sortBy = whatsapp.wantsCheapest(q) ? "price" : null;
     if (!dest) {
       /* a country, or a place we don't serve: say so honestly instead of listing 1,500 cities */
       const place = ((q.match(/\b(?:to|for)\s+([a-zà-ÿ][a-zà-ÿ .'-]{1,30}?)(?:\s+(?:in|on|next|this|tomorrow|today|early|late|mid|around|from|by|for|during|first|last|the)\b|[?.,!]|$)/) || [])[1] || "").trim();
-      const iso = place ? countries.countryCode(place) : null;
+      /* the WhatsApp resolver knows aliases ("delhi" → DEL, "nyc" → JFK) that parseRoute does not */
+      const viaAlias = place ? whatsapp.detectDest(place) : null;
+      if (viaAlias && viaAlias !== origin) dest = viaAlias;
+      const iso = !dest && place ? countries.countryCode(place) : null;
       if (iso) {
         const { list, more, total } = countries.listServed(iso, 8);
         if (!total) return done(`Sorry — Xperion doesn't fly to ${countries.nameOf(iso)} yet. Another city or country?`);
         if (total === 1) { dest = list[0].code; }
         else return done(`Xperion flies to ${total} airports in ${countries.nameOf(iso)}: ${list.map(a => `${a.city} (${a.code})`).join(", ")}${more ? ` and ${more} more` : ""}. Which one would you like${date !== searchToday() ? ` for ${date}` : ""}?`);
-      } else if (place && !/^(the|a|an|my|our|be|go|get|see|do|it|that|this|me|us|there|here)$/.test(place.split(/\s+/)[0])) {
+      } else if (!dest && place && !/^(the|a|an|my|our|be|go|get|see|do|it|that|this|me|us|there|here)$/.test(place.split(/\s+/)[0])) {
         return done(`Sorry — Xperion doesn't fly to ${place.replace(/\b\w/g, m => m.toUpperCase())}. Tell me another city, an airport code, or a country and I'll list what we serve there.`);
       }
     }
@@ -2512,8 +2544,8 @@ function deterministicAgent(text, session) {
       const r = run("list_destinations", { origin });
       return done(r.ok ? `From ${r.originCity} you can fly to ${r.count} cities — ${r.destinations.slice(0, 6).map(d => d.city).join(", ")} and more. Which destination?` : "Where would you like to fly to?");
     }
-    const r0 = run("search_flights", { origin, dest, date });
-    const r = shapeFlights(r0, q);
+    const r0 = run("search_flights", scanDays > 1 || sortBy ? { origin, dest, date, days: scanDays, sort: sortBy } : { origin, dest, date });
+    const r = r0.window ? r0 : shapeFlights(r0, q);   // window results are already shaped by the tool
     // buildUI derives the cards from the recorded tool call, so mirror the shaped list onto it —
     // otherwise the summary says "5 cheapest" while the cards stay departure-ordered.
     if (r.ok && calls.length) calls[calls.length - 1].result = r;
@@ -2522,6 +2554,7 @@ function deterministicAgent(text, session) {
       const sh = r.shaped || {};
       const noun = sh.mode === "cheap" ? "cheapest " : sh.mode === "early" ? "earliest " : sh.mode === "late" ? "latest " : "";
       const shown = sh.n && sh.n < sh.total ? `Showing the ${sh.n} ${noun}of ${sh.total} flights` : `Found ${r.flights.length} flights`;
+      if (r.window) return done(`${r.sort === "price" ? "Cheapest " + r.flights.length : r.flights.length + " flights"} ${cityName(r.origin)}→${r.city} across ${r.window.from} to ${r.window.to}, from $${lo} — each with its own date. Pick one below, or say a flight number to add it.`);
       return done(`${shown} ${cityName(r.origin)}→${r.city} on ${r.date}, from $${lo}. Pick one below, or say a flight number to add it.`);
     }
     if (r.available_destinations) return done(`${r.message} From ${cityName(origin)} you can fly to ${r.available_destinations.slice(0, 6).map(d => d.city).join(", ")} and more.`);
@@ -2638,6 +2671,7 @@ app.post("/api/ai/agent", async (req, res) => {
   }
   if (session.selected) situ += ` Currently selected flight: ${session.selected.flight_no}.`;
   try { situ += autonomy.bridge.contextLine(req.uid); } catch {}   // Enterprise Autonomy: live disruption facts from the knowledge graph
+  situ += " When the customer gives a week or a range (\"first week of October\", \"next week\", \"flexible\") call search_flights with days=7 from the start date; when they ask for cheapest, pass sort=price. Results from a window each carry their own date: pass it to select_flight."
   situ += " For weather, events, safety or news at any destination, call get_destination_brief (pass interest, e.g. football, when the customer asks about a kind of event) and report its contents with sources for THAT city and THOSE dates; never invent a forecast, never answer with a package for a different city, and mention a package only when the tool lists one there. Leave travel decisions with the customer.";
   situ += ")";
   // Stored history first, so the agent has context even on a fresh tab / after a reload,

@@ -1201,4 +1201,4 @@ ${recovery.message}
 Reply:  1 to ${keep}   ·   2 to ${move}`);
 }
 
-module.exports = { handleIncoming, pushDisruption, sendMainMenu, sendText, sendButtons, CONFIGURED, MODE, setTransport, parseDate };
+module.exports = { handleIncoming, pushDisruption, sendMainMenu, sendText, sendButtons, CONFIGURED, MODE, setTransport, parseDate, wantsWeekScan, wantsCheapest, detectDest };
