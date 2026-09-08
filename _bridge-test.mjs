@@ -74,7 +74,7 @@ ok("audit: SAGA_COMPLETE + APPLY_TO_BOOKING for the app customer", audit2.events
 
 /* 7 · WhatsApp path: a fresh world, Daniel replies "1" on WhatsApp */
 await post("/api/autonomy/sim/reset"); await post("/api/autonomy/sim/t72"); await post("/api/autonomy/sim/t48");
-const donesBefore = (((await get("/api/admin/db")).tables || {}).wa_messages || []).filter((r) => r.direction === "out" && /^Done, /.test(r.body || r.text || "")).length;
+const waIdBefore = Math.max(0, ...((((await get("/api/admin/db")).tables || {}).wa_messages || []).map((r) => Number(r.id) || 0)));
 await wa(phone, "1"); await new Promise((r) => setTimeout(r, 800));   // webhook acks fast, replies asynchronously
 const adminDb = await get("/api/admin/db");
 const waOut = ((adminDb.tables && adminDb.tables.wa_messages) || []).filter((r) => r.direction === "out")[0] || {};
@@ -82,7 +82,7 @@ ok("WhatsApp reply '1' accepts the first option via the same saga", /Done/.test(
 bookings = await get("/api/bookings"); trip = bookings.find((b) => b.pnr === me?.pnr);
 ok("booking updated from the WhatsApp acceptance", ["rebooked", "refund_pending"].includes(trip?.status), trip && `${trip.status} · ${trip.meta?.recovery?.label}`);
 {
-  const dones = ((adminDb.tables && adminDb.tables.wa_messages) || []).filter((r) => r.direction === "out" && /^Done, /.test(r.body || r.text || "")).length - donesBefore;
+  const dones = ((adminDb.tables && adminDb.tables.wa_messages) || []).filter((r) => Number(r.id) > waIdBefore && r.direction === "out" && /^Done, /.test(r.body || r.text || "")).length;
   ok("exactly one WhatsApp confirmation (the reply), not a duplicate", dones === 1, `${dones} new outbound Done message(s)`);
   const mails = await fetch(BASE + "/api/admin/emails", { headers: { "x-app": "v2" } }).then((r) => r.json());
   const conf = (mails || []).find((m) => m.email_type === "recovery_confirmed");

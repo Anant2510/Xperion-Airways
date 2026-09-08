@@ -74,6 +74,14 @@ an email with the new itinerary is always written to the outbox (delivered when 
 The graph follows the booking (`moveTrip`), so a later prediction on the old flight no longer
 carries them.
 
+**Rollout gate (phase C by default)** — `policy:autonomy_gate.routes` lists the routes where the
+agents may contact customers unaided (`DEL-MIA`). Every other route is still sensed, predicted and
+prepared (seats held, hotel and taxi lined up); at ACT it lands in the Tier-2 queue as
+`RELEASE_OFFERS` with the rationale, and approval runs the Offer agent. Phase D opens all routes:
+the Gate button on the ops page, or `POST /api/autonomy/gate {"phase":"D"}`. Every upcoming real
+booking is in the graph by default (`AUTONOMY_LIVE_TRIPS=0` to switch off), so the Predictions
+table shows WATCH rows for the customer's other trips whenever an alert touches their airports.
+
 **Manual override** — decline on behalf of a passenger:
 `POST /api/autonomy/offer/:id/decline`; accept:
 `POST /api/autonomy/offer/:id/accept {"optionId":"opt:…"}`. Both are audited

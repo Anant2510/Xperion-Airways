@@ -27,7 +27,28 @@ function pipeline(predictionId) {
   }
   A.impact(predictionId);
   A.recovery(predictionId);
-  A.offers(predictionId);
+  const g = gateFor(predictionId);
+  if (g.inScope) { A.offers(predictionId); return; }
+  /* Outside the rollout gate the agents still sense, predict and prepare (seats held, hotel and
+     taxi lined up), but contacting customers is a Tier-2 decision: the package waits in the queue
+     with its rationale, and approval runs the Offer agent exactly as it would have run. */
+  P.execute("RELEASE_OFFERS", { predictionId, route: g.route, options: g.options }, { actor: "orchestrator", predictionId, rationale: `route ${g.route} is outside the autonomy gate (phase ${g.phase}: ${g.routes.join(", ") || "none"}); ${g.options} option(s) prepared, customer contact needs a controller` });
+}
+/* Which routes the agents may act on unaided. Phase D opens every route. */
+function gateFor(predictionId) {
+  const gate = G.getNode("policy:autonomy_gate") || {};
+  const pred = G.getNode(predictionId); const fi = pred && G.getNode(pred.flight_instance_ref);
+  const route = fi ? `${fi.origin}-${fi.dest}` : "?";
+  const routes = Array.isArray(gate.routes) ? gate.routes : ["DEL-MIA"];
+  const options = G.edges({ rel: "RESOLVES", dst: predictionId }).length;
+  return { phase: gate.phase || "C", routes, route, inScope: gate.phase === "D" || routes.includes(route), options };
+}
+function setGate({ phase, routes } = {}) {
+  const gate = G.getNode("policy:autonomy_gate") || {};
+  const next = { ...gate, ...(phase ? { phase: String(phase).toUpperCase() } : {}), ...(Array.isArray(routes) ? { routes } : {}), changed_at: clock.nowIso() };
+  G.upsertNode("policy:autonomy_gate", "Policy", next);
+  O.audit({ actor: "human", action: "SET_GATE", tier: 3, rationale: `autonomy gate → phase ${next.phase}, routes ${(next.routes || []).join(", ") || "none"}` });
+  return next;
 }
 
 function standDown(predictionId) {
@@ -86,4 +107,4 @@ function kpis() {
   };
 }
 
-module.exports = { wire, pipeline, standDown, closeOut, kpis };
+module.exports = { wire, pipeline, standDown, closeOut, kpis, gateFor, setGate };

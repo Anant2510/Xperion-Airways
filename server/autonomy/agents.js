@@ -38,6 +38,89 @@ function impact(predictionId) {
   return ranked;
 }
 
+/* ---------------- Recovery planner (any route) ----------------
+   The golden scenario seeds two recovery flights (XP903 DEL→JFK, XP077 JFK→MIA) and Orlando
+   vendors; those are used when they fit. For every other flight the same three options are built
+   from what the graph and the airline's own inventory know: a reroute via the best hub (or a direct
+   flight next morning) from search.generateFlights, a divert to the nearest alternate airport that
+   the same weather event does not touch (ALTERNATE_OF edges, or airports within 350 km derived from
+   known coordinates), with hotel and taxi stubs created per airport inside the policy caps, and a
+   refund. Nothing downstream reads a flight number or an airport code from code any more: every
+   label, saga step and booking update is driven by the option's components. */
+const HUBS = ["JFK", "MIA", "LHR", "FRA", "CDG", "DEL", "DXB", "SIN", "ORD", "DFW", "LAX", "ATL"];
+const R = 6371;
+function coordsOf(code) {
+  const g = G.getNode(`ap:${code}`)?.geo; if (g && g.lat != null) return { lat: g.lat, lon: g.lon };
+  const geo = require("./geo"); if (geo.SEED[code]) return { lat: geo.SEED[code][0], lon: geo.SEED[code][1] };
+  try { const row = require("../db").db.prepare("SELECT lat, lon FROM geo_cache WHERE code=?").get(code); if (row) return row; } catch {}
+  return null;
+}
+function km(a, b) { if (!a || !b) return null; const dLat = (b.lat - a.lat) * Math.PI / 180, dLon = (b.lon - a.lon) * Math.PI / 180; const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLon / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); }
+const nextDay = (d) => { const x = new Date(d + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); };
+const seededFlight = (no) => G.getNode(`fi:${no}`) || G.nodesByKind("FlightInstance").find((f) => f.flight_no === no && f.recovery);
+function planReroute(fi) {
+  /* 1 · seeded recovery flights that chain origin → hub → dest */
+  const seeded = G.nodesByKind("FlightInstance").filter((f) => f.recovery);
+  for (const a of seeded) { if (a.origin !== fi.origin) continue; const b = seeded.find((x) => x.origin === a.dest && x.dest === fi.dest); if (b) return { via: a.dest, legs: [{ flight: a.flight_no, route: `${a.origin}-${a.dest}`, date: fi.date }, { flight: b.flight_no, route: `${b.origin}-${b.dest}`, date: nextDay(fi.date) }] }; }
+  /* 2 · the airline's own inventory: direct next morning, else via the hub with the least detour */
+  let search = null; try { search = require("../search"); } catch { return null; }
+  const day2 = nextDay(fi.date);
+  const first = (list) => (list || []).slice().sort((x, y) => String(x.dep).localeCompare(String(y.dep)))[0];
+  const last = (list) => (list || []).slice().sort((x, y) => String(y.dep).localeCompare(String(x.dep)))[0];
+  const direct = first(search.generateFlights(fi.origin, fi.dest, day2));
+  const o = coordsOf(fi.origin), d = coordsOf(fi.dest), od = km(o, d);
+  let best = null;
+  for (const h of HUBS) {
+    if (h === fi.origin || h === fi.dest) continue;
+    const detour = (km(o, coordsOf(h)) ?? 1e9) + (km(coordsOf(h), d) ?? 1e9);
+    if (od != null && detour > od * 1.6) continue;
+    if (!best || detour < best.detour) best = { h, detour };
+  }
+  if (best) {
+    const l1 = last(search.generateFlights(fi.origin, best.h, fi.date)), l2 = first(search.generateFlights(best.h, fi.dest, day2));
+    if (l1 && l2) return { via: best.h, legs: [{ flight: l1.flight_no, route: `${fi.origin}-${best.h}`, date: fi.date, dep: l1.dep, arr: l1.arr, seats_left: l1.seats_left }, { flight: l2.flight_no, route: `${best.h}-${fi.dest}`, date: day2, dep: l2.dep, arr: l2.arr, seats_left: l2.seats_left }] };
+  }
+  if (direct) return { via: null, legs: [{ flight: direct.flight_no, route: `${fi.origin}-${fi.dest}`, date: day2, dep: direct.dep, arr: direct.arr, seats_left: direct.seats_left }] };
+  return null;
+}
+function ensureAlternates(dest) {
+  if (G.out(`ap:${dest}`, "ALTERNATE_OF").length) return;
+  const here = coordsOf(dest); if (!here) return;
+  let AIRPORTS = {}; try { AIRPORTS = require("../routes-data").AIRPORTS; } catch {}
+  const country = AIRPORTS[dest]?.country;
+  const known = new Set([...G.nodesByKind("Airport").map((a) => a.iata || a.code), ...Object.keys(require("./geo").SEED)]);
+  for (const code of known) {
+    if (!code || code === dest) continue;
+    if (country && AIRPORTS[code] && AIRPORTS[code].country !== country) continue;
+    const d = km(here, coordsOf(code)); if (d == null || d > 350) continue;
+    if (!G.getNode(`ap:${code}`)) G.upsertNode(`ap:${code}`, "Airport", { iata: code, code, geo: coordsOf(code), city: AIRPORTS[code]?.city || require("./geo").NAMES[code] || code });
+    const min = Math.max(20, Math.round(d / 70 * 60));
+    G.upsertEdge(`ap:${dest}`, "ALTERNATE_OF", `ap:${code}`, { ground_transfer_min: min, derived: true });
+    G.upsertEdge(`ap:${code}`, "ALTERNATE_OF", `ap:${dest}`, { ground_transfer_min: min, derived: true });
+  }
+}
+function vendorsAt(code) {
+  const at = (t) => G.nodesByKind("Vendor").find((v) => v.type === t && v.location === code);
+  let hotel = at("HOTEL"), taxi = at("TAXI");
+  const capH = G.getNode("policy:cap_hotel")?.amount ?? 180, capT = G.getNode("policy:cap_taxi")?.amount ?? 90;
+  const cityName = (() => { try { return String(require("../routes-data").AIRPORTS[code]?.city || require("./geo").NAMES[code] || code).split(",")[0].trim(); } catch { return code; } })();
+  if (!hotel) { const id = `ven:hotel:${code.toLowerCase()}`; G.upsertNode(id, "Vendor", { type: "HOTEL", location: code, rate: Math.min(120, capH), name: `${cityName} Airport Hotel`, stub: true }); hotel = G.getNode(id); }
+  if (!taxi) { const id = `ven:taxi:${code.toLowerCase()}`; G.upsertNode(id, "Vendor", { type: "TAXI", location: code, rate: Math.min(60, capT), name: `${cityName} Airport Transfers`, stub: true }); taxi = G.getNode(id); }
+  return { hotel, taxi };
+}
+function planDivert(fi, predictionId) {
+  ensureAlternates(fi.dest);
+  const weKey = String(predictionId).split(":")[1];
+  const we = G.getNode(`we:${weKey}`);
+  const impacted = new Set(G.edges({ src: `we:${weKey}`, rel: "IMPACTS" }).map((e) => e.dst));
+  const inStorm = (node) => { if (impacted.has(node.id)) return true; const g = we?.geometry; const c = node.geo || coordsOf(node.iata || node.code); const d = g && c ? km({ lat: g.lat, lon: g.lon }, c) : null; return d != null && d <= (g.radius_km || 0) + 50; };
+  const cands = G.out(`ap:${fi.dest}`, "ALTERNATE_OF").filter(({ node }) => node && !inStorm(node)).sort((a, b) => (a.edge.ground_transfer_min ?? 1e9) - (b.edge.ground_transfer_min ?? 1e9));
+  const pick = cands[0]; if (!pick) return null;
+  const code = pick.node.iata || pick.node.code || pick.node.id.slice(3);
+  const { hotel, taxi } = vendorsAt(code);
+  return { code, transfer_min: pick.edge.ground_transfer_min ?? null, hotel, taxi };
+}
+
 /* ---------------- Recovery agent ---------------- */
 function recovery(predictionId) {
   const pred = G.getNode(predictionId);
@@ -51,39 +134,42 @@ function recovery(predictionId) {
     const n = pnr.party_size;
     const options = [];
 
-    /* Option A — REROUTE via JFK, next morning arrival (party kept together) */
+    /* Option A — REROUTE (party kept together): seeded recovery flights when they fit, else the airline's own inventory */
+    const plan = planReroute(fi);
     const holdRef = `hold:${predictionId}:${pnrId}:A`;
-    const h1 = V.holdSeats("XP903", n, holdRef + ":1", ttlMs);
-    const h2 = h1.ok ? V.holdSeats("XP077", n, holdRef + ":2", ttlMs) : { ok: false };
-    if (!h1.ok || !h2.ok) {
-      V.releaseSeats(holdRef + ":1");
+    let held = !!plan;
+    if (plan) {
+      plan.legs.forEach((l, i) => { if (!seededFlight(l.flight)) V.ensureSeats(l.flight, l.seats_left ?? 20); });
+      for (let i = 0; i < plan.legs.length && held; i++) { const h = V.holdSeats(plan.legs[i].flight, n, `${holdRef}:${i + 1}`, ttlMs); if (!h.ok) held = false; }
+    }
+    if (!held) {
+      if (plan) plan.legs.forEach((_, i) => V.releaseSeats(`${holdRef}:${i + 1}`));
       G.upsertNode(`wait:${predictionId}:${pnrId}`, "RecoveryOption", { type: "WAITLIST", components: [], feasibility_score: 0, pnr: pnrId });
       P.execute("PREPARE_MANUAL_RECOVERY", { predictionId, pnr: pnrId }, { actor: "recovery", predictionId, rationale: `reroute inventory exhausted for ${pnrId}: waitlisted, manual package prepared` });
       P.execute("ESCALATE_TO_HUMAN", { predictionId, perform: () => null }, { actor: "recovery", predictionId, rationale: `inventory shortfall on recovery flights for ${pnrId}` });
       waitlisted++;
-    }
-    if (h1.ok && h2.ok) {
+    } else {
       const oid = `opt:${predictionId}:${pnrId}:A`;
       G.upsertNode(oid, "RecoveryOption", {
-        type: "REROUTE", components: [{ flight: "XP903", route: "DEL-JFK" }, { flight: "XP077", route: "JFK-MIA" }],
+        type: "REROUTE", via: plan.via, components: plan.legs.map((l) => ({ flight: l.flight, route: l.route, date: l.date, dep: l.dep, arr: l.arr })),
         total_cost: 0, seat_hold_ref: holdRef, expiry: new Date(clock.now().getTime() + ttlMs).toISOString(),
         feasibility_score: 0.9, party_size: n,
       });
       G.upsertEdge(oid, "RESOLVES", predictionId);
-      P.execute("SOFT_HOLD_INVENTORY", { predictionId, optionId: oid, touched: [oid], perform: () => holdRef }, { actor: "recovery", predictionId, rationale: `soft hold ${n} seats DEL-JFK-MIA, TTL ${ttlH}h` });
+      P.execute("SOFT_HOLD_INVENTORY", { predictionId, optionId: oid, touched: [oid], perform: () => holdRef }, { actor: "recovery", predictionId, rationale: `soft hold ${n} seats ${plan.legs.map((l) => l.route).join(" + ")}, TTL ${ttlH}h` });
       options.push(oid);
     }
 
-    /* Option B — DIVERT_PLUS_GROUND: land MCO + taxi + 1n hotel + morning transfer */
-    {
-      const hotel = G.getNode("ven:hotel:mco1"), taxi = G.getNode("ven:taxi:mco1");
+    /* Option B — DIVERT_PLUS_GROUND: nearest alternate the event does not touch + taxi + 1n hotel + morning transfer */
+    const dv = planDivert(fi, predictionId);
+    if (dv) {
+      const { hotel, taxi } = dv;
       const cost = hotel.rate + taxi.rate;
       const oid = `opt:${predictionId}:${pnrId}:B`;
       G.upsertNode(oid, "RecoveryOption", {
         type: "DIVERT_PLUS_GROUND",
-        components: [{ divert_to: "MCO" }, { hotel: hotel.id, nights: 1 }, { taxi: taxi.id }, { transfer: "MCO-MIA", when: "morning" }],
-        total_cost: cost * n <= (G.getNode("policy:cap_event")?.amount ?? 1e9) ? cost : cost,
-        seat_hold_ref: null, expiry: new Date(clock.now().getTime() + ttlMs).toISOString(),
+        components: [{ divert_to: dv.code }, { hotel: hotel.id, nights: 1 }, { taxi: taxi.id }, { transfer: `${dv.code}-${fi.dest}`, when: "morning", minutes: dv.transfer_min }],
+        total_cost: cost, seat_hold_ref: null, expiry: new Date(clock.now().getTime() + ttlMs).toISOString(),
         feasibility_score: 0.85, party_size: n,
       });
       G.upsertEdge(oid, "RESOLVES", predictionId);
@@ -209,13 +295,20 @@ function accept(offerId, optionId) {
       predictionId, offerId, touched: [pnr.id],
       perform: () => {
         if (opt.type === "REROUTE") {
-          const c = V.confirmSeats(opt.seat_hold_ref + ":1"); const c2 = V.confirmSeats(opt.seat_hold_ref + ":2");
-          if (!c.ok || !c2.ok) throw new Error("seat confirm failed");
-          G.setProps(pnr.id, { segments: [{ f: "XP903" }, { f: "XP077" }], rebooked: true });
-          G.upsertEdge("fi:XP903", "CARRIES", pnr.id); G.upsertEdge("fi:XP077", "CARRIES", pnr.id);
-          return { pss: c.pssRef };
+          const legs = (opt.components || []).filter((c) => c.flight);
+          let pss = null;
+          legs.forEach((l, i) => { const c = V.confirmSeats(`${opt.seat_hold_ref}:${i + 1}`); if (!c.ok) throw new Error("seat confirm failed"); pss = pss || c.pssRef; });
+          G.setProps(pnr.id, { segments: legs.map((l) => ({ f: l.flight })), rebooked: true });
+          for (const l of legs) {
+            const [o, d] = String(l.route || "").split("-");
+            const id = seededFlight(l.flight)?.id || `fi:${l.flight}:${l.date || ""}`;
+            if (!G.getNode(id)) G.upsertNode(id, "FlightInstance", { flight_no: l.flight, date: l.date, origin: o, dest: d, sched_dep: l.dep ? `${l.date}T${l.dep}:00Z` : null, sched_arr: l.arr ? `${l.date}T${l.arr}:00Z` : null, recovery: true, status: "scheduled" });
+            G.upsertEdge(id, "CARRIES", pnr.id);
+          }
+          return { pss };
         }
-        G.setProps(pnr.id, { diverted_to: "MCO", rebooked: true });
+        const dv = (opt.components || []).find((c) => c.divert_to)?.divert_to || null;
+        G.setProps(pnr.id, { diverted_to: dv, rebooked: true });
         return { pss: "DIV-" + pnr.record_locator };
       },
     }, { actor: "execution", predictionId, rationale: `rebook ${pnr.id} (${opt.type}) under weather waiver` });
@@ -241,7 +334,7 @@ function accept(offerId, optionId) {
     const taxi = G.getNode(taxiComp.taxi);
     const r = P.execute("BOOK_GROUND_TRANSPORT", {
       predictionId, offerId, amount: taxi.rate, touched: [],
-      perform: () => { const v = V.reserve("taxi", taxi.id, `idem:${offerId}:taxi`, { route: "MCO-MIA" }); if (!v.ok) throw new Error(v.error); return v.ref; },
+      perform: () => { const v = V.reserve("taxi", taxi.id, `idem:${offerId}:taxi`, { route: (opt.components || []).find((c) => c.transfer)?.transfer || "" }); if (!v.ok) throw new Error(v.error); return v.ref; },
     }, { actor: "execution", predictionId, rationale: `ground transfer EUR ${taxi.rate}` });
     if (!r.ok) return fail("TAXI", JSON.stringify(r));
     refs.taxi = r.result; done.push({ step: "TAXI", undo: () => V.cancel(`idem:${offerId}:taxi`) });
@@ -258,7 +351,9 @@ function accept(offerId, optionId) {
   }
 
   /* 5 · confirm (transactional message: quiet hours exempt by policy note) */
-  const facts = { name: pax.name.split(" ")[0], summary: opt.type === "REROUTE" ? "Rerouted via JFK, arriving next morning" : opt.type === "DIVERT_PLUS_GROUND" ? "Landing MCO with taxi, hotel tonight and a morning transfer to Miami" : "Refund prepared", ref: refs.rebook || refs.hotel || "OK" };
+  const cityOf = (code) => { try { return require("../routes-data").AIRPORTS[code]?.city || code; } catch { return code; } };
+  const legsC = (opt.components || []).filter((c) => c.flight); const via = opt.via || (legsC.length === 2 ? String(legsC[0].route || "").split("-")[1] : null); const dvC = (opt.components || []).find((c) => c.divert_to)?.divert_to; const xfer = (opt.components || []).find((c) => c.transfer)?.transfer || "";
+  const facts = { name: pax.name.split(" ")[0], summary: opt.type === "REROUTE" ? (via ? `Rerouted via ${cityOf(via)}, arriving next morning` : "Rebooked on the next morning's direct flight") : opt.type === "DIVERT_PLUS_GROUND" ? `Landing ${dvC} with taxi, hotel tonight and a morning transfer to ${cityOf(xfer.split("-")[1] || "")}` : "Refund prepared", ref: refs.rebook || refs.hotel || "OK" };
   V.send("push", pax.id, V.render("confirm", pax.locale, facts), { predictionId });
 
   /* release sibling holds for this PNR's other options */

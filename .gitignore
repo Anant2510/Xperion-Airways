@@ -25,3 +25,7 @@ ngrok.zip
 # WhatsApp pairing credentials (Baileys transport)
 data/baileys-auth/
 
+# local copies that must never reach GitHub: an old database, a test bundle, the drop itself
+data.old/
+webmcp-v2-tests.zip
+mar-reference-build-*.zip

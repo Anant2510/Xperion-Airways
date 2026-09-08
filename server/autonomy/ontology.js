@@ -78,6 +78,7 @@ const ACTIONS = [
   { name: "ISSUE_HOTEL_VOUCHER",  tier: 1, preconditions: ["offer_accepted","within_cap"], capRef: "policy:cap_hotel", reversible: true, compensating: "VOID_HOTEL_VOUCHER" },
   { name: "BOOK_GROUND_TRANSPORT",tier: 1, preconditions: ["offer_accepted","within_cap"], capRef: "policy:cap_taxi",  reversible: true, compensating: "CANCEL_GROUND_TRANSPORT" },
   { name: "REISSUE_TICKET",       tier: 1, preconditions: ["offer_accepted"], reversible: true, compensating: "VOID_REISSUE" },
+  { name: "RELEASE_OFFERS",       tier: 2, preconditions: ["prediction_active"], reversible: false, compensating: null },
   { name: "OFFER_INCENTIVE",      tier: 1, preconditions: ["prediction_in_act","within_cap"], capRef: "policy:cap_incentive", reversible: true, compensating: null },
   { name: "PROCESS_REFUND",       tier: 2, preconditions: ["offer_accepted"], reversible: false, compensating: null },
   { name: "PREPARE_MANUAL_RECOVERY", tier: 2, preconditions: [], reversible: true, compensating: null },
@@ -104,7 +105,7 @@ function seedPolicies() {
   G.upsertNode("policy:outreach",       "Policy", { max_per_prediction: 2 });
   G.upsertNode("policy:hold_ttl",       "Policy", { hours: 4 });
   G.upsertNode("policy:kill_switch",    "Policy", { global: false, events: {} });
-  G.upsertNode("policy:autonomy_gate",  "Policy", { phase: "C", note: "Tier 0-1 enabled on DEL-MIA route only; caps at 50% until Phase D" });
+  G.upsertNode("policy:autonomy_gate",  "Policy", { phase: "C", routes: ["DEL-MIA"], note: "Phase C: agents contact customers on their own on the listed routes only; every other route is scored and packaged for a controller (Tier 2). Phase D: all routes." });
 }
 
 module.exports = { KINDS, ACTIONS, PRED, seedActions, seedPolicies, audit, auditList, on, emit };

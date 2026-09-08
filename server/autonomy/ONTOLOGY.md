@@ -61,6 +61,8 @@ data.
 graph_diff, prediction_id`. Every decision, refusal and compensation lands
 here.
 
+**Recovery planning is route-agnostic**: `RecoveryOption.components` carry the legs (`flight, route, date, dep, arr`) or the divert (`divert_to`, `hotel`, `taxi`, `transfer {minutes}`), and every consumer reads them; seeded recovery flights (`recovery:true`) and seeded vendors are preferred when they fit, otherwise the planner uses the airline's own inventory, `ALTERNATE_OF` edges (derived within 350 km when missing) and per-airport vendor stubs. `Policy autonomy_gate {phase, routes[]}` scopes unaided customer contact; `Action RELEASE_OFFERS` (Tier 2) is what an out-of-scope ACT prediction queues.
+
 ## Edges
 
 `(WeatherEvent)-[:IMPACTS {distance_km, window}]->(Airport)` ·

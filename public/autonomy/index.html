@@ -35,6 +35,7 @@
   <h1>Xperion Airways · Proactive Disruption Autonomy</h1>
   <span class="sub">ontology + knowledge graph + tiered agent mesh · golden scenario DEL→MIA</span>
   <span style="flex:1"></span>
+  <button id="gateBtn" title="Rollout gate: on which routes the agents may contact customers unaided. Phase C: listed routes; every other route is scored and packaged for a controller. Phase D: all routes.">Gate: …</button>
   <button id="killBtn" class="warn">Kill switch: …</button>
 </header>
 <div class="wrap">
@@ -114,6 +115,7 @@
 const J = (u, opt) => fetch(u, opt).then(r => r.json());
 const P = (u, body) => J(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) });
 let kill = { global: false };
+let gate = { phase: "C", routes: ["DEL-MIA"] };
 
 async function pollWeather() { const r = await J("/api/autonomy/feeds/poll", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }); alert(`Polled ${r.airports} airport(s): ${r.alerts} alert(s), ${r.ingested} new, ${r.deduped} duplicates, ${r.errors} error(s)`); refresh(); }
 async function briefPnr() { const pnr = prompt("PNR of the trip to brief (e.g. XPX43K):"); if (!pnr) return; return briefNow({ pnr: pnr.trim().toUpperCase(), force: true }); }
@@ -173,6 +175,9 @@ async function refresh() {
   refreshIntel();
   const s = await J("/api/autonomy/status");
   kill = s.kill || kill;
+  gate = s.gate || gate;
+  document.getElementById("gateBtn").textContent = `Gate: phase ${gate.phase || "C"} · ${gate.phase === "D" ? "all routes" : (gate.routes || ["DEL-MIA"]).join(", ")}${s.live_trips === false ? " · live trips off" : ""}`;
+  document.getElementById("gateBtn").style.background = gate.phase === "D" ? "#3D6B2A" : "#12414E";
   document.getElementById("killBtn").textContent = "Kill switch: " + (kill.global ? "ON (frozen)" : "off");
   document.getElementById("killBtn").style.background = kill.global ? "#8C4A63" : "#12414E";
   const k = document.getElementById("kpis");
@@ -213,6 +218,7 @@ async function step(which) {
 }
 async function approve(id) { await P("/api/autonomy/tier2/" + id + "/approve"); refresh(); }
 document.getElementById("killBtn").onclick = async () => { await P("/api/autonomy/kill", { global: !kill.global }); refresh(); };
+document.getElementById("gateBtn").onclick = async () => { await P("/api/autonomy/gate", { phase: gate.phase === "D" ? "C" : "D" }); refresh(); };
 refresh(); setInterval(refresh, 5000);
 </script>
 </body>

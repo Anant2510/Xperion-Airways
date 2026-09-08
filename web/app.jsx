@@ -22,7 +22,7 @@ const api = {
   del: (p) => fetch(`${API_BASE}/api${p}`, { method: "DELETE" }).then((r) => r.json()),
 };
 // Stable per-tab id so the agent keeps this chat's context (active route, selected flight) separate from other sessions.
-const WEB_SESSION_ID = "web-" + Math.random().toString(36).slice(2, 10);
+let WEB_SESSION_ID = "web-" + Math.random().toString(36).slice(2, 10);
 const EUR = (n) => `$${Number(n).toFixed(Number(n) % 1 === 0 ? 0 : 2)}`;
 // Format an ISO date (YYYY-MM-DD) as "Mon 15 Jun 2026"; falls back gracefully.
 const fmtDate = (iso, withYear = true) => {
@@ -2507,12 +2507,20 @@ function Assistant({ open, onClose, screen, profile, onCommand, onSelectFlight }
   const inboxCursor = useRef(0);
   const consumed = useRef(new Set());
   const resolveOffer = async (opt, card) => {
-    const r = opt ? await api.post("/autonomy/customer/accept", { optionId: opt.id, offerId: card.offerId })
-                  : await api.post("/autonomy/customer/decline", {});
+    let r = null;
+    try {
+      r = opt ? await api.post("/autonomy/customer/accept", { optionId: opt.id, offerId: card.offerId })
+              : await api.post("/autonomy/customer/decline", {});
+    } catch { r = null; }
     if (r?.inboxId) consumed.current.add(r.inboxId);
+    /* the card only turns "Handled" when the server says the offer is settled (ok, or nothing left
+       pending); a failed or refused saga leaves the card open with its other options, because the
+       booking is unchanged and the customer can still choose. The server's reply says why. */
+    const settled = !!(r?.ok || r?.error === "no_pending_offer");
+    const fallback = r ? `I couldn't complete that: ${r.error || "please try again"}.` : "I couldn't reach the airline just now, so nothing has changed on your booking. Please try again in a moment.";
     setMsgs(prev => [
-      ...prev.map(m => (m.cards?.[0]?.offerId === card.offerId ? { ...m, cards: m.cards.map(cc => ({ ...cc, _resolved: true })) } : m)),
-      { role: "assistant", content: r?.reply || (r?.ok ? "Done." : `I couldn't complete that: ${r?.error || "please try again"}.`), cards: r?.card ? [r.card] : undefined },
+      ...prev.map(m => (settled && m.cards?.[0]?.offerId === card.offerId ? { ...m, cards: m.cards.map(cc => ({ ...cc, _resolved: true })) } : m)),
+      { role: "assistant", content: r?.reply || (r?.ok ? "Done." : fallback), cards: r?.card ? [r.card] : undefined },
     ]);
   };
   const briefChoice = async (id, card) => {
@@ -2546,8 +2554,25 @@ function Assistant({ open, onClose, screen, profile, onCommand, onSelectFlight }
   }, []);
   useEffect(() => { if (open) api.post("/autonomy/customer/inbox/seen", {}).catch(() => {}); }, [open]);
 
+  /* Clear chat: two taps in the header (the first asks, the question times out), or simply typing
+     "clear the chat". Resets the thread to the greeting, rotates the session so the server forgets
+     the old one (last search, selected flight, pending confirmation), and keeps unanswered airline
+     cards (an open disruption offer or brief), which are the airline's inbox, not chat history. */
+  const [confirmClear, setConfirmClear] = useState(false);
+  useEffect(() => { if (!confirmClear) return; const t = setTimeout(() => setConfirmClear(false), 6000); return () => clearTimeout(t); }, [confirmClear]);
+  const clearChat = () => {
+    const old = WEB_SESSION_ID;
+    WEB_SESSION_ID = "web-" + Math.random().toString(36).slice(2, 10);
+    setMsgs(prev => [{ role: "assistant", content: buildGreeting(journey || profile?.syncedSearch) }, ...prev.filter(m => m.cards?.some(c => (c.type === "disruption_offer" || c.type === "destination_brief") && !c._resolved))]);
+    setInput(""); setBusy(false); setConfirmClear(false);
+    api.post("/ai/session/clear", { sessionId: old }).catch(() => {});
+  };
+  const hasHistory = msgs.length > 1;
+  const CLEAR_RE = /^(please\s+)?(clear|reset|wipe|erase|delete)\s+(the\s+|this\s+|my\s+|our\s+)?(chat|conversation|history|thread|messages)(\s+history)?(\s+for\s+me)?(\s+please)?[.!]?$/i;
+
   const send = async (preset) => {
     const q = (preset || input).trim(); if (!q || busy) return;
+    if (CLEAR_RE.test(q)) { clearChat(); setMsgs(m => [...m, { role: "assistant", content: "Cleared. Fresh start — where would you like to go?" }]); return; }
     const history = msgs.filter(m => typeof m.content === "string").map(m => ({ role: m.role, content: m.content }));
     const next = [...history.slice(1), { role: "user", content: q }];
     setMsgs(m => [...m, { role: "user", content: q }]); setInput(""); setBusy(true);
@@ -2591,7 +2616,14 @@ function Assistant({ open, onClose, screen, profile, onCommand, onSelectFlight }
               <div className="text-white/85 text-[11px] flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: "#4ADE80" }}/> Online</div>
             </div>
           </div>
-          <button onClick={onClose} className="text-white/80 hover:text-white" aria-label="Close assistant"><X size={20}/></button>
+          <div className="flex items-center gap-3">
+            {hasHistory && (confirmClear ? (
+              <span className="text-white/90 text-[12px] font-semibold inline-flex items-center gap-2"><span>Clear this chat?</span><button onClick={clearChat} className="underline">Yes</button><button onClick={() => setConfirmClear(false)} className="opacity-70">No</button></span>
+            ) : (
+              <button onClick={() => setConfirmClear(true)} className="text-white/85 hover:text-white text-[12px] font-semibold" title="Start a fresh conversation">Clear chat</button>
+            ))}
+            <button onClick={onClose} className="text-white/80 hover:text-white" aria-label="Close assistant"><X size={20}/></button>
+          </div>
         </div>
         {/* messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: "#FAFBFA" }}>

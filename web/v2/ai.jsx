@@ -583,8 +583,10 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [msgs, busy]);
 
+  const CLEAR_RE = /^(please\s+)?(clear|reset|wipe|erase|delete)\s+(the\s+|this\s+|my\s+|our\s+)?(chat|conversation|history|thread|messages)(\s+history)?(\s+for\s+me)?(\s+please)?[.!]?$/i;
   async function send(text) {
     const q = (text != null ? text : input).trim(); if (!q || busy) return;
+    if (CLEAR_RE.test(q)) { clearChat(); setMsgs(m => [...m, { role: "assistant", content: "Cleared. Fresh start — where would you like to go?" }]); return; }
     const next = [...msgs, { role: "user", content: q }];
     setMsgs(next); setInput(""); setBusy(true);
     const myEpoch = epoch.current;

@@ -26,6 +26,7 @@ function ingestAlert(alert) {
   G.upsertNode(weId, "WeatherEvent", { ...alert, key });
   const buffer = 50;
   for (const ap of G.nodesByKind("Airport")) {
+    if (!ap.geo || ap.geo.lat == null || !alert.geometry) continue;   // an airport without coordinates cannot be impacted; never let it break sensing
     const d = havKm(alert.geometry, ap.geo);
     if (d <= alert.geometry.radius_km + buffer) {
       G.upsertEdge(weId, "IMPACTS", ap.id, { distance_km: Math.round(d), window: alert.valid });

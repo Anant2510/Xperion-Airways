@@ -36,8 +36,10 @@ let llmCalls = 0;
 research.setLLM(async (prompt) => { llmCalls++; return { text: '```json\n' + JSON.stringify({ summary: "Delhi is busy that week: a large political rally is planned in the city centre on the 5th and a metro workers' strike is called for the 6th; both are peaceful in past years. Air quality is moderate.", events: [{ kind: "political", title: "Opposition rally, Ramlila Maidan", date: addDays(5), impact: "medium", note: "Road closures in central Delhi from noon; airport unaffected.", source: "https://example.org/rally" }, { kind: "strike", title: "Metro workers' strike", date: addDays(6), impact: "medium", note: "Reduced metro frequency; allow extra transfer time.", source: "https://example.org/strike" }], advisories: [{ level: "Exercise normal precautions", summary: "No advisory change for Delhi.", source: "https://travel.state.gov/x" }], news: [{ title: "Airport expressway resurfacing", note: "Night works until the 8th.", source: "https://example.org/news" }], travel_impact: "medium", confidence: 0.7 }) + '\n```', cites: [{ title: "Example rally report", url: "https://example.org/rally" }] }; });
 
 /* 1 · geocode + facts */
-const gb = await geo.geocode("BOM");
-ok("geocoding resolves and caches a served city", gb && Math.abs(gb.lat - 28.61) < 0.01 && (await geo.geocode("BOM")) && calls.geocode === 1, `lat ${gb?.lat} · calls ${calls.geocode}`);
+const seededCity = await geo.geocode("BOM");
+ok("a seeded airport resolves offline without a network call", seededCity && Math.abs(seededCity.lat - 19.089) < 0.01 && calls.geocode === 0, `lat ${seededCity?.lat} · calls ${calls.geocode}`);
+const gb = await geo.geocode("GOI");
+ok("geocoding resolves and caches a served city", gb && typeof gb.lat === "number" && (await geo.geocode("GOI")) && calls.geocode === 1, `lat ${gb?.lat} · calls ${calls.geocode}`);
 const g = await geo.geocode("DEL");
 const gm = await geo.geocode("MIA");
 ok("seed airports need no lookup", gm?.source === "seed");

@@ -36,7 +36,7 @@ const PAX = (uid) => `pax:app:${uid}`;
 const PNR = (uid) => `pnr:app:${uid}`;
 const LOC = (uid) => `XPW${String(uid).padStart(2, "0")}A`;
 const CITY = { DEL: "Delhi", MIA: "Miami", JFK: "New York", MCO: "Orlando", FLL: "Fort Lauderdale", ATL: "Atlanta", JAI: "Jaipur", AMD: "Ahmedabad" };
-const city = (c) => CITY[c] || c;
+const city = (c) => { if (!c) return ""; if (CITY[c]) return CITY[c]; let n = null; try { n = G.getNode(`ap:${c}`)?.city; } catch {} if (!n || n === c) { try { n = require("../routes-data").AIRPORTS[c]?.city || require("./geo").NAMES[c] || c; } catch { n = c; } } return String(n).split(",")[0].trim(); };
 const hhmm = (iso) => { try { return new Date(iso).toISOString().slice(11, 16); } catch { return ""; } };
 const j = (o) => JSON.stringify(o ?? null);
 const parse = (s, d = null) => { try { return JSON.parse(s || "null") ?? d; } catch { return d; } };
@@ -154,7 +154,7 @@ async function syncTrips({ horizonDays = Number(process.env.AUTONOMY_TRIP_HORIZO
     if (!origin || !dest || origin === dest) continue;
     for (const code of [origin, dest]) {
       const id = `ap:${code}`; const ex = G.getNode(id);
-      if (!ex || !ex.geo) { const g = await geo.geocode(code).catch(() => null); G.upsertNode(id, "Airport", { iata: code, code, city: city(code), ...(g ? { geo: { lat: g.lat, lon: g.lon } } : {}) }); }
+      if (!ex || !ex.geo) { const g = (await geo.geocode(code).catch(() => null)) || (geo.SEED[code] ? { lat: geo.SEED[code][0], lon: geo.SEED[code][1] } : null); G.upsertNode(id, "Airport", { iata: code, code, city: city(code), ...(g ? { geo: { lat: g.lat, lon: g.lon } } : {}) }); }
     }
     const depIso = `${b.flight_date}T${/^\d{2}:\d{2}$/.test(dep) ? dep : "12:00"}:00Z`;
     let arrIso; if (arr && /^\d{2}:\d{2}$/.test(arr)) { const a = new Date(`${b.flight_date}T${arr}:00Z`); if (a < new Date(depIso)) a.setUTCDate(a.getUTCDate() + 1); arrIso = a.toISOString(); } else arrIso = new Date(Date.parse(depIso) + 3 * 3600000).toISOString();
@@ -170,7 +170,7 @@ async function syncTrips({ horizonDays = Number(process.env.AUTONOMY_TRIP_HORIZO
   if (synced) O.audit({ actor: "bridge", action: "SYNC_APP_TRIPS", rationale: `${synced} upcoming real trip(s) in the graph for live sensing: ${flights.slice(0, 6).join(", ")}${flights.length > 6 ? "…" : ""}` });
   return { synced, flights };
 }
-const liveTrips = () => process.env.AUTONOMY_LIVE_TRIPS === "1";
+const liveTrips = () => process.env.AUTONOMY_LIVE_TRIPS !== "0";   // on unless switched off: every upcoming real trip is in the graph and scored
 
 function linked() {
   return G.nodesByKind("PNR").filter((p) => p.app_uid).map((p) => {
@@ -185,11 +185,16 @@ function isLinked() { return G.nodesByKind("PNR").some((p) => p.app_uid); }
 function optionView(o) {
   const c = o.components || [];
   if (o.type === "REROUTE") {
-    const legs = c.filter((x) => x.flight).map((x) => `${x.flight} ${x.route}`).join(" + ");
-    return { id: o.id, type: o.type, label: "Reroute via New York, arrive next morning", detail: `${legs} · seats held ${o.seat_hold_ref ? "for you" : ""}`.trim(), cost: "no charge", tag: "Fastest to Miami" };
+    const legs = c.filter((x) => x.flight);
+    const via = o.via || (legs.length >= 2 ? String(legs[0].route || "").split("-")[1] : null);
+    const dest = legs.length ? String(legs[legs.length - 1].route || "").split("-")[1] : null;
+    const label = via ? `Reroute via ${city(via)}, arrive next morning` : "Next morning's direct flight, same cabin";
+    return { id: o.id, type: o.type, label, detail: `${legs.map((x) => `${x.flight} ${x.route}`).join(" + ")} · seats held ${o.seat_hold_ref ? "for you" : ""}`.trim(), cost: "no charge", tag: dest ? `Fastest to ${city(dest)}` : "Fastest" };
   }
   if (o.type === "DIVERT_PLUS_GROUND") {
-    return { id: o.id, type: o.type, label: "Land in Orlando tonight, hotel + taxi + morning transfer to Miami", detail: "Hotel voucher, taxi from MCO and a morning transfer, all arranged and prepaid", cost: "no charge", tag: "Rest tonight" };
+    const dv = c.find((x) => x.divert_to)?.divert_to; const xfer = c.find((x) => x.transfer); const dest = String(xfer?.transfer || "").split("-")[1];
+    const mins = xfer?.minutes; const road = mins ? (mins >= 90 ? `${Math.round(mins / 30) / 2} h` : `${mins} min`) : null;
+    return { id: o.id, type: o.type, label: `Land in ${city(dv)} tonight, hotel + taxi + morning transfer to ${city(dest)}`, detail: `Hotel voucher, taxi from ${dv} and a morning transfer${road ? ` (${road} by road)` : ""}, all arranged and prepaid`, cost: "no charge", tag: "Rest tonight" };
   }
   if (o.type === "REFUND") return { id: o.id, type: o.type, label: "Hold my seat and prepare a full refund", detail: "Refund packaged for a human controller to approve", cost: "full refund", tag: "Not travelling" };
   if (o.type === "WAITLIST") return { id: o.id, type: o.type, label: "Waitlist — a controller will call you", detail: "No seats left on alternatives right now", cost: "", tag: "Escalated" };
@@ -261,7 +266,11 @@ function onOffer({ offId, pax, pnr, pred, fi, ordered, framing, incentive, chann
   const prob = Math.round((pred.probability ?? pred.p ?? 0) * 100);
   const holdUntil = options.map((o) => G.getNode(o.id)?.expiry).filter(Boolean).sort()[0] || null;
   const first = (pax.name || "").split(" ")[0];
-  const reply = `${first}, a heads-up before anything goes wrong: a tornado watch near ${city(fi.dest)} overlaps the arrival of your flight ${fi.flight_no} on ${fi.date}. I put the disruption risk at ${prob}%. I've already held seats and prepared ${options.length} option${options.length === 1 ? "" : "s"} for you — nothing is charged and your original booking stays as it is until you choose. One tap and I handle the rest.` + (incentive ? ` This includes a goodwill credit of ${incentive.currency} ${incentive.amount}.` : "");
+  const weNode = G.getNode(`we:${String(pred.id || "").split(":")[1] || ""}`);
+  const hazard = weNode?.type ? String(weNode.type).replace(/_/g, " ").replace(/^convective outlook$/, "severe weather outlook") : "severe weather";
+  const article = /^[aeiou]/i.test(hazard) ? "an" : "a";
+  const near = G.edges({ src: weNode?.id || "", rel: "IMPACTS", dst: `ap:${fi.dest}` }).length ? fi.dest : fi.origin;
+  const reply = `${first}, a heads-up before anything goes wrong: ${article} ${hazard} near ${city(near)} overlaps ${near === fi.dest ? "the arrival" : "the departure"} of your flight ${fi.flight_no} on ${fi.date}. I put the disruption risk at ${prob}%. I've already held seats and prepared ${options.length} option${options.length === 1 ? "" : "s"} for you — nothing is charged and your original booking stays as it is until you choose. One tap and I handle the rest.` + (incentive ? ` This includes a goodwill credit of ${incentive.currency} ${incentive.amount}.` : "");
   const card = {
     type: "disruption", offerId: offId, pnr: pnr.record_locator, flight: fi.flight_no, date: fi.date,
     origin: fi.origin, dest: fi.dest, destCity: city(fi.dest), probability: prob, state: pred.state,
@@ -291,15 +300,16 @@ function onAccepted({ offerId, off, pax, pnr, opt, refs }) {
   const recovery = { type: opt.type, label: view.label, detail: view.detail, refs, accepted_at: clock.nowIso(), offerId, components: comps, items: [] };
   let flightNo = b.flight_no, status = "rebooked";
   if (opt.type === "REROUTE") {
-    const legs = comps.filter((c) => c.flight).map((c) => { const f = G.nodesByKind("FlightInstance").find((n) => n.flight_no === c.flight) || {}; const [o, d] = (c.route || "").split("-"); return { flight_no: c.flight, origin: o, dest: d, dep: hhmm(f.sched_dep), arr: f.sched_arr ? hhmm(f.sched_arr) : "", date: (f.sched_dep || "").slice(0, 10) }; });
+    const legs = comps.filter((c) => c.flight).map((c) => { const f = G.nodesByKind("FlightInstance").find((n) => n.flight_no === c.flight) || {}; const [o, d] = (c.route || "").split("-"); return { flight_no: c.flight, origin: o, dest: d, dep: c.dep || hhmm(f.sched_dep), arr: c.arr || (f.sched_arr ? hhmm(f.sched_arr) : ""), date: c.date || (f.sched_dep || "").slice(0, 10) }; });
     for (const l of legs) { const f = G.nodesByKind("FlightInstance").find((n) => n.flight_no === l.flight_no); if (f) ensureFlightRow({ ...f, date: l.date, aircraft_type: "A321neo" }); }
     recovery.legs = legs; recovery.items = ["Seats held and confirmed", "Ticket reissued", "Same cabin, no charge"];
     if (legs[0]) { flightNo = legs[0].flight_no; Object.assign(meta, { origin: legs[0].origin, dest: legs[legs.length - 1].dest, dep: legs[0].dep, arr: legs[legs.length - 1].arr, duration: "", via: legs.slice(1).map((l) => l.origin).join(", ") }); }
   } else if (opt.type === "DIVERT_PLUS_GROUND") {
     const hotel = comps.find((c) => c.hotel); const taxi = comps.find((c) => c.taxi); const xfer = comps.find((c) => c.transfer);
-    recovery.items = [`Hotel voucher: ${G.getNode(hotel?.hotel)?.name || "Orlando airport hotel"} · 1 night`, `Taxi from Orlando airport (ref ${refs?.taxi || "confirmed"})`, `${xfer?.when === "morning" ? "Morning" : "Next"} transfer Orlando → Miami`, "Ticket reissued, no charge"];
-    Object.assign(meta, { dest: "MCO", arr: meta.arr, diverted_from: "MIA" });
-    try { db.prepare("UPDATE flights SET dest='MCO', status='diverted' WHERE flight_no=? AND flight_date=?").run(b.flight_no, b.flight_date); } catch {}
+    const dv = comps.find((c) => c.divert_to)?.divert_to || (xfer?.transfer || "").split("-")[0]; const finalDest = (xfer?.transfer || "").split("-")[1] || meta.dest;
+    recovery.items = [`Hotel voucher: ${G.getNode(hotel?.hotel)?.name || `${city(dv)} airport hotel`} · 1 night`, `Taxi from ${city(dv)} airport (ref ${refs?.taxi || "confirmed"})`, `${xfer?.when === "morning" ? "Morning" : "Next"} transfer ${city(dv)} → ${city(finalDest)}`, "Ticket reissued, no charge"];
+    Object.assign(meta, { dest: dv, arr: meta.arr, diverted_from: finalDest });
+    try { db.prepare("UPDATE flights SET dest=?, status='diverted' WHERE flight_no=? AND flight_date=?").run(dv, b.flight_no, b.flight_date); } catch {}
   } else if (opt.type === "REFUND") {
     status = "refund_pending"; recovery.items = ["Seat held", "Full refund packaged for controller approval (Tier 2)"];
   }
@@ -461,7 +471,9 @@ function intercept(uid, text, via = null) {
   const num = t.match(/^\s*(?:option\s*)?([1-3])\b/) || t.match(/\b(?:option|number|choice)\s*([1-3])\b/);
   if (num && pend.options[Number(num[1]) - 1]) return pick(pend.options[Number(num[1]) - 1]);
   const byType = (re, type) => re.test(t) && pend.options.find((o) => o.type === type);
-  const chosen = byType(/orlando|mco|hotel|taxi|divert|tonight/, "DIVERT_PLUS_GROUND") || byType(/new york|jfk|reroute|re-route|next morning|fastest/, "REROUTE") || byType(/refund|not travel|cancel my trip|money back/, "REFUND");
+  const words = (o) => String(o.label || "").toLowerCase().match(/[a-z][a-z' ]{3,}/g) || [];
+  const byWords = pend.options.find((o) => ["REROUTE", "DIVERT_PLUS_GROUND"].includes(o.type) && words(o).some((w) => w.length > 4 && !/^(reroute via|arrive next|next morning|tonight|hotel|taxi|morning transfer to|same cabin|direct flight)$/.test(w.trim()) && t.includes(w.trim())));
+  const chosen = byWords || byType(/hotel|taxi|divert|tonight|land in/, "DIVERT_PLUS_GROUND") || byType(/reroute|re-route|next morning|fastest|direct/, "REROUTE") || byType(/refund|not travel|cancel my trip|money back/, "REFUND");
   if (chosen && /accept|take|go with|book|yes|ok|choose|pick|do it|please|prefer|want|option|reroute|refund|orlando|new york|hotel/.test(t)) return pick(chosen);
   if (/\b(no thanks|decline|leave it|keep my booking|don't change|do nothing|not now)\b/.test(t)) return declineForUser(uid);
   if (/\b(accept|yes|ok|go ahead|do it|take it)\b/.test(t) && pend.options.length === 1) return pick(pend.options[0]);
@@ -470,10 +482,13 @@ function intercept(uid, text, via = null) {
 function contextLine(uid) {
   const s = status(uid);
   if (!s.linked) return "";
-  if (s.pending) return ` ACTIVE DISRUPTION for this customer: booking ${LOC(uid)} XP201 Delhi→Miami is under a tornado watch at Miami; the autonomy layer has already sent them these options (they can accept by saying the option name or number, and you must not invent other options): ${s.pending.options.map((o, i) => `${i + 1}) ${o.label}`).join("; ")}.`;
+  const b = db.prepare("SELECT flight_no, flight_date, meta_json FROM bookings WHERE pnr=? AND user_id=?").get(LOC(uid), uid);
+  let m = {}; try { m = JSON.parse(b?.meta_json || "{}"); } catch {}
+  const trip = `${LOC(uid)} ${b?.flight_no || "XP201"} ${city(m.origin || "DEL")}→${city(m.dest || "MIA")}`;
+  if (s.pending) return ` ACTIVE DISRUPTION for this customer: booking ${trip} is under a weather watch at ${city(m.dest || "MIA")}; the autonomy layer has already sent them these options (they can accept by saying the option number or name): ${s.pending.options.map((o, i) => `${i + 1}. ${o.label}`).join("; ")}. If they choose one, call nothing else: the acceptance is handled by the autonomy layer.`;
   if (s.booking?.recovery) return ` The customer's booking ${LOC(uid)} was already recovered by the autonomy layer: ${s.booking.recovery.label} (${s.booking.status}).`;
-  if (s.prediction) return ` Weather is being monitored for their booking ${LOC(uid)} XP201 Delhi→Miami (state ${s.prediction.state}); no action needed from them yet.`;
-  return ` The customer holds booking ${LOC(uid)} on XP201 Delhi→Miami; the autonomy layer is monitoring it.`;
+  if (s.prediction) return ` Weather is being monitored for their booking ${trip} (state ${s.prediction.state}); no action needed from them yet.`;
+  return ` The customer holds booking ${trip}; the autonomy layer is monitoring it.`;
 }
 
 /* A real booking moved to another flight (alternatives.take): the graph must follow, or the next

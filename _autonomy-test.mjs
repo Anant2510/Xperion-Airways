@@ -154,6 +154,54 @@ console.log("\n== EDGE: a failed saga tells the app customer why and leaves the 
   ok("now nothing is pending", !bridge.pending(1));
 }
 
+console.log("\n== ANY ROUTE: a real trip to London is sensed, planned and gated ==");
+{
+  /* Daniel also flies Miami → London. With live trips in the graph, a severe alert at Heathrow must
+     produce a prediction on that flight, generic options (a reroute from the airline's own inventory,
+     a divert to an alternate the alert does not touch, a refund), and, because MIA-LHR is outside the
+     Phase C gate, a Tier-2 package instead of a message. Approving it sends the offer; accepting the
+     reroute moves the real booking. */
+  const bridge = require("./server/autonomy/bridge.js");
+  const sensing = require("./server/autonomy/sensing.js");
+  const orch = require("./server/autonomy/orchestrator.js");
+  const { db } = require("./server/db.js");
+  sim.reset(); bridge.link();
+  const lon = db.prepare("SELECT * FROM bookings WHERE user_id=1 AND status IN ('confirmed','rebooked') AND flight_no NOT LIKE 'XP201' AND json_extract(meta_json,'$.dest')='LHR' ORDER BY flight_date LIMIT 1").get();
+  ok("Daniel has a real London trip to protect", !!lon, lon ? `${lon.pnr} ${lon.flight_no} ${lon.flight_date}` : "none");
+  if (lon) {
+    const orig = { flight_no: lon.flight_no, date: lon.flight_date };
+    const synced = await bridge.syncTrips({ horizonDays: 3650 });
+    const fi = G.getNode(`fi:${lon.flight_no}:${lon.flight_date}`);
+    ok("the London flight is a FlightInstance in the graph", !!fi && fi.dest === "LHR", synced.flights.slice(0, 3).join(" | "));
+    const valid = { from: new Date(Date.parse(fi.sched_dep) - 3600e3).toISOString(), to: new Date(Date.parse(fi.sched_arr || fi.sched_dep) + 4 * 3600e3).toISOString() };
+    const before = G.nodesByKind("Tier2Item").filter((i) => i.action === "RELEASE_OFFERS").length;
+    const r = sensing.ingestAlert({ source: "test", type: "tornado_watch", severity: 4, geometry: { lat: 51.47, lon: -0.45, radius_km: 60 }, valid });
+    sensing.evaluate();   // what the feed poll does after every ingest: score, and ACT drives the pipeline over the bus
+    const pred = G.nodesByKind("DisruptionPrediction").find((p) => p.flight_instance_ref === fi.id);
+    ok("a prediction reached ACT on the London flight", !!pred && pred.probability >= 0.6, pred && `${pred.state} ${pred.probability}`);
+    const opts = pred ? G.edges({ rel: "RESOLVES", dst: pred.id }).map((e) => G.getNode(e.src)) : [];
+    const mine = opts.filter((o) => o.id.includes("pnr:trip:" + lon.pnr) || o.id.includes(bridge.PNR(1)));
+    const types = mine.map((o) => o.type);
+    ok("three generic options prepared for Daniel: reroute, divert, refund", types.includes("REROUTE") && types.includes("DIVERT_PLUS_GROUND") && types.includes("REFUND"), types.join(","));
+    const rr = mine.find((o) => o.type === "REROUTE"), dv = mine.find((o) => o.type === "DIVERT_PLUS_GROUND");
+    ok("the reroute is built from real inventory, not XP903/XP077", !!rr && rr.components.every((c) => !["XP903", "XP077"].includes(c.flight)) && rr.components.every((c) => /^[A-Z]{3}-[A-Z]{3}$/.test(c.route)), rr && rr.components.map((c) => `${c.flight} ${c.route}`).join(" + "));
+    ok("the divert goes to an alternate near London, not Orlando", !!dv && dv.components[0].divert_to !== "MCO" && /^[A-Z]{3}$/.test(dv.components[0].divert_to), dv && `${dv.components[0].divert_to} · ${G.getNode(dv.components[1].hotel)?.name}`);
+    const queued = G.nodesByKind("Tier2Item").filter((i) => i.action === "RELEASE_OFFERS" && i.status === "PENDING");
+    ok("outside the Phase C gate: no message sent, a RELEASE_OFFERS package waits for a controller", queued.length > before && !bridge.inboxList(1).some((m) => m.kind === "disruption_offer" && m.card?.flight === lon.flight_no), `${queued.length} queued`);
+    const approved = P.tier2Approve(queued[queued.length - 1].id, { RELEASE_OFFERS: (payload) => A.offers(payload.predictionId) });
+    const offerMsg = bridge.inboxList(1).filter((m) => m.kind === "disruption_offer" && m.card?.flight === lon.flight_no).pop();
+    ok("approval releases the offer to Daniel with the London flight and the hazard named", approved.ok && !!offerMsg && /tornado watch near London/.test(offerMsg.text), (offerMsg?.text || "").slice(0, 110));
+    ok("the option labels name the real hub or airport", !!offerMsg && offerMsg.card.options.some((o) => /Reroute via [A-Z]|Next morning/.test(o.label)) && offerMsg.card.options.some((o) => /Land in [A-Z]/.test(o.label) && !/Orlando/.test(o.label)), (offerMsg?.card?.options || []).map((o) => o.label).join(" | "));
+    const pend = bridge.pending(1);
+    const acc = pend ? bridge.acceptForUser(1, pend.options.find((o) => o.type === "REROUTE").id, undefined, { via: "app" }) : { ok: false };
+    const after = db.prepare("SELECT flight_no, flight_date, status, meta_json FROM bookings WHERE id=?").get(lon.id);
+    ok("accepting the reroute moves the real London booking onto the new flights", acc.ok && after.status === "rebooked" && after.flight_no !== orig.flight_no && JSON.parse(after.meta_json).recovery?.legs?.length >= 1, `${orig.flight_no} → ${after.flight_no} · ${JSON.parse(after.meta_json).recovery?.label}`);
+    orch.setGate({ phase: "D" });
+    ok("Phase D opens every route to the agents", orch.gateFor(pred.id).inScope === true);
+    orch.setGate({ phase: "C" });
+  }
+}
+
 console.log("\n== GUARDRAILS ==");
 sim.reset(); sim.t72(); sim.t48();
 const t3 = P.execute("TOUCH_FLIGHT_OPS", { predictionId: sim.state.predId, perform: () => true }, { actor: "rogue", predictionId: sim.state.predId });

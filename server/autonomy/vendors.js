@@ -12,6 +12,7 @@ const seats = {};            // flight_no -> remaining
 const seatHolds = {};        // holdRef -> { flight_no, n, expiry }
 const released = new Set();  // holdRefs released on purpose (stand-down, expiry): never rehydrated
 function seedSeats(map) { Object.assign(seats, map); }
+function ensureSeats(fno, n) { if (seats[fno] == null) seats[fno] = Math.max(0, Number(n) || 0); }
 function seatsLeft(fno) { return seats[fno] ?? 0; }
 function holdSeats(fno, n, ref, ttlMs) {
   if (seatHolds[ref]) return { ok: true, ref, idempotent: true };
@@ -45,7 +46,9 @@ function rehydrateHold(ref) {
   try { const G = require("./graph"); opt = G.getNode("opt:" + rest) || G.getNode(rest); } catch { return null; }
   if (!opt || !opt.seat_hold_ref || !String(ref).startsWith(opt.seat_hold_ref)) return null;
   if (!opt.expiry || Date.parse(opt.expiry) <= clock.now().getTime()) return null;
-  const fno = /:1$/.test(ref) ? "XP903" : "XP077";
+  const idx = Number((String(ref).match(/:(\d+)$/) || [])[1] || 1) - 1;
+  const fno = ((opt.components || []).filter((c) => c.flight)[idx] || {}).flight || null;
+  if (!fno) return null;
   seatHolds[ref] = { flight_no: fno, n: opt.party_size || 1, expiry: Date.parse(opt.expiry), rehydrated: true };
   return seatHolds[ref];
 }
@@ -110,4 +113,4 @@ function render(kind, locale, facts) {
   return msg;
 }
 
-module.exports = { seedSeats, seatsLeft, holdSeats, releaseSeats, confirmSeats, forgetHolds, reserve, cancel, setFailure, send, sent, resetVendors, render };
+module.exports = { seedSeats, ensureSeats, seatsLeft, holdSeats, releaseSeats, confirmSeats, forgetHolds, reserve, cancel, setFailure, send, sent, resetVendors, render };

@@ -34,7 +34,7 @@ router.use(express.json());
 const safe = (fn) => async (req, res) => { try { await fn(req, res); } catch (e) { if (!res.headersSent) res.status(409).json({ ok: false, error: e.message }); } };
 orch.wire();
 
-router.get("/status", (_req, res) => res.json({ ok: true, ...orch.kpis(), graph: G.stats(), linked: bridge.linked() }));
+router.get("/status", (_req, res) => res.json({ ok: true, ...orch.kpis(), graph: G.stats(), linked: bridge.linked(), gate: G.getNode("policy:autonomy_gate") || null, live_trips: bridge.liveTrips() }));
 router.get("/graph", (_req, res) => res.json({ ok: true, stats: G.stats(),
   predictions: G.nodesByKind("DisruptionPrediction"),
   sampleOffers: G.nodesByKind("Offer").slice(0, 5) }));
@@ -98,7 +98,10 @@ router.get("/offers", (req, res) => {
 });
 
 router.get("/tier2", (_req, res) => res.json({ ok: true, items: P.tier2List() }));
-router.post("/tier2/:id/approve", (req, res) => res.json(P.tier2Approve(req.params.id)));
+router.post("/tier2/:id/approve", (req, res) => res.json(P.tier2Approve(req.params.id, { RELEASE_OFFERS: (payload) => { const r = A.offers(payload.predictionId); return { offers: r?.sent ?? r ?? null }; } })));
+/* rollout gate: which routes the agents may contact customers on unaided (phase C: listed routes; D: all) */
+router.get("/gate", (_req, res) => res.json({ ok: true, gate: G.getNode("policy:autonomy_gate") || null }));
+router.post("/gate", (req, res) => res.json({ ok: true, gate: orch.setGate(req.body || {}) }));
 
 router.get("/kill", (_req, res) => res.json({ ok: true, kill: P.killState() }));
 router.post("/kill", (req, res) => res.json({ ok: true, kill: P.setKill(req.body || {}) }));
