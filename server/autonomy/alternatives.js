@@ -133,7 +133,7 @@ async function assess(booking, { brief = null, prediction = null, spread = 3 } =
 }
 
 /* the customer took one: SHIFT_TRIP_DATE / SWITCH_AIRPORT are Tier-1, reversible, policy-gated */
-function take(uid, altId) {
+function take(uid, altId, { via = null } = {}) {
   const policy = require("./policy");
   const bridge = require("./bridge");
   const [, pnr, kind] = String(altId || "").split(":");
@@ -158,9 +158,19 @@ function take(uid, altId) {
   else { meta.origin = a.origin; meta.dest = a.dest; meta.dep = alt.dep; meta.arr = alt.arr; }
   db.prepare("UPDATE bookings SET flight_no=?, flight_date=?, status='rebooked', checked_in=0, meta_json=? WHERE id=?").run(alt.flight_no, alt.date, JSON.stringify(meta), b.id);
   O.audit({ actor: "alternatives", action: alt.type === "ALTERNATE_AIRPORT" ? "SWITCH_AIRPORT" : "SHIFT_TRIP_DATE", rationale: `${pnr}: ${b.flight_no} ${b.flight_date} → ${alt.flight_no} ${alt.date}${alt.code ? " into " + alt.code : ""}; risk ${a.trip_risk} → ${alt.risk}` });
+  /* the knowledge graph follows the booking, so the next prediction on the old flight no longer carries this customer */
+  try { bridge.moveTrip({ ...b, flight_no: alt.flight_no, flight_date: alt.date }, { flight_no: alt.flight_no, date: alt.date, origin: meta.origin, dest: meta.dest, dep: alt.dep, arr: alt.arr }); } catch {}
+  const roadMin = (() => { const e = alt.code ? G.edges({ src: `ap:${a.dest}`, rel: "ALTERNATE_OF", dst: `ap:${alt.code}` })[0] : null; return e?.ground_transfer_min || Math.max(10, Math.round((alt.distance_km || 0) / 70 * 60)); })();
+  const road = roadMin >= 90 ? `about ${Math.round(roadMin / 30) / 2} h` : `about ${roadMin} min`;
   const reply = alt.type === "ALTERNATE_AIRPORT"
-    ? `Done — you now fly into ${alt.city} (${alt.code}) on ${fmtDay(alt.date)}, ${alt.flight_no} ${alt.dep}–${alt.arr}, about ${Math.round(alt.distance_km / 70)}h by road from ${a.city}. Risk there is ${alt.risk_label}. Booking ${pnr} is updated in My Trips; your original flight is kept on file if you want it back.`
+    ? `Done — you now fly into ${alt.city} (${alt.code}) on ${fmtDay(alt.date)}, ${alt.flight_no} ${alt.dep}–${alt.arr}, ${road} by road from ${a.city}. Risk there is ${alt.risk_label}. Booking ${pnr} is updated in My Trips; your original flight is kept on file if you want it back.`
     : `Done — you now travel on ${fmtDay(alt.date)}, ${alt.flight_no} ${alt.dep}–${alt.arr}${alt.price_delta != null ? ` (${alt.price_delta >= 0 ? "+" : ""}$${alt.price_delta})` : ""}. That day looks ${alt.risk_label} instead of ${a.trip_risk_label}. Booking ${pnr} is updated in My Trips; your original date is kept on file if you want it back.`;
+  /* confirmations: the customer's channel (unless the reply itself is that channel) and always email with the new itinerary */
+  const u = db.prepare("SELECT phone FROM users WHERE id=?").get(uid) || {};
+  const channel = u.phone ? "whatsapp" : "push";
+  bridge.deliver({ uid, pnr, channel, also: ["email"], skip: via === channel ? [via] : [], text: reply, event: "itinerary_changed",
+    emailType: "itinerary_changed", emailData: { pnr, flight_no: alt.flight_no, date: alt.date, origin: meta.origin, dest: meta.dest, dep: alt.dep, arr: alt.arr, from: meta.rebooked_from, why: alt.why, type: alt.type, city: alt.city || a.city, road: alt.type === "ALTERNATE_AIRPORT" ? road : null } })
+    .then((results) => O.audit({ actor: "alternatives", action: "DELIVER_CHANGE", rationale: `${pnr}: ${results.map((r) => `${r.channel} ${r.status}`).join(", ")}` })).catch(() => {});
   return { ok: true, reply, booking: { pnr, flight_no: alt.flight_no, date: alt.date, status: "rebooked" }, alt };
 }
 

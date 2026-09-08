@@ -10,6 +10,7 @@ const clock = require("./clock");
 /* ---------- STUB: seat inventory (PSS shim for recovery flights) ---------- */
 const seats = {};            // flight_no -> remaining
 const seatHolds = {};        // holdRef -> { flight_no, n, expiry }
+const released = new Set();  // holdRefs released on purpose (stand-down, expiry): never rehydrated
 function seedSeats(map) { Object.assign(seats, map); }
 function seatsLeft(fno) { return seats[fno] ?? 0; }
 function holdSeats(fno, n, ref, ttlMs) {
@@ -20,15 +21,35 @@ function holdSeats(fno, n, ref, ttlMs) {
   return { ok: true, ref, expiry: new Date(seatHolds[ref].expiry).toISOString() };
 }
 function releaseSeats(ref) {
+  released.add(ref);
   const h = seatHolds[ref]; if (!h) return { ok: true, idempotent: true };
   seats[h.flight_no] += h.n; delete seatHolds[ref];
   return { ok: true };
 }
 function confirmSeats(ref) {   // hold → firm booking (seats stay decremented)
-  const h = seatHolds[ref]; if (!h) return { ok: false, error: "no_hold" };
+  const h = seatHolds[ref] || rehydrateHold(ref);
+  if (!h) return { ok: false, error: "no_hold" };
   delete seatHolds[ref];
-  return { ok: true, pssRef: "RB-" + ref.slice(-6).toUpperCase() };
+  return { ok: true, pssRef: "RB-" + ref.slice(-6).toUpperCase(), rehydrated: !!h.rehydrated };
 }
+/* The hold table is process memory (STUB PSS), so a restart between T-48 and the customer's tap
+   used to make every reroute fail with no_hold while the option on the customer's card still
+   showed "seats held". The graph is the source of truth: the RecoveryOption node carries the hold
+   ref and its expiry, so a hold that is missing here but still valid there is rebuilt from it.
+   A hold that was explicitly released (stand-down, expiry) is not rebuilt: the option's expiry
+   has passed by then, or releaseSeats() has removed it and the node's expiry check still applies. */
+function rehydrateHold(ref) {
+  const rest = String(ref).replace(/^hold:/, "").replace(/:\d+$/, "");   // hold:<pred…>:A:1 ↔ opt:<pred…>:A
+  if (!rest || released.has(ref)) return null;
+  let opt = null;
+  try { const G = require("./graph"); opt = G.getNode("opt:" + rest) || G.getNode(rest); } catch { return null; }
+  if (!opt || !opt.seat_hold_ref || !String(ref).startsWith(opt.seat_hold_ref)) return null;
+  if (!opt.expiry || Date.parse(opt.expiry) <= clock.now().getTime()) return null;
+  const fno = /:1$/.test(ref) ? "XP903" : "XP077";
+  seatHolds[ref] = { flight_no: fno, n: opt.party_size || 1, expiry: Date.parse(opt.expiry), rehydrated: true };
+  return seatHolds[ref];
+}
+function forgetHolds() { for (const k of Object.keys(seatHolds)) delete seatHolds[k]; }   // test hook: simulate a process restart
 
 /* ---------- STUB: hotel + taxi vendors with idempotent reserve ---------- */
 const failures = { hotel: false, taxi: false };
@@ -59,6 +80,7 @@ const sent = () => outbox.slice();
 function resetVendors() {
   for (const k of Object.keys(seats)) delete seats[k];
   for (const k of Object.keys(seatHolds)) delete seatHolds[k];
+  released.clear();
   for (const k of Object.keys(reservations)) delete reservations[k];
   outbox.length = 0; failures.hotel = false; failures.taxi = false;
 }
@@ -88,4 +110,4 @@ function render(kind, locale, facts) {
   return msg;
 }
 
-module.exports = { seedSeats, seatsLeft, holdSeats, releaseSeats, confirmSeats, reserve, cancel, setFailure, send, sent, resetVendors, render };
+module.exports = { seedSeats, seatsLeft, holdSeats, releaseSeats, confirmSeats, forgetHolds, reserve, cancel, setFailure, send, sent, resetVendors, render };

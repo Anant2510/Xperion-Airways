@@ -53,6 +53,27 @@ package payload and the agent's rationale.
 **Stand-down** — automatic on hysteresis; verify holds_released and all-clear
 counts on the prediction node, and RELEASE_HOLD / STOOD_DOWN in the audit.
 
+**Restart between T-48 and a customer's tap** — holds live in the STUB PSS's memory, so a
+process restart used to break every reroute acceptance with `no_hold`. `confirmSeats` now
+rebuilds a missing hold from the RecoveryOption node (its `seat_hold_ref` and `expiry`),
+and a hold released on purpose (stand-down, expiry) is never rebuilt. A saga that still
+fails answers the customer in plain language (inbox kind `disruption_failed`, audit
+`OFFER_FAILED_REPLY`) and leaves the offer open, so they can take another option.
+
+**Who is on the flight** — Reset world links the 11 seeded personas (`KNOWN_USERS`). Accounts
+created at runtime are not linked unless `AUTONOMY_LINK_ALL=1`. WhatsApp delivery skips any
+number that `WA_PHONE_MAP` pins to a different persona, so the presenter's phone gets one copy.
+Customer copy of a brief is passed through `research.customerSafe()`: graphic news becomes a
+planning line; the ops brief keeps the analyst's wording.
+
+**What the customer receives after saying yes** — the booking row changes (flight, date,
+status `rebooked`, `meta.recovery` or `meta.rebooked_from`), My Trips shows the new flight with
+the recovery band, the assistant inbox gets the confirmation card, WhatsApp gets the confirmation
+(as the reply itself when the yes came on WhatsApp, as a message when it came from the app), and
+an email with the new itinerary is always written to the outbox (delivered when SMTP is set).
+The graph follows the booking (`moveTrip`), so a later prediction on the old flight no longer
+carries them.
+
 **Manual override** — decline on behalf of a passenger:
 `POST /api/autonomy/offer/:id/decline`; accept:
 `POST /api/autonomy/offer/:id/accept {"optionId":"opt:…"}`. Both are audited

@@ -188,10 +188,23 @@ function defaultSummary(code, from, to, f) {
 const mode = (arr) => arr.sort((a, b) => arr.filter((v) => v === a).length - arr.filter((v) => v === b).length).pop();
 
 /* customer-facing text (chat + WhatsApp), short and sourced */
+/* Customer-facing wording. The analyst reads the news as it is; the customer gets what they need
+   to plan around, never the graphic detail. An item whose note or title describes deaths, crashes
+   or violence keeps its date and impact but loses the detail: the note becomes a planning line and
+   a graphic title becomes a neutral one for its kind. The ops copy of the brief is untouched. */
+const GRAPHIC = /\b(fatal(?:ity|ities)?|crash(?:ed|es|ing)?|kill(?:ed|ing|s)?|death(?:s)?|dead|die[ds]?|dying|casualt(?:y|ies)|terror(?:ist|ism)?|shooting|shot|stabb(?:ed|ing)|bomb(?:ing|s)?|explosion|massacre|murder(?:ed|s)?|hijack(?:ed|ing)?|suicide|hostage)\b/i;
+const NEUTRAL_TITLE = { transport: "Airport and transport disruption", civil: "Local disruption", political: "Local events to be aware of", health: "Health advisory", strike: "Strike action", major_event: "Major event in the city", advisory: "Travel advisory" };
+function customerSafe(e) {
+  if (!e) return e;
+  const out = { ...e };
+  if (GRAPHIC.test(String(e.title || ""))) out.title = NEUTRAL_TITLE[e.kind] || "Local disruption";
+  if (GRAPHIC.test(String(e.note || ""))) out.note = /delay|cancel|runway|airport|capacity/i.test(String(e.title || "") + " " + String(e.note || "")) ? "allow extra time at the airport; operations are running below normal capacity" : "worth allowing extra time and checking local news before you travel";
+  return out;
+}
 function briefText(b, { max = 4 } = {}) {
   const lines = [`Destination brief · ${b.city} · ${b.window.from.slice(5)} to ${b.window.to.slice(5)}`];
   lines.push(`Weather: ${b.weather.alerts.length ? b.weather.alerts.slice(0, 2).map((a) => a.headline).join("; ") : (b.weather.days.length ? b.weather.days.map((d) => `${d.date.slice(5)} ${d.label}`).slice(0, 4).join(", ") : "no forecast yet")}.`);
-  const ev = (b.events || []).slice(0, max).map((e) => `• ${e.title}${e.date ? ` (${e.date})` : ""} — ${e.impact} impact${e.note ? `: ${e.note}` : ""}`);
+  const ev = (b.events || []).slice(0, max).map(customerSafe).map((e) => `• ${e.title}${e.date ? ` (${e.date})` : ""} — ${e.impact} impact${e.note ? `: ${e.note}` : ""}`);
   if (ev.length) lines.push("Happening there:", ...ev);
   if ((b.holidays || []).length) lines.push(`Public holiday: ${b.holidays.map((h) => `${h.name} ${h.date.slice(5)}`).join(", ")}.`);
   if ((b.advisories || []).length) lines.push(`Advisory: ${b.advisories[0].summary}${b.advisories[0].level ? ` (${b.advisories[0].level})` : ""}.`);
@@ -207,4 +220,4 @@ function status() {
     daily_max: DAILY_MAX(), calls_today: today, est_cost_today_usd: Number((today * COST_PER_CALL).toFixed(2)), briefs: list().length };
 }
 
-module.exports = { build, briefText, list, status, facts, parseJSON, prompt, setFetch, setLLM, addDays, idFor };
+module.exports = { build, briefText, list, status, facts, parseJSON, prompt, setFetch, setLLM, addDays, idFor, customerSafe };

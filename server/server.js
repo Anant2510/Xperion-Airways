@@ -1371,9 +1371,9 @@ app.post("/api/ai/forget", (req, res) => { chatClear(req.uid); res.json({ ok: tr
 
 const AGENT_TOOLS = [
   { name: "split_booking", description: "Split a multi-passenger booking into separate PNRs — move one or more travellers onto their own record so they can change or cancel independently. Use for 'my wife needs to fly back later', 'split my son off the booking'.",
-    input_schema: { type: "object", properties: { passengers: { type: "array", items: { type: "string" }, description: "First names of the travellers to move onto a NEW PNR." }, action: { type: "string", enum: ["change", "cancel"], description: "What happens to the split-off travellers. Default change." }, confirm: { type: "boolean" } }, required: ["passengers"] } },
+    input_schema: { type: "object", properties: { pnr: { type: "string", description: "Booking reference (PNR), e.g. XPW01A. Give it whenever the customer has more than one upcoming trip or names a specific flight; call get_my_profile to list their trips. Omit only to act on the current booking." }, passengers: { type: "array", items: { type: "string" }, description: "First names of the travellers to move onto a NEW PNR." }, action: { type: "string", enum: ["change", "cancel"], description: "What happens to the split-off travellers. Default change." }, confirm: { type: "boolean" } }, required: ["passengers"] } },
   { name: "resolve_disruption", description: "Resolve a disruption per traveller — each passenger can independently take a refund, a travel voucher, or be rebooked. Use for 'refund me but rebook my son'.",
-    input_schema: { type: "object", properties: { resolutions: { type: "array", description: "One entry per traveller.", items: { type: "object", properties: { passenger: { type: "string" }, type: { type: "string", enum: ["refund", "voucher", "rebook"] } } } } }, required: ["resolutions"] } },
+    input_schema: { type: "object", properties: { pnr: { type: "string", description: "Booking reference (PNR), e.g. XPW01A. Give it whenever the customer has more than one upcoming trip or names a specific flight; call get_my_profile to list their trips. Omit only to act on the current booking." }, resolutions: { type: "array", description: "One entry per traveller.", items: { type: "object", properties: { passenger: { type: "string" }, type: { type: "string", enum: ["refund", "voucher", "rebook"] } } } } }, required: ["resolutions"] } },
   { name: "search_multi_city", description: "Search a multi-city itinerary of 2-5 legs, each with its own route and date. Use for 'Porto to Lisbon on the 20th, then Lisbon to Amsterdam on the 23rd'.",
     input_schema: { type: "object", properties: { legs: { type: "array", description: "Ordered legs.", items: { type: "object", properties: { origin: { type: "string" }, dest: { type: "string" }, date: { type: "string" } } } } }, required: ["legs"] } },
   { name: "park_trip", description: "Save the currently selected flight + extras into My Trip Basket so the customer can come back to it later, and start fresh. Use for 'save this for later', 'park this trip'.",
@@ -1384,11 +1384,11 @@ const AGENT_TOOLS = [
   { name: "get_hold", description: "Check the customer's active fare hold: which flight, the locked price and when it expires.",
     input_schema: { type: "object", properties: {} } },
   { name: "upgrade_cabin", description: "Upgrade the cabin on an existing booking (Premium Economy or Executive/Business). Use for 'upgrade me to business'.",
-    input_schema: { type: "object", properties: { cabin: { type: "string", enum: ["Premium", "Business"], description: "Target cabin." }, confirm: { type: "boolean", description: "Must be true to actually charge and reissue." } }, required: ["cabin"] } },
+    input_schema: { type: "object", properties: { pnr: { type: "string", description: "Booking reference (PNR), e.g. XPW01A. Give it whenever the customer has more than one upcoming trip or names a specific flight; call get_my_profile to list their trips. Omit only to act on the current booking." }, cabin: { type: "string", enum: ["Premium", "Business"], description: "Target cabin." }, confirm: { type: "boolean", description: "Must be true to actually charge and reissue." } }, required: ["cabin"] } },
   { name: "get_disruption", description: "Check whether the customer's flight is disrupted (delayed/cancelled) and list the recovery options available to them.",
-    input_schema: { type: "object", properties: {} } },
+    input_schema: { type: "object", properties: { pnr: { type: "string", description: "Booking reference (PNR), e.g. XPW01A. Give it whenever the customer has more than one upcoming trip or names a specific flight; call get_my_profile to list their trips. Omit only to act on the current booking." }} } },
   { name: "rebook_flight", description: "Rebook the customer onto an alternative flight after a disruption, keeping their extras. Use after get_disruption.",
-    input_schema: { type: "object", properties: { option_id: { type: "string", description: "Id of the recovery option from get_disruption." } }, required: ["option_id"] } },
+    input_schema: { type: "object", properties: { pnr: { type: "string", description: "Booking reference (PNR), e.g. XPW01A. Give it whenever the customer has more than one upcoming trip or names a specific flight; call get_my_profile to list their trips. Omit only to act on the current booking." }, option_id: { type: "string", description: "Id of the recovery option from get_disruption." } }, required: ["option_id"] } },
   { name: "get_refund_status", description: "Status of a refund after a cancellation: amount, method and where it is in the timeline.",
     input_schema: { type: "object", properties: {} } },
 
@@ -1433,8 +1433,8 @@ const AGENT_TOOLS = [
     } } },
   { name: "checkout", description: "Pay for the currently selected flight using the customer's saved profile (voucher + miles + card). Creates a real booking and sends a confirmation email. Only call after a flight is selected and the customer confirms they want to pay.",
     input_schema: { type: "object", properties: { use_voucher: { type: "boolean" }, use_miles: { type: "boolean" } } } },
-  { name: "get_booking", description: "Get the customer's current/latest active booking with status. Use for 'my booking', 'am I checked in', 'is my flight on time'.",
-    input_schema: { type: "object", properties: {} } },
+  { name: "get_booking", description: "Get one of the customer's bookings by PNR, or the current/latest active booking when no PNR is given, with status. Use for 'my booking', 'am I checked in', 'is my flight on time'.",
+    input_schema: { type: "object", properties: { pnr: { type: "string", description: "Booking reference (PNR), e.g. XPW01A. Give it whenever the customer has more than one upcoming trip or names a specific flight; call get_my_profile to list their trips. Omit only to act on the current booking." }} } },
   { name: "get_wallet", description: "Get the customer's LIVE Xperion Miles balance and voucher status from the database. Use whenever they ask about miles, points, voucher, balance, or 'what can I pay with' / 'how much are my miles worth'. Always call this rather than answering from memory — balances change after bookings and cancellations.",
     input_schema: { type: "object", properties: {} } },
   { name: "get_recommendation", description: "Get the customer's personalized experiential PACKAGE — derived from their co-branded {{airline}} credit-card spend. Each customer has an affinity (football / golf / music) and a matching bundle of event ticket + hotel + return flight. Use when they ask 'any packages for me', 'what should I do this weekend', 'recommend something', 'anything fun in <city>', or react to their interest. Returns the affinity, the rationale (which card-spend category drove it), and the full package with prices (and any add-on like a golf-bag).",
@@ -1443,10 +1443,10 @@ const AGENT_TOOLS = [
     input_schema: { type: "object", properties: {} } },
   { name: "express_usual", description: "Open the 2-step Express Checkout for the customer's USUAL flight — their recurring route with seat, bags, saved card and tier perks pre-filled. Use when they say 'book my usual', 'express checkout my usual flight', 'rebook my regular route'. Returns the route, the usual flight number and the recommended next date; the app then opens Express Checkout.",
     input_schema: { type: "object", properties: {} } },
-  { name: "check_in", description: "Check the customer in for their current active booking. Issues the boarding pass. Use when they say 'check me in' or 'check in'.",
-    input_schema: { type: "object", properties: {} } },
-  { name: "cancel_booking", description: "Cancel the customer's current active booking with an instant refund (miles restored, voucher reactivated, card amount returned). Only call after the customer clearly confirms they want to cancel.",
-    input_schema: { type: "object", properties: { confirm: { type: "boolean", description: "Must be true — the customer has confirmed the cancellation." } }, required: ["confirm"] } },
+  { name: "check_in", description: "Check the customer in for a booking (by PNR, else their current active booking). Issues the boarding pass. Use when they say 'check me in' or 'check in'.",
+    input_schema: { type: "object", properties: { pnr: { type: "string", description: "Booking reference (PNR), e.g. XPW01A. Give it whenever the customer has more than one upcoming trip or names a specific flight; call get_my_profile to list their trips. Omit only to act on the current booking." }} } },
+  { name: "cancel_booking", description: "Cancel one of the customer's bookings (by PNR — always pass it when they have more than one upcoming trip — else the current active booking) with an instant refund (miles restored, voucher reactivated, card amount returned). Only call after the customer clearly confirms they want to cancel.",
+    input_schema: { type: "object", properties: { pnr: { type: "string", description: "Booking reference (PNR), e.g. XPW01A. Give it whenever the customer has more than one upcoming trip or names a specific flight; call get_my_profile to list their trips. Omit only to act on the current booking." }, confirm: { type: "boolean", description: "Must be true — the customer has confirmed the cancellation." } }, required: ["confirm"] } },
 ];
 
 // tiny per-process agent memory (single demo user)
@@ -1510,10 +1510,22 @@ function firstFreeSeat(pref, tier) {
 /* The booking this CHAT SESSION is talking about. A booking made in this session
    (session.lastPnr, set at checkout) always wins over the date-nearest seeded trip —
    fixes "pay for JFK→MIA, then check-in answers about tomorrow's MIA→JFK". */
-const sessionBooking = (uid, session) => {
+/* Which booking a tool acts on. An explicit PNR always wins and NEVER falls back: acting on
+   "the current booking" when the customer named a different trip is how the wrong flight gets
+   cancelled (seen over MCP, where there is no session-selected trip and Daniel has several).
+   Without a PNR: the trip the customer last opened in this session, else the current booking. */
+const sessionBooking = (uid, session, pnr) => {
+  const want = String(pnr || "").trim().toUpperCase();
+  if (want) return db.prepare("SELECT * FROM bookings WHERE user_id=? AND pnr=? AND status IN ('confirmed','rebooked')").get(uid, want) || null;
   const p = session && session.lastPnr;
   if (p) { const b = db.prepare("SELECT * FROM bookings WHERE user_id=? AND pnr=? AND status='confirmed'").get(uid, p); if (b) return b; }
   return currentBooking(uid);
+};
+/* Uniform reply when the customer named a PNR that is not theirs or not upcoming; null when no
+   PNR was given, so each tool keeps its own "no booking" wording. */
+const pnrNotFound = (input) => {
+  const want = String((input && input.pnr) || "").trim().toUpperCase();
+  return want ? { ok: false, state: "pnr_not_found", pnr: want, message: `No upcoming booking ${want} on this account. Nothing was changed. List the customer's upcoming trips (get_my_profile over MCP) and ask which one they mean.` } : null;
 };
 
 const XperionAdapter = createAirlineAdapter("xperion", {
@@ -1832,8 +1844,8 @@ const XperionAdapter = createAirlineAdapter("xperion", {
   },
   get_booking(input, ctx) {
     const { uid, session } = ctx;
-    const b = sessionBooking(uid, session);
-    if (!b) return { ok: true, booking: null };
+    const b = sessionBooking(uid, session, input.pnr);
+    if (!b) return pnrNotFound(input) || { ok: true, booking: null };
     const f = flightByNo(b.flight_no) || {};
     return { ok: true, booking: { pnr: b.pnr, flight_no: b.flight_no, route: `${cityName(f.origin)}→${cityName(f.dest)}`, dep: f.dep, seat: b.seat, status: f.status, checked_in: !!b.checked_in } };
   },
@@ -1869,8 +1881,8 @@ const XperionAdapter = createAirlineAdapter("xperion", {
   },
   check_in(input, ctx) {
     const { uid, session } = ctx;
-    const b = sessionBooking(uid, session);
-    if (!b) return { ok: false, state: "no_booking", message: "You have no upcoming flight to check in for." };
+    const b = sessionBooking(uid, session, input.pnr);
+    if (!b) return pnrNotFound(input) || { ok: false, state: "no_booking", message: "You have no upcoming flight to check in for." };
     const f = flightByNo(b.flight_no) || {};
     if (b.checked_in) return { ok: true, state: "already_checked_in", pnr: b.pnr, flight_no: b.flight_no, route: `${cityName(f.origin)}→${cityName(f.dest)}`, date: b.flight_date, seat: b.seat, group: boardingGroup(userTier(uid)), message: "You're already checked in for this flight." };
     db.prepare("UPDATE bookings SET checked_in=1 WHERE id=?").run(b.id);
@@ -1880,8 +1892,8 @@ const XperionAdapter = createAirlineAdapter("xperion", {
   },
   split_booking(input, ctx) {
     const { uid, session } = ctx;
-    const b = sessionBooking(uid, session);
-    if (!b) return { ok: false, state: "no_booking", message: "You have no active booking to split." };
+    const b = sessionBooking(uid, session, input.pnr);
+    if (!b) return pnrNotFound(input) || { ok: false, state: "no_booking", message: "You have no active booking to split." };
     const meta = _safeJSON(b.meta_json, {}) || {};
     const pax = Array.isArray(meta.passengers) ? meta.passengers : [];
     if (pax.length < 2) return { ok: false, state: "single_pax", message: "That booking has a single traveller — there's nothing to split." };
@@ -1904,8 +1916,8 @@ const XperionAdapter = createAirlineAdapter("xperion", {
   },
   resolve_disruption(input, ctx) {
     const { uid, session } = ctx;
-    const b = sessionBooking(uid, session);
-    if (!b) return { ok: false, state: "no_booking", message: "You have no active booking." };
+    const b = sessionBooking(uid, session, input.pnr);
+    if (!b) return pnrNotFound(input) || { ok: false, state: "no_booking", message: "You have no active booking." };
     const meta = _safeJSON(b.meta_json, {}) || {};
     const pax = Array.isArray(meta.passengers) && meta.passengers.length ? meta.passengers : [{ first: "You" }];
     const f = flightByNo(b.flight_no) || {};
@@ -1980,8 +1992,8 @@ const XperionAdapter = createAirlineAdapter("xperion", {
   },
   upgrade_cabin(input, ctx) {
     const { uid, session } = ctx;
-    const b = sessionBooking(uid, session);
-    if (!b) return { ok: false, state: "no_booking", message: "You have no active booking to upgrade." };
+    const b = sessionBooking(uid, session, input.pnr);
+    if (!b) return pnrNotFound(input) || { ok: false, state: "no_booking", message: "You have no active booking to upgrade." };
     const f = flightByNo(b.flight_no) || {};
     const target = input.cabin === "Business" ? "Business" : "Premium";
     const price = Math.round((f.price || 100) * (target === "Business" ? 1.9 : 0.55));
@@ -1994,8 +2006,8 @@ const XperionAdapter = createAirlineAdapter("xperion", {
   },
   get_disruption(input, ctx) {
     const { uid, session } = ctx;
-    const b = sessionBooking(uid, session);
-    if (!b) return { ok: true, disrupted: false, message: "No active booking, so nothing is disrupted." };
+    const b = sessionBooking(uid, session, input.pnr);
+    if (!b) return pnrNotFound(input) || { ok: true, disrupted: false, message: "No active booking, so nothing is disrupted." };
     const f = flightByNo(b.flight_no) || {};
     const disrupted = !!(f.status && /delay|cancel/i.test(f.status));
     if (!disrupted) return { ok: true, disrupted: false, pnr: b.pnr, flight_no: b.flight_no, message: `${b.flight_no} is on time.` };
@@ -2005,8 +2017,8 @@ const XperionAdapter = createAirlineAdapter("xperion", {
   },
   rebook_flight(input, ctx) {
     const { uid, session } = ctx;
-    const b = sessionBooking(uid, session);
-    if (!b) return { ok: false, state: "no_booking", message: "You have no booking to rebook." };
+    const b = sessionBooking(uid, session, input.pnr);
+    if (!b) return pnrNotFound(input) || { ok: false, state: "no_booking", message: "You have no booking to rebook." };
     const id = String(input.option_id || "");
     if (!id || /^keep$/i.test(id)) return { ok: true, kept: true, pnr: b.pnr, message: `Keeping you on ${b.flight_no}.` };
     const nf = flightByNo(id);
@@ -2027,8 +2039,8 @@ const XperionAdapter = createAirlineAdapter("xperion", {
   },
   cancel_booking(input, ctx) {
     const { uid, session } = ctx;
-    const b = sessionBooking(uid, session);
-    if (!b) return { ok: false, state: "no_booking", message: "You have no active booking to cancel." };
+    const b = sessionBooking(uid, session, input.pnr);
+    if (!b) return pnrNotFound(input) || { ok: false, state: "no_booking", message: "You have no active booking to cancel." };
     const f = flightByNo(b.flight_no) || {};
     if (input.confirm !== true) return { ok: false, state: "needs_confirm", pnr: b.pnr, route: `${cityName(f.origin)}→${cityName(f.dest)}`, date: b.flight_date, message: `Confirm before cancelling ${b.pnr} (${b.flight_no} ${cityName(f.origin)}→${cityName(f.dest)}, ${b.flight_date}). Ask the customer to confirm.` };
     db.prepare("UPDATE bookings SET status='cancelled' WHERE id=?").run(b.id);
@@ -2644,6 +2656,19 @@ app.get("/api/ai/tools", (req, res) => {
   });
 });
 
+/* Clear chat. The client rotates its sessionId and asks us to forget the old one, so the fresh
+   thread carries no lastSearch / selected flight / pending confirmation from the previous
+   conversation. Only the session's own customer may drop it; unknown ids are a no-op. */
+app.post("/api/ai/session/clear", (req, res) => {
+  const sessionId = String(req.body.sessionId || "").slice(0, 64);
+  const tenant = resolveTenant(req.get("x-airline-tenant"));
+  if (!sessionId || tenant.rejected) return res.json({ ok: true, cleared: false });
+  const key = `${tenant.id}::${sessionId}`, s = agentSessions[key];
+  const cleared = !!s && (!s.uid || s.uid === req.uid);
+  if (cleared) delete agentSessions[key];
+  res.json({ ok: true, cleared });
+});
+
 app.post("/api/ai/agent", async (req, res) => {
   let messages = (req.body.messages || []).slice(-12);
   const screen = req.body.screen || "home";
@@ -2691,7 +2716,7 @@ app.post("/api/ai/agent", async (req, res) => {
   if (lastUserMsg) {
     /* Enterprise Autonomy: an open disruption offer can be accepted or declined in plain language
        right here; the reply comes from the same execution saga as a card tap or a WhatsApp reply. */
-    let hit = null; try { hit = autonomy.bridge.intercept(req.uid, lastUserMsg.content); } catch (e) { log("autonomy_intercept_error", { error: e.message }); }
+    let hit = null; try { hit = autonomy.bridge.intercept(req.uid, lastUserMsg.content, "app"); } catch (e) { log("autonomy_intercept_error", { error: e.message }); }
     if (hit) {
       const reply = hit.reply || (hit.ok ? "Done." : `I couldn't complete that: ${hit.error || "please try again"}.`);
       chatSave(req.uid, channel, "assistant", reply);
@@ -3042,6 +3067,40 @@ app.get("/api/admin/users", (req, res) => {
     return { ...maskUserCard(u), bookings, spend };
   });
   res.json({ ok: true, count: out.length, users: out });
+});
+
+// Admin-only: remove an account that was registered at runtime (never a seeded persona).
+// Used to clear a stray signup that shares the presenter's phone: its rows in every table keyed
+// by user_id, its CDP profile, its Passenger/PNR nodes in the autonomy graph, and any live session.
+app.delete("/api/admin/users/:id", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ ok: false, error: "bad_id" });
+  if (KNOWN_USERS.some(([k]) => Number(k) === id)) return res.status(403).json({ ok: false, error: "seeded personas are reset with Reset world, not deleted" });
+  const u = db.prepare("SELECT id, member_no, first_name, phone FROM users WHERE id=?").get(id);
+  if (!u) return res.status(404).json({ ok: false, error: "no_such_user" });
+  const removed = {};
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(r => r.name);
+  for (const t of tables) {
+    if (t === "users") continue;
+    let cols = []; try { cols = db.prepare(`PRAGMA table_info(${t})`).all().map(c => c.name); } catch { continue; }
+    if (!cols.includes("user_id")) continue;
+    try { removed[t] = db.prepare(`DELETE FROM ${t} WHERE user_id=?`).run(id).changes; } catch {}
+  }
+  try { if (u.member_no) removed.cdp_profiles = db.prepare("DELETE FROM cdp_profiles WHERE loyalty_id=?").run(u.member_no).changes; } catch {}
+  try { if (u.member_no) removed.members = db.prepare("DELETE FROM members WHERE member_no=?").run(u.member_no).changes; } catch {}
+  try {
+    const G = require("./autonomy/graph");
+    for (const nid of [`pax:app:${id}`, `pnr:app:${id}`, `risk:XPW${String(id).padStart(2, "0")}A`]) {
+      if (!G.getNode(nid)) continue;
+      for (const e of G.edges({ src: nid })) G.deleteEdge(e.src, e.rel, e.dst);
+      for (const e of G.edges({ dst: nid })) G.deleteEdge(e.src, e.rel, e.dst);
+      db.prepare("DELETE FROM kg_nodes WHERE id=?").run(nid); removed[nid] = 1;
+    }
+  } catch {}
+  try { for (const [sid, sess] of session._sessions) if (sess && Number(sess.uid) === id) session._sessions.delete(sid); } catch {}
+  removed.users = db.prepare("DELETE FROM users WHERE id=?").run(id).changes;
+  res.json({ ok: true, removed: { id, name: u.first_name, phone: u.phone ? "on file" : null, ...removed } });
 });
 
 // Admin-only: one user's full footprint across the DB, for drill-down.

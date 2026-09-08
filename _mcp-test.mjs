@@ -37,6 +37,22 @@ ok("get_trip_risk assesses the next trip", risk.ok && risk.trip_risk_label && Ar
 const unknown = await c.callTool({ name: "not_a_tool", arguments: {} });
 ok("unknown tool is refused, not executed", unknown.isError === true);
 
+/* PNR targeting: over MCP there is no session-selected trip, so booking tools used to act on
+   whatever "current booking" was, even when the customer named another one (the wrong-trip
+   cancel seen from Claude Desktop). Now an explicit pnr wins and a bad pnr never falls back. */
+const cur = parse(await c.callTool({ name: "get_booking", arguments: {} }));
+const other = (me.upcoming_trips || []).map((t) => t.pnr).find((p) => p && p !== cur.booking?.pnr);
+const byPnr = parse(await c.callTool({ name: "get_booking", arguments: { pnr: other } }));
+ok("get_booking by PNR returns that trip, not the current one", !!other && byPnr.ok && byPnr.booking?.pnr === other && other !== cur.booking?.pnr, `${other} vs current ${cur.booking?.pnr}`);
+const bad = parse(await c.callTool({ name: "cancel_booking", arguments: { pnr: "ZZZZZZ", confirm: true } }));
+const curAfter = parse(await c.callTool({ name: "get_booking", arguments: {} }));
+ok("cancel with an unknown PNR refuses and does NOT fall back to the current booking", bad.ok === false && bad.state === "pnr_not_found" && curAfter.booking?.pnr === cur.booking?.pnr, bad.state);
+const gate = parse(await c.callTool({ name: "cancel_booking", arguments: { pnr: other } }));
+ok("cancel by PNR still needs the customer's confirmation first", gate.ok === false && gate.state === "needs_confirm" && gate.pnr === other);
+const cx = parse(await c.callTool({ name: "cancel_booking", arguments: { pnr: other, confirm: true } }));
+const curFinal = parse(await c.callTool({ name: "get_booking", arguments: {} }));
+ok("cancel by PNR cancels exactly that trip and leaves the current booking alone", cx.ok && cx.state === "cancelled" && cx.pnr === other && curFinal.booking?.pnr === cur.booking?.pnr, `${cx.pnr} cancelled, ${curFinal.booking?.pnr} intact`);
+
 const res = await c.listResources();
 ok("resources: profile, bookings, network", res.resources.length === 3);
 const net = JSON.parse((await c.readResource({ uri: "xperion://network" })).contents[0].text);
@@ -50,6 +66,11 @@ const sofia = await post("/api/admin/mcp/token", { persona: "sofia" });
 const c2 = await connect(sofia.token);
 const me2 = parse(await c2.callTool({ name: "get_my_profile", arguments: {} }));
 ok("a second token is a different customer (no leakage)", me2.customer.first_name === "Sofia");
+const sofiaPnr = parse(await c2.callTool({ name: "get_booking", arguments: {} })).booking?.pnr;
+const cd = await connect(minted.token);   // Daniel again (his first client was closed above)
+const steal = parse(await cd.callTool({ name: "cancel_booking", arguments: { pnr: sofiaPnr, confirm: true } }));
+await cd.close();
+ok("another customer's PNR is unreachable from Daniel's token", !!sofiaPnr && steal.ok === false && steal.state === "pnr_not_found", sofiaPnr);
 await c2.close();
 const revoked = await fetch(BASE + `/api/admin/mcp/token/${sofia.token}`, { method: "DELETE" }).then((r) => r.json());
 const after = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", Authorization: `Bearer ${sofia.token}` }, body: "{}" });

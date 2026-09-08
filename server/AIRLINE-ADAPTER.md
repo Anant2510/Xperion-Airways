@@ -36,8 +36,8 @@ Status: **27/27 migrated — the legacy inline chain is gone.**
 - [x] `list_seats` — List available seats and cabin classes (Business, Premium Economy, Economy) for the currently select
 - [x] `change_seat` — Change the customer's seat on the currently selected flight or their current booking — you CAN do th
 - [x] `upgrade_cabin` — Upgrade the cabin on an existing booking (Premium Economy or Executive/Business). Use for 'upgrade m
-- [x] `check_in` — Check the customer in for their current active booking. Issues the boarding pass. Use when they say 
-- [x] `cancel_booking` — Cancel the customer's current active booking with an instant refund (miles restored, voucher reactiv
+- [x] `check_in` — Check the customer in for a booking (by `pnr`, else their current active booking). Issues the boarding pass. Use when they say 
+- [x] `cancel_booking` — Cancel one of the customer's bookings (by `pnr`, else the current active booking) with an instant refund (miles restored, voucher reactiv
 - [x] `get_refund_status` — Status of a refund after a cancellation: amount, method and where it is in the timeline.",
 - [x] `split_booking` — Split a multi-passenger booking into separate PNRs — move one or more travellers onto their own reco
 

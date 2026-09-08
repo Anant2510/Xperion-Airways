@@ -115,6 +115,45 @@ ok("no offers while frozen", ks.offersSent === 0, String(ks.offersSent));
 ok("prediction reached ACT but pipeline skipped", ["ACT","WATCH"].includes(ks.stateAtAct), ks.stateAtAct);
 ok("Tier-2 queue + approval still work", ks.tier2Works === true);
 
+console.log("\n== EDGE: process restart between T-48 and the customer's tap ==");
+/* pm2 restart empties the STUB PSS hold table while the customer's card still says "seats
+   held". The RecoveryOption node in the graph carries the hold ref and expiry, so the reroute
+   must still confirm; a hold that was released on purpose (stand-down) must not come back. */
+sim.reset(); sim.t72(); sim.t48();
+{
+  const off = sim.sampleOffer();
+  const optA = off.options.find(o => G.getNode(o)?.type === "REROUTE");
+  V.forgetHolds();
+  const r = A.accept(off.id, optA);
+  ok("reroute confirms after the hold table was lost (rehydrated from the graph)", r.ok === true && !!r.refs?.rebook, JSON.stringify({ ok: r.ok, failed: r.failed, rebook: r.refs?.rebook }));
+}
+{
+  const sd = sim.standDownScenario();
+  const off = G.nodesByKind("Offer").find(o => o.state === "SENT" || o.state === "EXPIRED") || G.nodesByKind("Offer")[0];
+  const optA = off && off.options.find(o => G.getNode(o)?.type === "REROUTE");
+  const r = off ? A.accept(off.id, optA) : { ok: false, failed: "REBOOK" };
+  ok("released holds are not rehydrated after stand-down", sd.holds_released > 0 && r.ok === false && r.failed === "REBOOK", JSON.stringify({ released: sd.holds_released, ok: r.ok, failed: r.failed }));
+}
+
+console.log("\n== EDGE: a failed saga tells the app customer why and leaves the offer open ==");
+{
+  const bridge = require("./server/autonomy/bridge.js");
+  sim.reset(); bridge.link(); sim.t72(); sim.t48();
+  const pend = bridge.pending(1);
+  ok("Daniel has an open offer after T-48", !!pend && pend.options.length === 3, pend ? String(pend.options.length) : "none");
+  const optB = pend.options.find(o => o.type === "DIVERT_PLUS_GROUND");
+  V.setFailure("hotel", true);
+  const r = bridge.acceptForUser(1, optB.id);
+  V.setFailure("hotel", false);
+  ok("failure reply is plain language, not the generic fallback", r.ok === false && /nothing on your booking has changed/.test(r.reply || "") && /hotel could not be booked/.test(r.reply), (r.reply || "").slice(0, 110));
+  ok("failure is written to the inbox as disruption_failed", !!r.inboxId && bridge.inboxList(1).some(m => m.id === r.inboxId && m.kind === "disruption_failed"));
+  ok("offer stays open with its options", !!bridge.pending(1) && bridge.pending(1).options.length === 3);
+  const optA = pend.options.find(o => o.type === "REROUTE");
+  const r2 = bridge.acceptForUser(1, optA.id);
+  ok("another option still executes on the same offer", r2.ok === true && /Done/.test(r2.reply || ""), (r2.reply || "").slice(0, 80));
+  ok("now nothing is pending", !bridge.pending(1));
+}
+
 console.log("\n== GUARDRAILS ==");
 sim.reset(); sim.t72(); sim.t48();
 const t3 = P.execute("TOUCH_FLIGHT_OPS", { predictionId: sim.state.predId, perform: () => true }, { actor: "rogue", predictionId: sim.state.predId });

@@ -60,6 +60,17 @@ function users() {
   try { return db.prepare("SELECT id, first_name, full_name, email, phone, tier, nationality, home_airport FROM users ORDER BY id").all(); }
   catch { return []; }
 }
+/* Who gets a seat on the disrupted flight: the seeded demo personas. Accounts created at runtime
+   (a signup on the shared VM, a WhatsApp guest, a tester's own registration) are left out unless
+   AUTONOMY_LINK_ALL=1, because a stray account with the presenter's phone number would receive a
+   second copy of every brief and offer under its own name. */
+function linkableUsers() {
+  const all = users();
+  if (/^(1|true|yes)$/i.test(String(process.env.AUTONOMY_LINK_ALL || ""))) return all;
+  let known = null;
+  try { known = new Set((require("../db").KNOWN_USERS || []).map(([id]) => Number(id))); } catch {}
+  return known && known.size ? all.filter((u) => known.has(Number(u.id))) : all;
+}
 function seatPref(uid) {
   try {
     const p = db.prepare("SELECT seat FROM preferences WHERE user_id=?").get(uid);
@@ -90,7 +101,7 @@ function link() {
   if (!fi) return { linked: [] };
   ensureFlightRow(fi);
   const linked = [];
-  for (const u of users()) {
+  for (const u of linkableUsers()) {
     const uid = u.id, loc = LOC(uid);
     const locale = (u.nationality || "").toUpperCase() === "IN" ? "hi-IN" : "en-US";
     const channels = [
@@ -198,19 +209,32 @@ function inbox(uid, kind, text, card) {
 function record(uid, pnr, event, channel, recipient, status, body) {
   const n = notify(); if (n?.record) n.record({ uid, pnr, event, channel, recipient, status, body });
 }
-async function deliver({ uid, pnr, channel, text, event, emailType, emailData }) {
+/* deliver() sends `text` on `channel` (the customer's preferred or accepting channel) plus every
+   channel in `also`, minus `skip`. Confirmations of something the customer just did always add
+   email, so the new itinerary exists somewhere they can keep; `skip` drops the channel that will
+   carry the same words as the reply itself (a WhatsApp reply to a WhatsApp acceptance). */
+async function deliver({ uid, pnr, channel, text, event, emailType, emailData, also = [], skip = [] }) {
   const u = db.prepare("SELECT email, phone, wa_id FROM users WHERE id=?").get(uid) || {};
   /* WhatsApp recipient, same precedence as the app's existing proactive push: the demo's
      configured number, then the real WhatsApp number that last spoke as this persona, then
      the profile phone. */
-  let pinned = null; try { pinned = require("../session").pinnedPhoneFor(uid); } catch {}
+  let pinned = null, S = null; try { S = require("../session"); pinned = S.pinnedPhoneFor(uid); } catch {}
   const waTo = pinned || process.env.WHATSAPP_DEFAULT_TO || u.wa_id || u.phone || null;
+  /* WA_PHONE_MAP pins a real phone to one persona. If this customer's number is that phone but the
+     persona is someone else (a second account with the presenter's number), the message stays
+     with the pinned persona and this one is skipped, so the phone never gets two copies. */
+  let pinnedElsewhere = null;
+  try { const owner = waTo && S?.pinnedUser ? S.pinnedUser(String(waTo).replace(/[^0-9]/g, "")) : null; if (owner && Number(owner.id) !== Number(uid)) pinnedElsewhere = owner.first_name || String(owner.id); } catch {}
   const results = [];
   const push = async (ch, fn) => { try { results.push({ channel: ch, ...(await fn()) }); } catch (e) { results.push({ channel: ch, status: "send failed: " + e.message.slice(0, 60) }); } };
+  const wanted = [...new Set([channel, ...also].filter(Boolean))].filter((c) => !skip.includes(c));
+  for (const ch of skip.filter((c) => c === channel || also.includes(c))) results.push({ channel: ch, status: "carried by the reply on the accepting channel", recipient: ch === "whatsapp" ? waTo : ch === "email" ? u.email : null });
+  for (const channel of wanted) {
   if (channel === "whatsapp") {
     await push("whatsapp", async () => {
       const w = wa();
       if (!waTo) return { status: "skipped (no WhatsApp number known)", recipient: null };
+      if (pinnedElsewhere) return { status: `skipped (number is pinned to ${pinnedElsewhere} by WA_PHONE_MAP)`, recipient: waTo };
       if (!w?.sendText) return { status: "queued (WhatsApp module unavailable)", recipient: waTo };
       /* sendText delivers via Twilio when configured, otherwise logs the outbound message to the
          WhatsApp log with an honest status — either way it returns that status string */
@@ -220,9 +244,10 @@ async function deliver({ uid, pnr, channel, text, event, emailType, emailData })
   } else if (channel === "sms") {
     await push("sms", async () => { const n = notify(); const r = n?.sendSMS ? await n.sendSMS(u.phone, text) : null; return { status: r?.status || "queued (no SMS provider configured)", recipient: u.phone }; });
   } else if (channel === "email") {
-    await push("email", async () => { const e = email(); if (e?.sendEmail && emailType) { const r = await e.sendEmail(emailType, { ...emailData, to: u.email }); return { status: r?.status || "logged", recipient: u.email }; } return { status: "logged (no SMTP configured)", recipient: u.email }; });
+    await push("email", async () => { const e = email(); if (e?.sendEmail && emailType) { let ctx = null; try { ctx = require("../appctx").appCtx; } catch {} const send = () => e.sendEmail(emailType, { ...emailData, to: u.email }); const r = await (ctx && !ctx.getStore() ? ctx.run({ app: "v2" }, send) : send()); return { status: r?.status || "logged", recipient: u.email }; } return { status: "logged (no SMTP configured)", recipient: u.email }; });
   } else {
     await push("push", async () => { const n = notify(); const r = n?.sendPush ? await n.sendPush(null, "Xperion Airways", text) : null; return { status: r?.status || "queued (no push token)", recipient: "app" }; });
+  }
   }
   for (const r of results) record(uid, pnr, event, r.channel, r.recipient, r.status, text);
   return results;
@@ -286,7 +311,10 @@ function onAccepted({ offerId, off, pax, pnr, opt, refs }) {
     : `Done, ${first}. ${view.label}. ${recovery.items.join(" · ")}. Your booking ${pnr.record_locator} is updated in My Trips and nothing was charged.`;
   const card = { type: "disruption_confirmed", offerId, pnr: pnr.record_locator, option: view, items: recovery.items, legs: recovery.legs || null, refs, status, flight: flightNo, ms: null };
   inbox(uid, "disruption_confirmed", reply, card);
-  deliver({ uid, pnr: pnr.record_locator, channel: off.channel || "push", text: reply, event: "disruption_confirmed", emailType: "recovery_confirmed", emailData: { pnr: pnr.record_locator, option: view, items: recovery.items } }).catch(() => {});
+  const via = acceptVia.get(offerId) || null; acceptVia.delete(offerId);
+  const legsText = (recovery.legs || []).map((l) => `${l.flight_no} ${l.origin}→${l.dest}${l.dep ? ` ${l.dep}` : ""}${l.arr ? `–${l.arr}` : ""}${l.date ? ` (${l.date})` : ""}`);
+  deliver({ uid, pnr: pnr.record_locator, channel: off.channel || "push", also: ["email"], skip: via === "whatsapp" ? ["whatsapp"] : [], text: reply, event: "disruption_confirmed",
+    emailType: "recovery_confirmed", emailData: { pnr: pnr.record_locator, option: view, items: recovery.items, legs: legsText, status, flight: flightNo, date: b.flight_date, dest: meta.dest || null } }).catch(() => {});
   O.audit({ actor: "bridge", action: "APPLY_TO_BOOKING", predictionId: off.prediction, rationale: `booking ${pnr.record_locator} (app customer ${uid}) → ${status} · ${view.label}` });
   return card;
 }
@@ -304,7 +332,7 @@ function onBrief({ uid, booking, brief, channel, assessment = null }) {
   const text = `${lead}\n\n${research.briefText(brief)}${altText}\n\nYour call: keep the trip as it is${alts.length ? ", take one of the options above" : ", look at alternative dates"}, or talk to a person.`;
   const card = { type: "destination_brief", pnr: booking.pnr, flight: booking.flight_no, date: booking.flight_date, code: brief.code, city: brief.city, window: brief.window,
     summary: brief.summary, impact, weather: { outlook: brief.weather.outlook, alerts: brief.weather.alerts.slice(0, 3), risk: brief.weather.risk, days: (brief.weather.days || []).slice(0, 5).map((d) => ({ date: d.date, label: d.label, tmax: d.tmax, tmin: d.tmin })) },
-    events: (brief.events || []).slice(0, 6), advisories: (brief.advisories || []).slice(0, 3), news: (brief.news || []).slice(0, 3), holidays: brief.holidays || [],
+    events: (brief.events || []).slice(0, 6).map(research.customerSafe), advisories: (brief.advisories || []).slice(0, 3), news: (brief.news || []).slice(0, 3), holidays: brief.holidays || [],
     sources: (brief.sources || []).slice(0, 8), mode: brief.mode, confidence: brief.confidence, generated_at: brief.generated_at,
     risk: assessment ? { trip: assessment.trip_risk, label: assessment.trip_risk_label, reasons: assessment.trip_reasons, window: assessment.window } : null,
     options: [{ id: "keep", label: "Keep my trip as it is" }, ...altOptions, ...(alts.length ? [] : [{ id: "alternatives", label: `See other dates to ${brief.city}` }]), { id: "talk", label: "Talk to a person" }] };
@@ -313,7 +341,7 @@ function onBrief({ uid, booking, brief, channel, assessment = null }) {
     .then((results) => O.audit({ actor: "bridge", action: "DELIVER_BRIEF", rationale: `customer ${uid} · ${results.map((r) => `${r.channel} ${r.status}`).join(", ")} · mirrored to assistant inbox` })).catch(() => {});
   return card;
 }
-function briefResponse(uid, choice) {
+function briefResponse(uid, choice, via = null) {
   const last = inboxList(uid).filter((m) => m.kind === "destination_brief").pop();
   if (!last) return { ok: false, error: "no_brief" };
   const c = last.card || {};
@@ -327,7 +355,7 @@ function briefResponse(uid, choice) {
   }
   if (choice === "alternatives") return { ok: true, reply: `Let me look at other days to ${c.city} around ${c.date}.`, search: { dest: c.code, date: c.date, flexible: true } };
   if (/^alt:/.test(choice)) {
-    const r = require("./alternatives").take(uid, choice);
+    const r = require("./alternatives").take(uid, choice, { via });
     if (r.ok) { inbox(uid, "brief_ack", r.reply, { type: "alternative_taken", pnr: c.pnr, booking: r.booking }); const last = inboxList(uid).pop(); return { ...r, inboxId: last?.id || null }; }
     return { ok: false, error: r.error, reply: `I couldn't make that change: ${r.error}.` };
   }
@@ -368,16 +396,35 @@ function status(uid) {
   const b = db.prepare("SELECT pnr, flight_no, flight_date, status, meta_json FROM bookings WHERE user_id=? AND pnr=? ORDER BY id DESC").get(uid, LOC(uid)) || null;
   return { linked: !!G.getNode(PNR(uid)), pending: pend, unseen, latest: latest ? { kind: latest.kind, city: latestCard?.city || null, impact: latestCard?.impact || null } : null, prediction: pred ? { id: pred.id, state: pred.state, probability: pred.probability ?? pred.p ?? null } : null, booking: b ? { ...b, recovery: parse(b.meta_json, {})?.recovery || null, meta_json: undefined } : null };
 }
-function acceptForUser(uid, optionId, offerId) {
+/* which channel an acceptance arrived on, per offer: onAccepted reads it once so the confirmation
+   is not sent twice to the channel that also carries the reply */
+const acceptVia = new Map();
+function acceptForUser(uid, optionId, offerId, { via = null } = {}) {
   const A = require("./agents");
   const pend = pending(uid);
   if (!pend) return { ok: false, error: "no_pending_offer" };
+  if (via) acceptVia.set(offerId || pend.offerId, via);
   const opt = pend.options.find((o) => o.id === optionId) || pend.options[Number(optionId) - 1] || pend.options.find((o) => o.type === String(optionId).toUpperCase());
   if (!opt) return { ok: false, error: "unknown_option", options: pend.options };
   const r = A.accept(offerId || pend.offerId, opt.id);
+  if (!r.ok) return { ...r, option: opt, card: null, ...onFailed(uid, pend, opt, r) };
   const last = inboxList(uid).filter((m) => m.kind === "disruption_confirmed").pop();
   if (last) markSeen(uid, [last.id]);
   return { ...r, option: opt, card: last?.card || null, reply: last?.text || null, inboxId: last?.id || null };
+}
+/* The saga failed and was compensated (or the policy gate refused it): the booking is unchanged,
+   a controller already has the full context (ESCALATE_TO_HUMAN), and the offer stays open so the
+   customer can take another option. Say exactly that, in the customer's words, on every channel. */
+function onFailed(uid, pend, opt, r) {
+  const pax = G.getNode(`pax:app:${uid}`);
+  const first = (pax?.name || "").split(" ")[0] || "there";
+  const others = pend.options.filter((o) => o.id !== opt.id).map((o, i) => `${i + 1}. ${o.label}`).join("  ");
+  const why = r.failed === "REBOOK" ? "the seats for that option could not be confirmed" : r.failed === "HOTEL" ? "the hotel could not be booked" : r.failed === "TAXI" ? "the transfer could not be booked" : r.refused === "kill_switch" ? "automatic changes are paused right now" : "that option could not be completed";
+  const reply = `Sorry ${first}, ${why}, so nothing on your booking has changed and nothing was charged. A controller has the full picture and will follow up. You can still choose another option: ${others}`;
+  const inboxId = inbox(uid, "disruption_failed", reply, { type: "disruption_failed", offerId: pend.offerId, failed: r.failed || r.refused || null, option: opt });
+  markSeen(uid, [inboxId]);
+  O.audit({ actor: "bridge", action: "OFFER_FAILED_REPLY", predictionId: G.getNode(pend.offerId)?.prediction || null, rationale: `customer ${uid} told option ${opt.type} failed at ${r.failed || r.refused || "unknown"}; offer left open` });
+  return { reply, inboxId };
 }
 function declineForUser(uid) {
   const A = require("./agents");
@@ -390,19 +437,19 @@ function declineForUser(uid) {
 }
 
 /* plain-language intent from the assistant or WhatsApp → same saga as a button press */
-function intercept(uid, text) {
+function intercept(uid, text, via = null) {
   const pend = pending(uid);
   if (!pend) {
     const t0 = String(text || "").trim().toLowerCase();
     const lastBrief = inboxList(uid).filter((m) => m.kind === "destination_brief").pop();
     const recent = lastBrief && (Date.now() - Date.parse(lastBrief.at || 0)) < 7 * 24 * 3600000;
     if (recent) {
-      if (/^(keep|keep (it|my trip)|leave it|no change|i'?ll keep it)\b/.test(t0)) return briefResponse(uid, "keep");
+      if (/^(keep|keep (it|my trip)|leave it|no change|i'?ll keep it)\b/.test(t0)) return briefResponse(uid, "keep", via);
       if (/^(talk|call me|speak to (someone|a person|an agent)|talk to (someone|a person|an agent))\b/.test(t0)) return briefResponse(uid, "talk");
       if (/^(dates|other dates|alternatives|see other dates)\b/.test(t0)) return briefResponse(uid, "alternatives");
       const alts = (lastBrief.card?.options || []).filter((o) => /^alt:/.test(o.id));
       const num = t0.match(/^\s*(?:option\s*)?([1-9])\b/);
-      if (alts.length && num && alts[Number(num[1]) - 1]) return briefResponse(uid, alts[Number(num[1]) - 1].id);
+      if (alts.length && num && alts[Number(num[1]) - 1]) return briefResponse(uid, alts[Number(num[1]) - 1].id, via);
       if (alts.length && /\b(earlier|later|day before|day after)\b/.test(t0)) { const pick = alts.find((o) => (/earlier|before/.test(t0) ? /earlier/.test(o.label) : /later/.test(o.label))); if (pick) return briefResponse(uid, pick.id); }
       if (alts.length && /\b(flex|free changes)\b/.test(t0)) { const pick = alts.find((o) => o.type === "KEEP_WITH_FLEX"); if (pick) return briefResponse(uid, pick.id); }
     }
@@ -410,7 +457,7 @@ function intercept(uid, text) {
   }
   const t = String(text || "").trim().toLowerCase();
   if (!t) return null;
-  const pick = (o) => acceptForUser(uid, o.id, pend.offerId);
+  const pick = (o) => acceptForUser(uid, o.id, pend.offerId, { via });
   const num = t.match(/^\s*(?:option\s*)?([1-3])\b/) || t.match(/\b(?:option|number|choice)\s*([1-3])\b/);
   if (num && pend.options[Number(num[1]) - 1]) return pick(pend.options[Number(num[1]) - 1]);
   const byType = (re, type) => re.test(t) && pend.options.find((o) => o.type === type);
@@ -429,4 +476,22 @@ function contextLine(uid) {
   return ` The customer holds booking ${LOC(uid)} on XP201 Delhi→Miami; the autonomy layer is monitoring it.`;
 }
 
-module.exports = { link, linked, isLinked, syncTrips, liveTrips, onOffer, onAccepted, onDeclined, onAllClear, onBrief, briefResponse, deliver, pending, inboxList, markSeen, status, acceptForUser, declineForUser, intercept, contextLine, LOC, PAX, PNR };
+/* A real booking moved to another flight (alternatives.take): the graph must follow, or the next
+   prediction on the old flight still "carries" this customer. Re-points the PNR node at a
+   FlightInstance for the new flight and removes the old CARRIES edge. */
+function moveTrip(b, { flight_no, date, origin, dest, dep, arr }) {
+  const pnrId = /^XPW/.test(b.pnr || "") ? PNR(b.user_id) : `pnr:trip:${b.pnr}`;
+  if (!G.getNode(pnrId)) return null;
+  for (const e of G.edges({ rel: "CARRIES", dst: pnrId })) G.deleteEdge(e.src, e.rel, e.dst);
+  for (const code of [origin, dest]) if (code && !G.getNode(`ap:${code}`)) G.upsertNode(`ap:${code}`, "Airport", { iata: code, code, city: city(code) });
+  const depIso = `${date}T${/^\d{2}:\d{2}$/.test(dep || "") ? dep : "12:00"}:00Z`;
+  let arrIso = null; if (arr && /^\d{2}:\d{2}$/.test(arr)) { const a = new Date(`${date}T${arr}:00Z`); if (a < new Date(depIso)) a.setUTCDate(a.getUTCDate() + 1); arrIso = a.toISOString(); }
+  const fiId = `fi:${flight_no}:${date}`;
+  if (!G.getNode(fiId)) G.upsertNode(fiId, "FlightInstance", { flight_no, date, sched_dep: depIso, sched_arr: arrIso, origin, dest, aircraft_type: "A321", status: "scheduled", app_trip: true });
+  if (origin) G.upsertEdge(fiId, "DEPARTS_FROM", `ap:${origin}`); if (dest) G.upsertEdge(fiId, "ARRIVES_AT", `ap:${dest}`);
+  G.setProps(pnrId, { segments: [{ f: flight_no }], moved_at: clock.nowIso() });
+  G.upsertEdge(fiId, "CARRIES", pnrId);
+  return fiId;
+}
+
+module.exports = { link, linked, isLinked, syncTrips, liveTrips, onOffer, onAccepted, onDeclined, onAllClear, onBrief, briefResponse, deliver, pending, inboxList, markSeen, status, acceptForUser, declineForUser, intercept, contextLine, moveTrip, LOC, PAX, PNR };

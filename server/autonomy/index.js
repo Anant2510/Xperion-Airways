@@ -80,13 +80,13 @@ router.get("/risk/:pnr", (req, res) => { const a = alternatives.forBooking(req.p
 router.post("/risk/assess", safe(async (req, res) => { const b = db.prepare("SELECT * FROM bookings WHERE pnr=?").get(req.body?.pnr || ""); if (!b) return res.json({ ok: false, error: "no_booking" }); res.json({ ok: true, assessment: await alternatives.assess(b) }); }));
 router.get("/briefs/due", (_req, res) => res.json({ ok: true, due: briefs.due().map((d) => ({ pnr: d.booking.pnr, uid: d.booking.user_id, dest: d.dest, hours: d.hoursToDeparture })) }));
 router.post("/feeds/poll", safe(async (req, res) => res.json({ ok: true, ...(await feeds.poll({ airports: req.body?.airports })) })));
-router.post("/customer/brief/:choice", (req, res) => res.json(bridge.briefResponse(req.uid, req.params.choice)));
+router.post("/customer/brief/:choice", (req, res) => res.json(bridge.briefResponse(req.uid, req.params.choice, "app")));
 
 /* ── customer side (the live app): proactive inbox, one-tap accept, status for the banner ── */
 router.get("/customer/status", (req, res) => res.json({ ok: true, ...bridge.status(req.uid) }));
 router.get("/customer/inbox", (req, res) => res.json({ ok: true, messages: bridge.inboxList(req.uid, Number(req.query.since) || 0) }));
 router.post("/customer/inbox/seen", (req, res) => { bridge.markSeen(req.uid, req.body?.ids); res.json({ ok: true }); });
-router.post("/customer/accept", (req, res) => res.json(bridge.acceptForUser(req.uid, req.body?.optionId, req.body?.offerId)));
+router.post("/customer/accept", (req, res) => res.json(bridge.acceptForUser(req.uid, req.body?.optionId, req.body?.offerId, { via: "app" })));
 router.post("/customer/decline", (req, res) => res.json(bridge.declineForUser(req.uid)));
 router.post("/customer/link", safe((_req, res) => res.json({ ok: true, ...bridge.link() })));
 

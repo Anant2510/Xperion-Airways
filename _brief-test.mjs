@@ -128,6 +128,22 @@ ok("assessment stored in the graph with a BASED_ON edge to the brief", G.getNode
 const taken = alternatives.take(1, shifts[0].id);
 const moved = db.prepare("SELECT flight_no, flight_date, status, meta_json FROM bookings WHERE pnr='XPTRIP'").get();
 ok("taking a date shift rebooks the real booking onto the safer day (Tier 1, reversible)", taken.ok && moved.flight_date === shifts[0].date && moved.status === "rebooked" && JSON.parse(moved.meta_json).original.flight_date === madBooking.flight_date, taken.reply?.slice(0, 90));
+{
+  /* the graph follows the moved booking and the customer gets the new itinerary on email + WhatsApp */
+  await new Promise((r) => setTimeout(r, 300));
+  const newFi = `fi:${shifts[0].flight_no}:${shifts[0].date}`;
+  const carries = G.edges({ rel: "CARRIES", dst: "pnr:trip:XPTRIP" }).map((e) => e.src);
+  ok("the PNR node now hangs off the new flight instance only", carries.length === 1 && carries[0] === newFi, carries.join(","));
+  const mail = db.prepare("SELECT email_type, subject, status FROM emails WHERE email_type='itinerary_changed' ORDER BY id DESC LIMIT 1").get();
+  ok("an itinerary email with the new flight is written", !!mail && mail.subject.includes(shifts[0].flight_no) && mail.subject.includes("XPTRIP"), mail?.subject);
+  const notes = db.prepare("SELECT channel, status FROM notifications WHERE event='itinerary_changed' ORDER BY id DESC LIMIT 3").all();
+  ok("WhatsApp confirmation recorded alongside the email", notes.some((n) => n.channel === "whatsapp") && notes.some((n) => n.channel === "email"), JSON.stringify(notes));
+  const aptTake = apt ? alternatives.take(1, apt.id, { via: "whatsapp" }) : null;
+  ok("switching airport says the road time in minutes, not 0h", !!aptTake?.ok && /about \d+ min by road|about [\d.]+ h by road/.test(aptTake.reply) && !/0h by road/.test(aptTake.reply), (aptTake?.reply || "").slice(0, 120));
+  await new Promise((r) => setTimeout(r, 300));
+  const wn = db.prepare("SELECT channel, status FROM notifications WHERE event='itinerary_changed' ORDER BY id DESC LIMIT 2").all();
+  ok("accepted on WhatsApp: the WhatsApp copy is the reply itself, not a second message", wn.some((n) => n.channel === "whatsapp" && /carried by the reply/.test(n.status)), JSON.stringify(wn));
+}
 const flexTake = alternatives.take(1, a.alternatives[a.alternatives.length - 1].id);
 ok("taking flex keeps the plan and records the add-on", flexTake.ok && JSON.parse(db.prepare("SELECT meta_json FROM bookings WHERE pnr='XPTRIP'").get().meta_json).flex);
 ok("someone else cannot take Daniel's alternative", alternatives.take(2, shifts[0].id).ok === false);
@@ -162,6 +178,42 @@ ok("daily budget caps the analyst with an honest reason", capped.mode === "facts
 process.env.RESEARCH_DAILY_MAX = "15";
 const rst = research.status();
 ok("status reports mode, use, calls today and an estimated cost", rst.mode === "on-demand" && typeof rst.calls_today === "number" && typeof rst.est_cost_today_usd === "number", `${rst.calls_today} calls ≈ $${rst.est_cost_today_usd}`);
+
+/* 11 · customer-safe wording: graphic news never reaches a customer message */
+{
+  const graphic = { kind: "transport", title: "MIA flight delays/cancellations and FAA runway restrictions", date: "2026-09-06/2026-09-15", impact: "medium", note: "MIA has been experiencing elevated arrival delays and cancellations amid a fatal cargo-crash aftermath and FAA runway-capacity restrictions that could persist into the travel window." };
+  const plain = { kind: "major_event", title: "Miami Art Week", date: "2026-09-12", impact: "low", note: "Hotels and roads around the design district will be busy." };
+  const soft = research.customerSafe(graphic);
+  ok("customerSafe keeps the title, date and impact of a delay item", soft.title === graphic.title && soft.date === graphic.date && soft.impact === "medium");
+  ok("customerSafe replaces a graphic note with a planning line", !/fatal|crash/i.test(soft.note) && /extra time/i.test(soft.note), soft.note);
+  ok("customerSafe leaves an ordinary item untouched", JSON.stringify(research.customerSafe(plain)) === JSON.stringify(plain));
+  const titled = research.customerSafe({ kind: "transport", title: "Fatal cargo plane crash closes MIA runway", impact: "high", note: "Two crew killed." });
+  ok("a graphic title becomes a neutral one for its kind", titled.title === "Airport and transport disruption" && !/killed/i.test(titled.note), titled.title);
+  const text = research.briefText({ city: "Miami", window: { from: "2026-09-12", to: "2026-09-15" }, weather: { alerts: [], days: [] }, events: [graphic, plain], holidays: [], advisories: [], travel_impact: "medium", mode: "llm+facts", source_count: 4 });
+  ok("briefText carries no graphic words", !/fatal|crash|killed/i.test(text) && /Art Week/.test(text));
+}
+
+/* 12 · a stray account with the presenter's phone: not linked, never messaged twice */
+{
+  const personal = "+919871724927";
+  db.prepare("INSERT OR REPLACE INTO users (id, member_no, first_name, full_name, email, phone, tier, miles, nationality, home_airport) VALUES (12, 'XP-990012', 'Anant', 'Anant Singh', 'anant@example.com', ?, 'Silver', 0, 'IN', 'DEL')").run(personal);
+  db.prepare("UPDATE users SET phone=? WHERE id=1").run(personal);
+  delete process.env.AUTONOMY_LINK_ALL;
+  const r1 = bridge.link();
+  ok("link() takes the seeded personas only by default", r1.linked.length === 11 && !r1.linked.some((l) => l.uid === 12), `${r1.linked.length} linked`);
+  process.env.AUTONOMY_LINK_ALL = "1";
+  const r2 = bridge.link();
+  ok("AUTONOMY_LINK_ALL=1 links every account", r2.linked.length === 12 && r2.linked.some((l) => l.uid === 12), `${r2.linked.length} linked`);
+  delete process.env.AUTONOMY_LINK_ALL;
+  process.env.WA_PHONE_MAP = "919871724927:daniel";
+  const d12 = await bridge.deliver({ uid: 12, pnr: "XPW12A", channel: "whatsapp", text: "test", event: "destination_brief" });
+  const d1 = await bridge.deliver({ uid: 1, pnr: "XPW01A", channel: "whatsapp", text: "test", event: "destination_brief" });
+  ok("WhatsApp to the pinned number is skipped for the other account", /pinned to daniel/i.test(d12.find((x) => x.channel === "whatsapp")?.status || ""), d12.map((x) => x.status).join(" | "));
+  ok("...and still goes to the pinned persona", !/skipped/i.test(d1.find((x) => x.channel === "whatsapp")?.status || ""), d1.map((x) => x.status).join(" | "));
+  delete process.env.WA_PHONE_MAP;
+  db.prepare("DELETE FROM users WHERE id=12").run();
+  bridge.link();
+}
 
 /* 10 · synthetic suite untouched */
 const passed = results.filter(Boolean).length;

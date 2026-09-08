@@ -189,11 +189,19 @@ const TEMPLATES = {
       cta: { label: "Keep, change dates, or talk to us — in the app" },
     }),
   }),
-  recovery_confirmed: ({ pnr, option, items = [] }) => ({
+  itinerary_changed: ({ pnr, flight_no, date, origin, dest, dep, arr, from, why, type, city, road }) => ({
+    subject: `Itinerary updated ✓ ${pnr} — ${flight_no} ${origin || ""}→${dest || ""} on ${date}`,
+    html: wrap({
+      title: type === "ALTERNATE_AIRPORT" ? `You now fly into ${city} (${dest})` : `You now travel on ${date}`,
+      bodyHtml: `Your new itinerary:<br/><b>${flight_no}</b> ${origin || ""} → ${dest || ""} · ${date} · ${dep || ""}${arr ? `–${arr}` : ""}${road ? `<br/>${road} by road to your original destination` : ""}${why ? `<br/><br/>Why we suggested it: ${why}` : ""}${from?.flight_no ? `<br/><br/>Your original flight ${from.flight_no} on ${from.flight_date} is kept on file; reply to this email or ask the assistant if you want it back.` : ""}<br/><br/>Booking ${pnr} is updated in My Trips. Nothing was charged.`,
+      cta: { label: "Open My Trips" },
+    }),
+  }),
+  recovery_confirmed: ({ pnr, option, items = [], legs = [], status, flight, date, dest }) => ({
     subject: `Done ✓ ${option.label} — ${pnr} updated`,
     html: wrap({
       title: "Handled. Nothing else to do.",
-      bodyHtml: `Your choice is confirmed: <b>${option.label}</b>.<ul style="padding-left:18px;margin:10px 0">${items.map((x) => `<li style="margin:4px 0">${x}</li>`).join("")}</ul>Booking ${pnr} is updated in My Trips; nothing was charged.`,
+      bodyHtml: `Your choice is confirmed: <b>${option.label}</b>.<ul style="padding-left:18px;margin:10px 0">${items.map((x) => `<li style="margin:4px 0">${x}</li>`).join("")}</ul>${legs.length ? `Your new itinerary:<br/>${legs.map((l) => `<b>${l}</b>`).join("<br/>")}<br/><br/>` : flight ? `Flight <b>${flight}</b>${dest ? ` to ${dest}` : ""}${date ? ` on ${date}` : ""} · status ${status || "updated"}<br/><br/>` : ""}Booking ${pnr} is updated in My Trips; nothing was charged.`,
       cta: { label: "Open My Trips" },
     }),
   }),

@@ -102,4 +102,4 @@ function sessionSource(req, opts = {}) {
   return (s && s.source) || require("./db").getDataSource(); // global default if unbound
 }
 
-module.exports = { newSessionId, bindSession, getSession, unbindSession, resolveUid, sessionSource, isAdmin, userByPhone, guestForPhone, isGuest, pinnedPhoneFor, SERVER_DEFAULT_UID, SYSTEM_UID, _sessions: sessions };
+module.exports = { newSessionId, bindSession, getSession, unbindSession, resolveUid, sessionSource, isAdmin, userByPhone, guestForPhone, isGuest, pinnedPhoneFor, pinnedUser, SERVER_DEFAULT_UID, SYSTEM_UID, _sessions: sessions };

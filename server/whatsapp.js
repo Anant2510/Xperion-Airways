@@ -775,7 +775,7 @@ async function handleIncoming({ from, text, pushName }) {
   /* Enterprise Autonomy: an open disruption offer is answered here first — "2", "take the
      Orlando option", "refund" or "leave it" run the same execution saga as the in-app card. */
   try {
-    const hit = require("./autonomy/bridge").intercept(uid, text);
+    const hit = require("./autonomy/bridge").intercept(uid, text, "whatsapp");
     if (hit) {
       const line = hit.reply || (hit.ok ? "Done." : `I couldn't complete that: ${hit.error || "please try again"}.`);
       return sendText(from, line);

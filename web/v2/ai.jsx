@@ -501,6 +501,24 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
   const [brandSrv, setBrandSrv] = useState(null);
   const brand = brandSrv || brandProp || null;
   const session = useRef("v2-" + Math.random().toString(36).slice(2, 8));
+  // Clear chat. `epoch` invalidates a reply that is still in flight when the user clears, so it
+  // is dropped instead of landing in the fresh thread; `confirmClear` is the two-tap guard.
+  const epoch = useRef(0);
+  const [confirmClear, setConfirmClear] = useState(false);
+  useEffect(() => { if (!confirmClear) return; const t = setTimeout(() => setConfirmClear(false), 6000); return () => clearTimeout(t); }, [confirmClear]);
+  /* Wipes the conversation and starts a fresh agent session on the server, so no half-finished
+     search, selected flight or pending confirmation leaks into the new thread. Unanswered proactive
+     messages from the airline (an open disruption offer, a brief awaiting a choice) are kept: they
+     are the airline's inbox, not chat history, and clearing must never lose an actionable card. */
+  function clearChat() {
+    const old = session.current;
+    session.current = "v2-" + Math.random().toString(36).slice(2, 8);
+    epoch.current += 1;
+    setMsgs(prev => [{ role: "assistant", content: greeting, intro: true }, ...prev.filter(m => m.proactive && !m.resolved)]);
+    setInput(""); setBusy(false); setConfirmClear(false);
+    const post = transport || ((path, body) => api.post(path, body));
+    Promise.resolve().then(() => post("/ai/session/clear", { sessionId: old })).catch(() => {});
+  }
 
   /* Enterprise Autonomy: the disruption agents can speak first. Every proactive message the
      Offer / Execution agents wrote for this customer lands here as an assistant bubble with its
@@ -508,13 +526,23 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
      "take the Orlando option" or a WhatsApp "2". */
   const inboxCursor = useRef(0);
   const consumed = useRef(new Set());
+  /* A tap runs the execution saga. The card only turns "Handled" when the server says the
+     offer is settled (ok, or nothing left pending); a failed or refused saga leaves the card
+     open with its other options, because the booking is unchanged and the customer can still
+     choose. The server's reply already says why; the fallback text here is for a dead network. */
   const resolveOffer = async (opt, card) => {
-    const r = opt ? await api.post("/autonomy/customer/accept", { optionId: opt.id, offerId: card.offerId })
-                  : await api.post("/autonomy/customer/decline", {});
+    let r = null;
+    try {
+      r = opt ? await api.post("/autonomy/customer/accept", { optionId: opt.id, offerId: card.offerId })
+              : await api.post("/autonomy/customer/decline", {});
+    } catch { r = null; }
     if (r?.inboxId) consumed.current.add(r.inboxId);
+    const settled = !!(r?.ok || r?.error === "no_pending_offer");
+    const fallback = r ? `I couldn't complete that: ${r.error || "please try again"}.`
+                       : "I couldn't reach the airline just now, so nothing has changed on your booking. Please try again in a moment.";
     setMsgs(prev => [
-      ...prev.map(m => (m.cards?.[0]?.offerId === card.offerId ? { ...m, resolved: true } : m)),
-      { role: "assistant", content: r?.reply || (r?.ok ? "Done." : `I couldn't complete that: ${r?.error || "please try again"}.`), cards: r?.card ? [r.card] : [] },
+      ...prev.map(m => (settled && m.cards?.[0]?.offerId === card.offerId ? { ...m, resolved: true } : m)),
+      { role: "assistant", content: r?.reply || (r?.ok ? "Done." : fallback), cards: r?.card ? [r.card] : [] },
     ]);
   };
   const briefChoice = async (id, card) => {
@@ -559,6 +587,7 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
     const q = (text != null ? text : input).trim(); if (!q || busy) return;
     const next = [...msgs, { role: "user", content: q }];
     setMsgs(next); setInput(""); setBusy(true);
+    const myEpoch = epoch.current;
     try {
       // omit the intro greeting from the model history
       const history = next.filter(m => !m.intro).map(m => ({ role: m.role, content: m.content }));
@@ -572,10 +601,12 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
         applyTheme(r.brand.theme);
       }
       const quick = (r.cards || [])[0]?.type === "flights" ? ["Book the first option", "Pay with miles", "Earlier outbound?"] : [];
+      if (epoch.current !== myEpoch) return;   // the user cleared the chat while we were waiting
       setMsgs([...next, { role: "assistant", content: r.reply, cards: r.cards, command: r.command, quick }]);
     } catch (e) {
+      if (epoch.current !== myEpoch) return;
       setMsgs([...next, { role: "assistant", content: "I'm having trouble reaching the assistant right now — please try again in a moment." }]);
-    } finally { setBusy(false); }
+    } finally { if (epoch.current === myEpoch) setBusy(false); }
   }
   const pickFlight = (f) => send(`Book ${f.flight_no} departing ${f.dep}${f.date ? ` on ${f.date}` : ""}`);
 
@@ -585,6 +616,18 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
       <button className="text-ink-faint hover:text-ink"><Icon name="mic" size={16} /></button>
       <button onClick={() => send()} disabled={busy} className="w-8 h-8 rounded-full air-bg-accent text-white inline-flex items-center justify-center disabled:opacity-50"><Icon name="send" size={15} /></button>
     </div>
+  );
+  // "Clear chat": shown once there is something to clear (anything beyond the greeting and open
+  // airline offers). Two taps: the first asks, the second clears; the question times out on its own.
+  const hasHistory = msgs.some(m => !m.intro && !(m.proactive && !m.resolved));
+  const ClearControl = (cls) => !hasHistory ? null : confirmClear ? (
+    <span className={cx("inline-flex items-center gap-2 text-[12px] font-semibold", cls)}>
+      <span>Clear this chat?</span>
+      <button onClick={clearChat} className="underline">Yes</button>
+      <button onClick={() => setConfirmClear(false)} className="opacity-70">No</button>
+    </span>
+  ) : (
+    <button onClick={() => setConfirmClear(true)} className={cx("text-[12px] font-semibold", cls)} title="Start a fresh conversation">Clear chat</button>
   );
   const Suggestions = (
     <div className="flex flex-wrap gap-1.5">
@@ -607,9 +650,12 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
       <Card className="mt-5 p-4 sm:p-5">
         {/* v35 feedback: the hero already renders the Xperion AI toggle above this panel, so the
             panel's own toggle was a duplicate. Removed; the header is now just the title. */}
+        <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-[15px] font-bold"><Icon name="spark" size={16} className="air-accent" /> {brand?.assistant || "Xperion AI Assistant"}</div>
           <div className="text-[11px] air-accent-deep font-semibold flex items-center gap-1 mt-0.5"><span className="w-1.5 h-1.5 rounded-full air-bg-accent" /> Online{(brand?.source || sourceLabel) ? ` · personalized from ${brand?.source || sourceLabel}` : ""}</div>
+        </div>
+          {ClearControl("air-accent-deep shrink-0 mt-0.5")}
         </div>
         {Thread}
         <div className="mt-3 mb-3">{Suggestions}</div>
@@ -626,7 +672,7 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
         <Card className="p-0 flex flex-col h-[74vh] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 text-white" style={{ background: "linear-gradient(100deg,#c0392b,#a93226)" }}>
             <div className="flex items-center gap-2.5"><span className="w-8 h-8 rounded-full bg-white/15 inline-flex items-center justify-center"><Icon name="spark" size={15} /></span><div><div className="text-[14px] font-bold">Xperion AI Assistant</div><div className="text-[11px] text-white/80 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full air-bg-highlight" /> Online</div></div></div>
-            <div className="flex items-center gap-3 text-[12px] font-semibold text-white/90"><button onClick={() => setMsgs([{ role: "assistant", content: greeting, intro: true }])}>+ New chat</button><button onClick={() => go("home")}>✕ Close</button></div>
+            <div className="flex items-center gap-3 text-[12px] font-semibold text-white/90">{ClearControl("text-white/90")}<button onClick={() => go("home")}>✕ Close</button></div>
           </div>
           <div className="px-5 flex-1 flex flex-col overflow-hidden">{Thread}</div>
           <div className="px-5 py-3 border-t border-line"><div className="mb-2">{Suggestions}</div>{Composer}<div className="text-[11px] text-ink-faint mt-2 flex items-center gap-1.5"><Icon name="lock" size={11} /> Private to you · not used to train AI</div></div>

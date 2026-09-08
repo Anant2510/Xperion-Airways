@@ -74,12 +74,21 @@ ok("audit: SAGA_COMPLETE + APPLY_TO_BOOKING for the app customer", audit2.events
 
 /* 7 · WhatsApp path: a fresh world, Daniel replies "1" on WhatsApp */
 await post("/api/autonomy/sim/reset"); await post("/api/autonomy/sim/t72"); await post("/api/autonomy/sim/t48");
+const donesBefore = (((await get("/api/admin/db")).tables || {}).wa_messages || []).filter((r) => r.direction === "out" && /^Done, /.test(r.body || r.text || "")).length;
 await wa(phone, "1"); await new Promise((r) => setTimeout(r, 800));   // webhook acks fast, replies asynchronously
 const adminDb = await get("/api/admin/db");
 const waOut = ((adminDb.tables && adminDb.tables.wa_messages) || []).filter((r) => r.direction === "out")[0] || {};
 ok("WhatsApp reply '1' accepts the first option via the same saga", /Done/.test(waOut.body || waOut.text || ""), String(waOut.body || waOut.text || "").slice(0, 110) + "…");
 bookings = await get("/api/bookings"); trip = bookings.find((b) => b.pnr === me?.pnr);
 ok("booking updated from the WhatsApp acceptance", ["rebooked", "refund_pending"].includes(trip?.status), trip && `${trip.status} · ${trip.meta?.recovery?.label}`);
+{
+  const dones = ((adminDb.tables && adminDb.tables.wa_messages) || []).filter((r) => r.direction === "out" && /^Done, /.test(r.body || r.text || "")).length - donesBefore;
+  ok("exactly one WhatsApp confirmation (the reply), not a duplicate", dones === 1, `${dones} new outbound Done message(s)`);
+  const mails = await fetch(BASE + "/api/admin/emails", { headers: { "x-app": "v2" } }).then((r) => r.json());
+  const conf = (mails || []).find((m) => m.email_type === "recovery_confirmed");
+  ok("recovery email with the new itinerary is in the outbox", !!conf && /XPW01A/.test(conf.subject || ""), conf ? `${conf.subject} · ${conf.status}` : "no email");
+  ok("My Trips shows the new flight and the recovery band data", trip?.flight?.flight_no === trip?.flight_no && trip.flight_no !== "XP201" && (trip.meta?.recovery?.legs || []).length === 2, `${trip?.flight_no} ${trip?.flight?.origin}→${trip?.flight?.dest} · legs ${(trip?.meta?.recovery?.legs || []).map((l) => l.flight_no).join("+")}`);
+}
 
 /* 8 · decline path + all-clear on stand-down */
 await post("/api/autonomy/sim/reset"); await post("/api/autonomy/sim/t72"); await post("/api/autonomy/sim/t48");
