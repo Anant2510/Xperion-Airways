@@ -172,14 +172,17 @@ async function syncTrips({ horizonDays = Number(process.env.AUTONOMY_TRIP_HORIZO
 }
 const liveTrips = () => process.env.AUTONOMY_LIVE_TRIPS !== "0";   // on unless switched off: every upcoming real trip is in the graph and scored
 
+/* the golden-trip customers only (pnr:app:<uid>); the pnr:trip:* nodes that syncTrips mirrors for
+   every real booking also carry app_uid, and must not make the world look linked when it is not */
+const GOLDEN_PNR = /^pnr:app:/;
 function linked() {
-  return G.nodesByKind("PNR").filter((p) => p.app_uid).map((p) => {
+  return G.nodesByKind("PNR").filter((p) => p.app_uid && GOLDEN_PNR.test(p.id)).map((p) => {
     const pax = G.getNode(PAX(p.app_uid)) || {};
     const off = offerFor(p.app_uid);
     return { uid: p.app_uid, name: pax.name, tier: pax.loyalty_tier, pnr: p.record_locator, channel: off?.channel || null, state: off ? (off.executed ? "EXECUTED" : off.state) : "NO_OFFER", delivery: off?.app_delivery || "" };
   });
 }
-function isLinked() { return G.nodesByKind("PNR").some((p) => p.app_uid); }
+function isLinked() { return G.nodesByKind("PNR").some((p) => p.app_uid && GOLDEN_PNR.test(p.id)); }
 
 /* ─────────────────────────── 2 · offers → real channels ─────────────────────────── */
 function optionView(o) {

@@ -46,8 +46,8 @@ router.get("/outbox", (_req, res) => res.json({ ok: true, sent: V.sent().slice(-
 const resetLinked = () => { const seeded = sim.reset(); const { linked } = bridge.link(); if (bridge.liveTrips()) bridge.syncTrips().catch(() => {}); return { ...seeded, linked }; };
 const ensureLinked = () => { if (!bridge.isLinked()) bridge.link(); };
 router.post("/sim/reset", safe((_req, res) => res.json({ ok: true, ...resetLinked() })));
-router.post("/sim/t72", safe(async (_req, res) => { ensureLinked(); const r = sim.t72(); const briefed = await briefLinked("T-72 (sim)"); res.json({ ok: true, ...r, pred: G.getNode(sim.state.predId), briefs: { sent: briefed.filter((b) => b.ok).length, of: briefed.length } }); }));
-router.post("/sim/t48", safe((_req, res) => res.json({ ok: true, ...sim.t48() })));
+router.post("/sim/t72", safe(async (_req, res) => { const r = sim.t72(); ensureLinked(); const briefed = await briefLinked("T-72 (sim)"); res.json({ ok: true, ...r, pred: G.getNode(sim.state.predId), briefs: { sent: briefed.filter((b) => b.ok).length, of: briefed.length } }); }));
+router.post("/sim/t48", safe((_req, res) => { ensureLinked(); res.json({ ok: true, ...sim.t48() }); }));
 router.post("/sim/accept", safe((_req, res) => res.json(sim.acceptSample())));
 router.post("/sim/t0", safe((_req, res) => res.json({ ok: true, ...sim.t0() })));
 router.post("/sim/golden", safe(async (_req, res) => {
