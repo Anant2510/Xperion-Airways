@@ -3320,7 +3320,10 @@ function AiAccessPanel({ onClose, toast }) {
 
 function App() {
   const [aiAccess, setAiAccess] = useState(false);
-  const [screen, setScreen] = useState(() => (typeof window !== "undefined" && window.location.hash === "#app") ? "home" : "login");
+  /* Nobody is signed in until Sign in is clicked: the app opens on the sign-in screen unless this
+     tab already holds a session (the #app hash alone is not enough, otherwise a fresh tab would
+     silently become the server's default traveller). */
+  const [screen, setScreen] = useState(() => (typeof window !== "undefined" && window.location.hash === "#app" && getSid()) ? "home" : "login");
   const [profile, setProfile] = useState(null);
   const [flights, setFlights] = useState([]);
   const [ancillaries, setAncillaries] = useState([]);
