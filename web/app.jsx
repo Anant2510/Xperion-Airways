@@ -16,10 +16,17 @@ const API_BASE = (() => {
   let base = window.location.pathname.replace(/\/[^/]*$/, "");
   return base.replace(/\/$/, "");
 })();
+/* Who am I, for the server: a session id kept per browser tab (sessionStorage), sent on every
+   request. Sign-in binds it to a persona; without it every request resolves to the server's
+   default traveller, Daniel, which is why "sign in as Sofia" used to bounce back to Daniel. */
+const SID_KEY = "xp_sid";
+const getSid = () => { try { return sessionStorage.getItem(SID_KEY) || ""; } catch { return ""; } };
+const setSid = (sid) => { try { if (sid) sessionStorage.setItem(SID_KEY, sid); else sessionStorage.removeItem(SID_KEY); } catch {} };
+const hdrs = (h = {}) => { const sid = getSid(); return sid ? { ...h, "x-session-id": sid } : h; };
 const api = {
-  get: (p) => fetch(`${API_BASE}/api${p}`).then((r) => r.json()),
-  post: (p, body) => fetch(`${API_BASE}/api${p}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) }).then((r) => r.json()),
-  del: (p) => fetch(`${API_BASE}/api${p}`, { method: "DELETE" }).then((r) => r.json()),
+  get: (p) => fetch(`${API_BASE}/api${p}`, { headers: hdrs() }).then((r) => r.json()),
+  post: (p, body) => fetch(`${API_BASE}/api${p}`, { method: "POST", headers: hdrs({ "Content-Type": "application/json" }), body: JSON.stringify(body || {}) }).then((r) => r.json()),
+  del: (p) => fetch(`${API_BASE}/api${p}`, { method: "DELETE", headers: hdrs() }).then((r) => r.json()),
 };
 // Stable per-tab id so the agent keeps this chat's context (active route, selected flight) separate from other sessions.
 let WEB_SESSION_ID = "web-" + Math.random().toString(36).slice(2, 10);
@@ -254,6 +261,7 @@ function Login({ profile, onLogin }) {
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("demo");
   const [showPwd, setShowPwd] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => { (async () => {
     const r = await api.get("/personas");
@@ -261,19 +269,22 @@ function Login({ profile, onLogin }) {
     if (r.personas?.[0]) setEmail(`${r.personas[0].id}@flyxperion.demo`);
   })(); }, []);
 
+  /* Sign in binds THIS tab's session to the chosen traveller (POST /api/auth/login). The server
+     default stays Daniel for WhatsApp and the ops page; other tabs can be other travellers. */
   const enter = async (personaId) => {
     if (busy || switching) return;
+    const id = personaId || active;
     try {
-      if (personaId && personaId !== active) {
-        setSwitching(personaId);
-        await api.post("/persona", { persona: personaId });
-        setActive(personaId); setSwitching(null);
-      }
-      setBusy(true);
+      setSwitching(id); setError("");
+      const r = await api.post("/auth/login", { persona: id, sessionId: getSid() || undefined });
+      if (!r?.ok || !r.sessionId) { setError(r?.error || "Could not sign in"); setSwitching(null); return; }
+      setSid(r.sessionId);
+      setActive(id); setSwitching(null); setBusy(true);
       window.location.hash = "app";
-      setTimeout(() => window.location.reload(), 500);
-    } catch { setBusy(false); setSwitching(null); }
+      setTimeout(() => window.location.reload(), 300);
+    } catch (e) { setError(String(e?.message || e)); setBusy(false); setSwitching(null); }
   };
+  const pick = (id) => { setEmail(`${id}@flyxperion.demo`); setPwd("demo"); setError(""); };
   // Sign-in form resolves the email → persona, then enters as that traveller.
   const signIn = () => {
     const id = (email.split("@")[0] || "").toLowerCase();
@@ -288,7 +299,7 @@ function Login({ profile, onLogin }) {
         <img src={PORTO_IMG} alt="Miami, Florida" className="absolute inset-0 w-full h-full object-cover"/>
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(10,11,10,.15) 0%, rgba(10,11,10,.75) 100%)" }}/>
         <div className="relative h-full flex flex-col justify-between p-12">
-          <span className="self-start text-[11px] font-bold tracking-[0.22em] uppercase px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,.14)", color: "#fff", backdropFilter: "blur(6px)" }}>FlyTAP DXP · Persona prototype</span>
+          <span className="self-start text-[11px] font-bold tracking-[0.22em] uppercase px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,.14)", color: "#fff", backdropFilter: "blur(6px)" }}>Xperion Airways · Demo travellers</span>
           <div>
             <h1 className="font-display font-black text-white text-5xl leading-[1.04] tracking-tight">One platform.<br/>A different journey for<br/>every traveller.</h1>
             <p className="text-white/70 mt-5 max-w-md leading-relaxed">Sign in as any persona to see how the CDP and VOYAGER.AI reshape the “Offer → Order” experience in real time.</p>
@@ -300,7 +311,14 @@ function Login({ profile, onLogin }) {
       <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md slide-up">
           <div className="font-display font-black text-3xl tracking-tight mb-8"><span className="dxp-grad-text">Xperion</span></div>
-          <p className="text-sm mb-6" style={{ color: "var(--dxp-muted)" }}>Use a demo account below, or the quick-login shortcuts.</p>
+          <p className="text-sm mb-6" style={{ color: "var(--dxp-muted)" }}>Pick a traveller and the form fills itself in. Password is <code className="px-1.5 py-0.5 rounded" style={{ background: "var(--dxp-surface-2)", color: "var(--dxp-text)" }}>demo</code> for everyone.</p>
+
+          <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--dxp-muted)" }}>Traveller</label>
+          <select value={(email.split("@")[0] || "").toLowerCase()} onChange={(e) => pick(e.target.value)} disabled={!personas}
+            className="w-full px-4 py-3.5 rounded-xl text-sm outline-none mb-4 transition-colors focus:border-[color:var(--dxp-lime)]"
+            style={{ background: "#101210", border: "1px solid var(--dxp-line)", color: "var(--dxp-text)" }}>
+            {(personas || []).map((p) => <option key={p.id} value={p.id}>{p.label}{p.tier ? ` · ${p.tier}` : ""}{p.archetype ? ` · ${p.archetype}` : ""}</option>)}
+          </select>
 
           <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--dxp-muted)" }}>Email</label>
           <input value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && signIn()}
@@ -320,12 +338,13 @@ function Login({ profile, onLogin }) {
             style={{ background: "var(--dxp-grad-btn)", color: "#06210F" }}>
             {busy ? <><Loader2 className="animate-spin" size={17}/> Signing in…</> : <>Sign in →</>}
           </button>
+          {error && <div className="mt-3 text-xs" style={{ color: "#F87171" }}>{error}</div>}
 
           <div className="mt-5 text-xs" style={{ color: "var(--dxp-muted)" }}>
             <span>Demo accounts — password </span><code className="px-1.5 py-0.5 rounded" style={{ background: "var(--dxp-surface-2)", color: "var(--dxp-text)" }}>demo</code><span> for all:</span>
             <div className="flex flex-wrap gap-1.5 mt-2">
               {personas?.map(p => (
-                <button key={p.id} onClick={() => setEmail(`${p.id}@flyxperion.demo`)}
+                <button key={p.id} onClick={() => pick(p.id)}
                   className="px-2.5 py-1.5 rounded-lg text-[11px] transition-colors hover:brightness-125"
                   style={{ background: "var(--dxp-surface-2)", color: email.startsWith(p.id) ? "var(--dxp-lime)" : "var(--dxp-muted)", border: "1px solid var(--dxp-line)" }}>{p.id}@flyxperion.demo</button>
               ))}
@@ -603,6 +622,7 @@ function Home({ profile, destinations, go, openAssistant, toast, bookDestination
               <span className="text-sm font-bold" style={{ color: "var(--tap-ink)" }}>{u.first_name}</span>
               <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: "var(--tap-gold)", color: "#3A2D04" }}>{(u.tier || "GOLD").toUpperCase()}</span>
             </button>
+            <button onClick={() => { setSid(""); window.location.hash = ""; window.location.reload(); }} className="hidden sm:flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900" title="Sign out and choose another traveller">Switch traveller</button>
           </div>
         </div>
       </header>
