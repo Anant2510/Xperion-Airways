@@ -308,7 +308,12 @@ const TEMPLATES = {
 
 async function sendEmail(type, data) {
   const user = db.prepare("SELECT * FROM users WHERE id=1").get();
-  const to = process.env.DEMO_EMAIL_TO || (data && data.to) || user.email;
+  /* DEMO_EMAIL_TO redirects every email to the demo inbox(es); EMAIL_CC adds standing copies to
+     every send whatever the recipient. Both accept a comma-separated list. */
+  const list = (v) => String(v || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const primary = list(process.env.DEMO_EMAIL_TO);
+  const to = (primary.length ? primary : list((data && data.to) || user.email)).join(", ");
+  const cc = list(process.env.EMAIL_CC).filter((x) => !primary.map((p) => p.toLowerCase()).includes(x.toLowerCase())).join(", ") || undefined;
   const { subject, html } = TEMPLATES[type](data);
 
   let status = "logged (no SMTP configured)", providerId = null;
@@ -316,13 +321,13 @@ async function sendEmail(type, data) {
     try {
       const info = await transporter.sendMail({
         from: process.env.EMAIL_FROM || `"Xperion Airways" <${process.env.SMTP_USER}>`,
-        to, subject, html,
+        to, cc, subject, html,
       });
       status = "delivered via SMTP"; providerId = info.messageId;
     } catch (e) { status = "send failed: " + e.message.slice(0, 80); }
   }
   const r = db.prepare(`INSERT INTO emails (user_id,to_addr,subject,email_type,html,status,provider_id,created_at,app)
-    VALUES (1,?,?,?,?,?,?,?,?)`).run(to, subject, type, html, status, providerId, now(), currentApp());
+    VALUES (1,?,?,?,?,?,?,?,?)`).run(cc ? `${to} (cc ${cc})` : to, subject, type, html, status, providerId, now(), currentApp());
   const evRow = db.prepare("INSERT INTO events (type,payload_json,created_at,app) VALUES (?,?,?,?)")
     .run("email_" + type, JSON.stringify({ to, subject, status }), now(), currentApp());
   cdpForward("email_" + type, { to, subject, status, channel: "Email" }, Number(evRow.lastInsertRowid));

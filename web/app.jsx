@@ -2578,21 +2578,20 @@ function Assistant({ open, onClose, screen, profile, onCommand, onSelectFlight }
      "clear the chat". Resets the thread to the greeting, rotates the session so the server forgets
      the old one (last search, selected flight, pending confirmation), and keeps unanswered airline
      cards (an open disruption offer or brief), which are the airline's inbox, not chat history. */
-  const [confirmClear, setConfirmClear] = useState(false);
-  useEffect(() => { if (!confirmClear) return; const t = setTimeout(() => setConfirmClear(false), 6000); return () => clearTimeout(t); }, [confirmClear]);
+  const [justCleared, setJustCleared] = useState(false);
+  useEffect(() => { if (!justCleared) return; const t = setTimeout(() => setJustCleared(false), 2500); return () => clearTimeout(t); }, [justCleared]);
   const clearChat = () => {
     const old = WEB_SESSION_ID;
     WEB_SESSION_ID = "web-" + Math.random().toString(36).slice(2, 10);
     setMsgs(prev => [{ role: "assistant", content: buildGreeting(journey || profile?.syncedSearch) }, ...prev.filter(m => m.cards?.some(c => (c.type === "disruption_offer" || c.type === "destination_brief") && !c._resolved))]);
-    setInput(""); setBusy(false); setConfirmClear(false);
+    setInput(""); setBusy(false); setJustCleared(true);
     api.post("/ai/session/clear", { sessionId: old }).catch(() => {});
   };
-  const hasHistory = msgs.length > 1;
   const CLEAR_RE = /^(please\s+)?(clear|reset|wipe|erase|delete)\s+(the\s+|this\s+|my\s+|our\s+)?(chat|conversation|history|thread|messages)(\s+history)?(\s+for\s+me)?(\s+please)?[.!]?$/i;
 
   const send = async (preset) => {
     const q = (preset || input).trim(); if (!q || busy) return;
-    if (CLEAR_RE.test(q)) { clearChat(); setMsgs(m => [...m, { role: "assistant", content: "Cleared. Fresh start — where would you like to go?" }]); return; }
+    if (CLEAR_RE.test(q)) { clearChat(); return; }
     const history = msgs.filter(m => typeof m.content === "string").map(m => ({ role: m.role, content: m.content }));
     const next = [...history.slice(1), { role: "user", content: q }];
     setMsgs(m => [...m, { role: "user", content: q }]); setInput(""); setBusy(true);
@@ -2637,11 +2636,11 @@ function Assistant({ open, onClose, screen, profile, onCommand, onSelectFlight }
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {hasHistory && (confirmClear ? (
-              <span className="text-white/90 text-[12px] font-semibold inline-flex items-center gap-2"><span>Clear this chat?</span><button onClick={clearChat} className="underline">Yes</button><button onClick={() => setConfirmClear(false)} className="opacity-70">No</button></span>
+            {justCleared ? (
+              <span className="text-white/90 text-[12px] font-semibold">Cleared ✓</span>
             ) : (
-              <button onClick={() => setConfirmClear(true)} className="text-white/85 hover:text-white text-[12px] font-semibold" title="Start a fresh conversation">Clear chat</button>
-            ))}
+              <button onClick={clearChat} className="text-white/85 hover:text-white text-[12px] font-semibold" title="Start a fresh conversation">Clear chat</button>
+            )}
             <button onClick={onClose} className="text-white/80 hover:text-white" aria-label="Close assistant"><X size={20}/></button>
           </div>
         </div>

@@ -502,10 +502,10 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
   const brand = brandSrv || brandProp || null;
   const session = useRef("v2-" + Math.random().toString(36).slice(2, 8));
   // Clear chat. `epoch` invalidates a reply that is still in flight when the user clears, so it
-  // is dropped instead of landing in the fresh thread; `confirmClear` is the two-tap guard.
+  // is dropped instead of landing in the fresh thread; one click clears, the header says so briefly.
   const epoch = useRef(0);
-  const [confirmClear, setConfirmClear] = useState(false);
-  useEffect(() => { if (!confirmClear) return; const t = setTimeout(() => setConfirmClear(false), 6000); return () => clearTimeout(t); }, [confirmClear]);
+  const [justCleared, setJustCleared] = useState(false);
+  useEffect(() => { if (!justCleared) return; const t = setTimeout(() => setJustCleared(false), 2500); return () => clearTimeout(t); }, [justCleared]);
   /* Wipes the conversation and starts a fresh agent session on the server, so no half-finished
      search, selected flight or pending confirmation leaks into the new thread. Unanswered proactive
      messages from the airline (an open disruption offer, a brief awaiting a choice) are kept: they
@@ -515,7 +515,7 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
     session.current = "v2-" + Math.random().toString(36).slice(2, 8);
     epoch.current += 1;
     setMsgs(prev => [{ role: "assistant", content: greeting, intro: true }, ...prev.filter(m => m.proactive && !m.resolved)]);
-    setInput(""); setBusy(false); setConfirmClear(false);
+    setInput(""); setBusy(false); setJustCleared(true);
     const post = transport || ((path, body) => api.post(path, body));
     Promise.resolve().then(() => post("/ai/session/clear", { sessionId: old })).catch(() => {});
   }
@@ -586,7 +586,7 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
   const CLEAR_RE = /^(please\s+)?(clear|reset|wipe|erase|delete)\s+(the\s+|this\s+|my\s+|our\s+)?(chat|conversation|history|thread|messages)(\s+history)?(\s+for\s+me)?(\s+please)?[.!]?$/i;
   async function send(text) {
     const q = (text != null ? text : input).trim(); if (!q || busy) return;
-    if (CLEAR_RE.test(q)) { clearChat(); setMsgs(m => [...m, { role: "assistant", content: "Cleared. Fresh start — where would you like to go?" }]); return; }
+    if (CLEAR_RE.test(q)) { clearChat(); return; }
     const next = [...msgs, { role: "user", content: q }];
     setMsgs(next); setInput(""); setBusy(true);
     const myEpoch = epoch.current;
@@ -622,14 +622,10 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
   // "Clear chat": shown once there is something to clear (anything beyond the greeting and open
   // airline offers). Two taps: the first asks, the second clears; the question times out on its own.
   const hasHistory = msgs.some(m => !m.intro && !(m.proactive && !m.resolved));
-  const ClearControl = (cls) => !hasHistory ? null : confirmClear ? (
-    <span className={cx("inline-flex items-center gap-2 text-[12px] font-semibold", cls)}>
-      <span>Clear this chat?</span>
-      <button onClick={clearChat} className="underline">Yes</button>
-      <button onClick={() => setConfirmClear(false)} className="opacity-70">No</button>
-    </span>
+  const ClearControl = (cls) => !hasHistory ? null : justCleared ? (
+    <span className={cx("inline-flex items-center gap-2 text-[12px] font-semibold", cls)}>Cleared ✓</span>
   ) : (
-    <button onClick={() => setConfirmClear(true)} className={cx("text-[12px] font-semibold", cls)} title="Start a fresh conversation">Clear chat</button>
+    <button onClick={clearChat} className={cx("text-[12px] font-semibold", cls)} title="Start a fresh conversation">Clear chat</button>
   );
   const Suggestions = (
     <div className="flex flex-wrap gap-1.5">

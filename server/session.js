@@ -68,9 +68,17 @@ function pinnedPhoneFor(uid) {
   for (const pair of map.split(",")) {
     const [ph, who] = pair.split(":").map((x) => String(x || "").trim());
     if (!ph || !who) continue;
-    if (String(who) === String(u.id) || who.toLowerCase() === String(u.first_name || "").toLowerCase()) return "+" + ph.replace(/[^0-9]/g, "");
+    if (String(who) === String(u.id) || who.toLowerCase() === String(u.first_name || "").toLowerCase()) return "+" + fullDigits(ph);
   }
   return null;
+}
+/* A pinned number typed without its country code (10 digits) borrows the code of the pairing phone,
+   so WA_PHONE_MAP=9818447731:james still sends to +91 98184 47731 when the burner is an Indian number. */
+function fullDigits(ph) {
+  const d = String(ph || "").replace(/[^0-9]/g, "");
+  const pairing = String(process.env.WA_PAIRING_PHONE || "").replace(/[^0-9]/g, "");
+  if (d.length <= 10 && pairing.length > 10) return pairing.slice(0, pairing.length - 10) + d;
+  return d;
 }
 function userByPhone(raw) {
   const all = String(raw || "").replace(/[^0-9]/g, "");
