@@ -2574,18 +2574,19 @@ function Assistant({ open, onClose, screen, profile, onCommand, onSelectFlight }
   }, []);
   useEffect(() => { if (open) api.post("/autonomy/customer/inbox/seen", {}).catch(() => {}); }, [open]);
 
-  /* Clear chat: two taps in the header (the first asks, the question times out), or simply typing
-     "clear the chat". Resets the thread to the greeting, rotates the session so the server forgets
-     the old one (last search, selected flight, pending confirmation), and keeps unanswered airline
-     cards (an open disruption offer or brief), which are the airline's inbox, not chat history. */
+  /* Clear chat: one click in the header, or simply typing "clear the chat". Resets the thread to
+     the greeting, rotates the session so the server forgets the old one (last search, selected
+     flight, pending confirmation) and dismisses the airline notifications from this view. An open
+     offer stays pending on the server, so it can still be answered on WhatsApp. */
   const [justCleared, setJustCleared] = useState(false);
   useEffect(() => { if (!justCleared) return; const t = setTimeout(() => setJustCleared(false), 2500); return () => clearTimeout(t); }, [justCleared]);
   const clearChat = () => {
     const old = WEB_SESSION_ID;
     WEB_SESSION_ID = "web-" + Math.random().toString(36).slice(2, 10);
-    setMsgs(prev => [{ role: "assistant", content: buildGreeting(journey || profile?.syncedSearch) }, ...prev.filter(m => m.cards?.some(c => (c.type === "disruption_offer" || c.type === "destination_brief") && !c._resolved))]);
+    setMsgs([{ role: "assistant", content: buildGreeting(journey || profile?.syncedSearch) }]);
     setInput(""); setBusy(false); setJustCleared(true);
     api.post("/ai/session/clear", { sessionId: old }).catch(() => {});
+    api.post("/autonomy/customer/inbox/clear", {}).catch(() => {});   // notifications leave the thread too (they stay pending for WhatsApp)
   };
   const CLEAR_RE = /^(please\s+)?(clear|reset|wipe|erase|delete)\s+(the\s+|this\s+|my\s+|our\s+)?(chat|conversation|history|thread|messages)(\s+history)?(\s+for\s+me)?(\s+please)?[.!]?$/i;
 

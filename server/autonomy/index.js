@@ -84,8 +84,9 @@ router.post("/customer/brief/:choice", (req, res) => res.json(bridge.briefRespon
 
 /* ── customer side (the live app): proactive inbox, one-tap accept, status for the banner ── */
 router.get("/customer/status", (req, res) => res.json({ ok: true, ...bridge.status(req.uid) }));
-router.get("/customer/inbox", (req, res) => res.json({ ok: true, messages: bridge.inboxList(req.uid, Number(req.query.since) || 0) }));
+router.get("/customer/inbox", (req, res) => res.json({ ok: true, messages: bridge.inboxList(req.uid, Number(req.query.since) || 0, { includeDismissed: false }) }));
 router.post("/customer/inbox/seen", (req, res) => { bridge.markSeen(req.uid, req.body?.ids); res.json({ ok: true }); });
+router.post("/customer/inbox/clear", (req, res) => res.json({ ok: true, ...bridge.dismissInbox(req.uid) }));
 router.post("/customer/accept", (req, res) => res.json(bridge.acceptForUser(req.uid, req.body?.optionId, req.body?.offerId, { via: "app" })));
 router.post("/customer/decline", (req, res) => res.json(bridge.declineForUser(req.uid)));
 router.post("/customer/link", safe((_req, res) => res.json({ ok: true, ...bridge.link() })));

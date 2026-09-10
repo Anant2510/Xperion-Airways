@@ -392,8 +392,16 @@ function pending(uid) {
   if (!off || off.executed || off.state === "DECLINED") return null;
   return { offerId: off.id, options: (off.options || []).map((id) => optionView(G.getNode(id))), channel: off.channel };
 }
-function inboxList(uid, sinceId = 0) {
-  return db.prepare("SELECT * FROM ai_inbox WHERE user_id=? AND id>? ORDER BY id").all(uid, sinceId).map((r) => ({ id: r.id, kind: r.kind, text: r.text, card: parse(r.card_json), seen: !!r.seen, at: r.created_at }));
+/* The inbox is the airline's record of what it told the customer; the assistant thread is one view
+   of it. "Clear chat" dismisses rows from the view only: pending offers, briefs and every internal
+   lookup still see them, so a WhatsApp "1" keeps working after the app chat was cleared. */
+try { db.exec("ALTER TABLE ai_inbox ADD COLUMN dismissed INTEGER DEFAULT 0"); } catch {}
+function inboxList(uid, sinceId = 0, { includeDismissed = true } = {}) {
+  return db.prepare(`SELECT * FROM ai_inbox WHERE user_id=? AND id>? ${includeDismissed ? "" : "AND COALESCE(dismissed,0)=0"} ORDER BY id`).all(uid, sinceId).map((r) => ({ id: r.id, kind: r.kind, text: r.text, card: parse(r.card_json), seen: !!r.seen, at: r.created_at }));
+}
+function dismissInbox(uid) {
+  const r = db.prepare("UPDATE ai_inbox SET seen=1, dismissed=1 WHERE user_id=? AND COALESCE(dismissed,0)=0").run(uid);
+  return { dismissed: r.changes };
 }
 function markSeen(uid, ids) {
   if (!ids?.length) { db.prepare("UPDATE ai_inbox SET seen=1 WHERE user_id=?").run(uid); return; }
@@ -512,4 +520,4 @@ function moveTrip(b, { flight_no, date, origin, dest, dep, arr }) {
   return fiId;
 }
 
-module.exports = { link, linked, isLinked, syncTrips, liveTrips, onOffer, onAccepted, onDeclined, onAllClear, onBrief, briefResponse, deliver, pending, inboxList, markSeen, status, acceptForUser, declineForUser, intercept, contextLine, moveTrip, LOC, PAX, PNR };
+module.exports = { link, linked, isLinked, syncTrips, liveTrips, onOffer, onAccepted, onDeclined, onAllClear, onBrief, briefResponse, deliver, pending, inboxList, markSeen, dismissInbox, status, acceptForUser, declineForUser, intercept, contextLine, moveTrip, LOC, PAX, PNR };

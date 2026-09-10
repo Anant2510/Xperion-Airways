@@ -514,10 +514,11 @@ export function AIConcierge({ shared, go, embedded, onToggleOff, params, brand: 
     const old = session.current;
     session.current = "v2-" + Math.random().toString(36).slice(2, 8);
     epoch.current += 1;
-    setMsgs(prev => [{ role: "assistant", content: greeting, intro: true }, ...prev.filter(m => m.proactive && !m.resolved)]);
+    setMsgs([{ role: "assistant", content: greeting, intro: true }]);
     setInput(""); setBusy(false); setJustCleared(true);
     const post = transport || ((path, body) => api.post(path, body));
     Promise.resolve().then(() => post("/ai/session/clear", { sessionId: old })).catch(() => {});
+    Promise.resolve().then(() => post("/autonomy/customer/inbox/clear", {})).catch(() => {});   // notifications leave the thread too; an open offer stays pending on the server
   }
 
   /* Enterprise Autonomy: the disruption agents can speak first. Every proactive message the
